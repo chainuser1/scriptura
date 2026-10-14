@@ -1,0 +1,510 @@
+{
+  "_note": "Intent test queries authored by the engineering assistant (not independently reviewed). comparison: lexical term sets per concept give an automatic 'both concepts present' measure; person: ground truth is the legacy AI entity index (quality unreviewed); the rest use well-known anchor passages ('X N:*' = any verse of that chapter).",
+  "comparison": [
+    {
+      "q": "Faith vs knowledge",
+      "concepts": [
+        [
+          "faith",
+          "believ",
+          "trust"
+        ],
+        [
+          "know",
+          "knowledge",
+          "knew",
+          "known"
+        ]
+      ]
+    },
+    {
+      "q": "What is the difference between faith and works?",
+      "concepts": [
+        [
+          "faith",
+          "believ"
+        ],
+        [
+          "work",
+          "deed"
+        ]
+      ]
+    },
+    {
+      "q": "Grace versus works",
+      "concepts": [
+        [
+          "grace",
+          "mercy",
+          "gift"
+        ],
+        [
+          "work",
+          "deed"
+        ]
+      ]
+    },
+    {
+      "q": "Pride vs humility",
+      "concepts": [
+        [
+          "pride",
+          "proud",
+          "haughty"
+        ],
+        [
+          "humble",
+          "humility",
+          "meek",
+          "lowly"
+        ]
+      ]
+    },
+    {
+      "q": "How are justice and mercy different?",
+      "concepts": [
+        [
+          "justice",
+          "just",
+          "judg"
+        ],
+        [
+          "merc"
+        ]
+      ]
+    },
+    {
+      "q": "Is it better to have faith or to know for sure?",
+      "concepts": [
+        [
+          "faith",
+          "believ"
+        ],
+        [
+          "know",
+          "knowledge"
+        ]
+      ]
+    },
+    {
+      "q": "Compare the law of Moses and the gospel of Christ",
+      "concepts": [
+        [
+          "law",
+          "moses"
+        ],
+        [
+          "gospel",
+          "christ"
+        ]
+      ]
+    },
+    {
+      "q": "Body versus spirit",
+      "concepts": [
+        [
+          "body",
+          "flesh",
+          "bodies"
+        ],
+        [
+          "spirit",
+          "soul"
+        ]
+      ]
+    }
+  ],
+  "anchored": {
+    "definition": [
+      {
+        "q": "What is faith?",
+        "anchors": [
+          "Hebrews 11:1",
+          "Alma 32:21",
+          "Ether 12:6",
+          "Romans 10:17",
+          "James 2:17"
+        ]
+      },
+      {
+        "q": "What is grace?",
+        "anchors": [
+          "Ephesians 2:8",
+          "2 Nephi 25:23",
+          "Moroni 10:32",
+          "2 Corinthians 12:9",
+          "Titus 3:5"
+        ]
+      },
+      {
+        "q": "What does repentance mean?",
+        "anchors": [
+          "Doctrine and Covenants 58:42",
+          "Doctrine and Covenants 58:43",
+          "Isaiah 1:18",
+          "Acts 3:19",
+          "1 John 1:9",
+          "Mosiah 4:10"
+        ]
+      },
+      {
+        "q": "Define charity",
+        "anchors": [
+          "Moroni 7:47",
+          "Moroni 7:45",
+          "1 Corinthians 13:*"
+        ]
+      },
+      {
+        "q": "What is the Atonement of Jesus Christ?",
+        "anchors": [
+          "Alma 34:9",
+          "2 Nephi 9:21",
+          "Isaiah 53:5",
+          "Mosiah 3:7",
+          "Alma 7:11",
+          "Doctrine and Covenants 19:16"
+        ]
+      },
+      {
+        "q": "What is baptism?",
+        "anchors": [
+          "John 3:5",
+          "2 Nephi 31:5",
+          "2 Nephi 31:17",
+          "Mosiah 18:10",
+          "Mark 16:16",
+          "Acts 2:38"
+        ]
+      }
+    ],
+    "story": [
+      {
+        "q": "story of Daniel in the lions' den",
+        "anchors": [
+          "Daniel 6:*"
+        ]
+      },
+      {
+        "q": "What happened at the Tower of Babel?",
+        "anchors": [
+          "Genesis 11:*"
+        ]
+      },
+      {
+        "q": "How did Jesus feed the five thousand?",
+        "anchors": [
+          "Matthew 14:*",
+          "Mark 6:*",
+          "John 6:*",
+          "Luke 9:*"
+        ]
+      },
+      {
+        "q": "Why did Nephi build a ship?",
+        "anchors": [
+          "1 Nephi 17:*",
+          "1 Nephi 18:*"
+        ]
+      },
+      {
+        "q": "What happened to Jonah?",
+        "anchors": [
+          "Jonah 1:*",
+          "Jonah 2:*"
+        ]
+      },
+      {
+        "q": "story of Joseph being sold into Egypt",
+        "anchors": [
+          "Genesis 37:*",
+          "Genesis 39:*"
+        ]
+      }
+    ],
+    "list": [
+      {
+        "q": "What are the Ten Commandments?",
+        "anchors": [
+          "Exodus 20:*",
+          "Deuteronomy 5:*",
+          "Mosiah 12:*"
+        ]
+      },
+      {
+        "q": "What are the fruits of the Spirit?",
+        "anchors": [
+          "Galatians 5:22",
+          "Galatians 5:23"
+        ]
+      },
+      {
+        "q": "What are the Beatitudes?",
+        "anchors": [
+          "Matthew 5:3",
+          "Matthew 5:4",
+          "Matthew 5:5",
+          "Matthew 5:9",
+          "3 Nephi 12:3"
+        ]
+      },
+      {
+        "q": "What are the gifts of the Spirit?",
+        "anchors": [
+          "1 Corinthians 12:*",
+          "Moroni 10:*",
+          "Doctrine and Covenants 46:*"
+        ]
+      },
+      {
+        "q": "List the Articles of Faith",
+        "anchors": [
+          "Articles of Faith:*"
+        ]
+      },
+      {
+        "q": "What is the armor of God?",
+        "anchors": [
+          "Ephesians 6:*",
+          "Doctrine and Covenants 27:*"
+        ]
+      }
+    ],
+    "howto": [
+      {
+        "q": "How do I overcome fear?",
+        "anchors": [
+          "Philippians 4:6",
+          "Isaiah 41:10",
+          "Doctrine and Covenants 6:36",
+          "2 Timothy 1:7",
+          "John 14:27",
+          "Psalms 56:3"
+        ]
+      },
+      {
+        "q": "How can I pray better?",
+        "anchors": [
+          "Matthew 6:9",
+          "3 Nephi 18:19",
+          "2 Nephi 32:9",
+          "Alma 34:17",
+          "James 1:5",
+          "Moroni 10:4"
+        ]
+      },
+      {
+        "q": "How do I forgive someone?",
+        "anchors": [
+          "Matthew 6:14",
+          "Colossians 3:13",
+          "Ephesians 4:32",
+          "Doctrine and Covenants 64:10",
+          "Luke 6:37",
+          "Mosiah 26:31"
+        ]
+      },
+      {
+        "q": "How can I have more faith?",
+        "anchors": [
+          "Romans 10:17",
+          "Alma 32:27",
+          "Alma 32:28",
+          "Ether 12:6",
+          "James 1:5",
+          "Mark 9:24"
+        ]
+      },
+      {
+        "q": "How do I repent?",
+        "anchors": [
+          "Doctrine and Covenants 58:42",
+          "Doctrine and Covenants 58:43",
+          "Isaiah 55:7",
+          "Acts 3:19",
+          "1 John 1:9",
+          "Mosiah 4:10"
+        ]
+      },
+      {
+        "q": "How do I know God hears my prayers?",
+        "anchors": [
+          "Doctrine and Covenants 9:8",
+          "Doctrine and Covenants 8:2",
+          "Moroni 10:4",
+          "Helaman 5:30",
+          "1 Kings 19:12"
+        ]
+      }
+    ],
+    "personal": [
+      {
+        "q": "I feel like I'm not good enough for God",
+        "anchors": [
+          "Isaiah 41:10",
+          "Psalms 139:14",
+          "Romans 8:38",
+          "Ephesians 2:8",
+          "Doctrine and Covenants 18:10",
+          "Moroni 7:48"
+        ]
+      },
+      {
+        "q": "I am afraid of the future",
+        "anchors": [
+          "Philippians 4:6",
+          "Isaiah 41:10",
+          "Matthew 6:34",
+          "Doctrine and Covenants 6:36",
+          "2 Timothy 1:7"
+        ]
+      },
+      {
+        "q": "I feel so alone",
+        "anchors": [
+          "Isaiah 49:15",
+          "John 14:18",
+          "Deuteronomy 31:6",
+          "Psalms 34:18",
+          "Hebrews 13:5",
+          "Matthew 28:20"
+        ]
+      },
+      {
+        "q": "I am grieving the loss of someone I love",
+        "anchors": [
+          "Revelation 21:4",
+          "John 11:25",
+          "Psalms 23:4",
+          "Matthew 5:4",
+          "Alma 28:12",
+          "Doctrine and Covenants 42:45"
+        ]
+      },
+      {
+        "q": "I have doubts about everything I was taught",
+        "anchors": [
+          "Mark 9:24",
+          "Alma 32:27",
+          "John 20:29",
+          "James 1:5",
+          "Doctrine and Covenants 6:36"
+        ]
+      },
+      {
+        "q": "I made a terrible mistake and think God cannot forgive me",
+        "anchors": [
+          "Isaiah 1:18",
+          "Isaiah 55:7",
+          "1 John 1:9",
+          "Doctrine and Covenants 58:42",
+          "Psalms 103:12",
+          "Alma 36:19"
+        ]
+      }
+    ]
+  },
+  "person": [
+    {
+      "q": "Who is Captain Moroni?",
+      "entity": "person:moroni_captain",
+      "other": [
+        "person:moroni_son_of_mormon"
+      ]
+    },
+    {
+      "q": "Who is Moroni the son of Mormon?",
+      "entity": "person:moroni_son_of_mormon",
+      "other": [
+        "person:moroni_captain"
+      ]
+    },
+    {
+      "q": "Who was the angel Moroni who appeared to Joseph Smith?",
+      "entity": "person:moroni_son_of_mormon",
+      "other": [
+        "person:moroni_captain"
+      ]
+    },
+    {
+      "q": "Who was Nephi, the son of Lehi?",
+      "entity": "person:nephi_son_of_lehi",
+      "other": [
+        "person:nephi_son_of_helaman"
+      ]
+    },
+    {
+      "q": "Who was Nephi the son of Helaman?",
+      "entity": "person:nephi_son_of_helaman",
+      "other": [
+        "person:nephi_son_of_lehi"
+      ]
+    },
+    {
+      "q": "Who is Alma the Younger?",
+      "entity": "person:alma_the_younger",
+      "other": [
+        "person:alma_the_elder"
+      ]
+    },
+    {
+      "q": "Who was Alma the Elder?",
+      "entity": "person:alma_the_elder",
+      "other": [
+        "person:alma_the_younger"
+      ]
+    },
+    {
+      "q": "Who was Abinadi?",
+      "entity": "person:abinadi",
+      "other": []
+    },
+    {
+      "q": "Who was King Benjamin?",
+      "entity": "person:benjamin_king",
+      "other": [
+        "person:benjamin_son_of_jacob"
+      ]
+    },
+    {
+      "q": "Who was Joseph Smith?",
+      "entity": "person:joseph_smith",
+      "other": [
+        "person:joseph_son_of_jacob"
+      ]
+    },
+    {
+      "q": "Who was Joseph, the son of Jacob?",
+      "entity": "person:joseph_son_of_jacob",
+      "other": [
+        "person:joseph_smith"
+      ]
+    },
+    {
+      "q": "Who was Aaron the brother of Moses?",
+      "entity": "person:aaron_brother_of_moses",
+      "other": [
+        "person:aaron_son_of_mosiah"
+      ]
+    },
+    {
+      "q": "Who was Aaron the son of Mosiah?",
+      "entity": "person:aaron_son_of_mosiah",
+      "other": [
+        "person:aaron_brother_of_moses"
+      ]
+    },
+    {
+      "q": "Who was Samuel the Lamanite?",
+      "entity": "person:samuel_the_lamanite",
+      "other": [
+        "person:samuel_ot_prophet"
+      ]
+    },
+    {
+      "q": "Who was Moses?",
+      "entity": "person:moses",
+      "other": []
+    }
+  ]
+}

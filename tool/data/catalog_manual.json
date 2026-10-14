@@ -1,0 +1,35 @@
+{
+  "_note": "Reviewed manual catalog labels. Every label cites the Church page it was confirmed against (checked 2026-10-13 from page titles/text). Languages/volumes not listed here fall back to English and are flagged source=fallback_en.",
+  "volumes": {
+    "ot": {
+      "spanish": {"name": "Antiguo Testamento", "citation": "https://www.churchofjesuschrist.org/study/scriptures/ot?lang=spa"},
+      "tagalog": {"name": "Lumang Tipan", "citation": "https://www.churchofjesuschrist.org/study/manual/scripture-helps-old-testament/000-intro/002-welcome?lang=tgl"},
+      "cebuano": {"name": "Daang Tugon", "citation": "https://www.churchofjesuschrist.org/study/manual/scripture-helps-old-testament/000-intro/002-welcome?lang=ceb"},
+      "greek": {"name": "Παλαιά Διαθήκη", "citation": "https://www.churchofjesuschrist.org/study/manual/old-testament-stories-2022/about-the-old-testament?lang=ell"}
+    },
+    "nt": {
+      "spanish": {"name": "Nuevo Testamento", "citation": "https://www.churchofjesuschrist.org/study/scriptures?lang=spa"},
+      "tagalog": {"name": "Bagong Tipan", "citation": "https://www.churchofjesuschrist.org/study/manual/new-testament-study-guide-for-home-study-seminary-students/welcome-to-the-new-testament?lang=tgl"},
+      "cebuano": {"name": "Bag-ong Tugon", "citation": "https://www.churchofjesuschrist.org/study/manual/new-testament-study-guide-for-home-study-seminary-students/welcome-to-the-new-testament?lang=ceb"},
+      "greek": {"name": "Καινή Διαθήκη", "citation": "https://www.churchofjesuschrist.org/study/scriptures/bible-reference/1?lang=ell"}
+    },
+    "bom": {
+      "cebuano": {"name": "Ang Basahon ni Mormon", "citation": "https://www.churchofjesuschrist.org/bc/content/shared/content/cebuano/pdf/language-materials/34406_ceb.pdf"}
+    },
+    "pgp": {
+      "cebuano": {"name": "Perlas nga Labing Bililhon", "citation": "https://www.churchofjesuschrist.org/study/scriptures/pgp?lang=ceb"}
+    }
+  },
+  "aliases": {
+    "english": {
+      "psalm": "Psalms",
+      "song of solomon": "Song of Songs",
+      "songs of solomon": "Song of Songs",
+      "d&c": "Doctrine and Covenants",
+      "dc": "Doctrine and Covenants",
+      "js-h": "Joseph Smith--History",
+      "js-m": "Joseph Smith--Matthew",
+      "aof": "Articles of Faith"
+    }
+  }
+}

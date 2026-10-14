@@ -1,0 +1,112 @@
+[
+ {
+  "query": "Who is Captain Moroni?",
+  "status": "single",
+  "first": "person:moroni_captain"
+ },
+ {
+  "query": "Who is Moroni the son of Mormon?",
+  "status": "single",
+  "first": "person:moroni_son_of_mormon"
+ },
+ {
+  "query": "Who was the angel Moroni who appeared to Joseph Smith?",
+  "status": "single",
+  "first": "person:moroni_son_of_mormon"
+ },
+ {
+  "query": "Who is Moroni?",
+  "status": "ambiguous",
+  "first": null
+ },
+ {
+  "query": "Who was Nephi, the son of Lehi?",
+  "status": "single",
+  "first": "person:nephi_son_of_lehi"
+ },
+ {
+  "query": "Who was Nephi the son of Helaman?",
+  "status": "single",
+  "first": "person:nephi_son_of_helaman"
+ },
+ {
+  "query": "Who is Alma the Younger?",
+  "status": "single",
+  "first": "person:alma_the_younger"
+ },
+ {
+  "query": "Who was Alma the Elder?",
+  "status": "single",
+  "first": "person:alma_the_elder"
+ },
+ {
+  "query": "Who was Abinadi?",
+  "status": "single",
+  "first": "person:abinadi"
+ },
+ {
+  "query": "Who was King Benjamin?",
+  "status": "single",
+  "first": "person:benjamin_king"
+ },
+ {
+  "query": "Who was Moses?",
+  "status": "single",
+  "first": "person:moses"
+ },
+ {
+  "query": "Who was Joseph Smith?",
+  "status": "single",
+  "first": "person:joseph_smith"
+ },
+ {
+  "query": "Who was Joseph, the son of Jacob?",
+  "status": "single",
+  "first": "person:joseph_son_of_jacob"
+ },
+ {
+  "query": "Who was Alma?",
+  "status": "single",
+  "first": "person:alma_the_younger"
+ },
+ {
+  "query": "Who was Aaron the son of Mosiah?",
+  "status": "single",
+  "first": "person:aaron_son_of_mosiah"
+ },
+ {
+  "query": "Who is Jesus Christ?",
+  "status": "generic",
+  "first": "person:jesus_christ"
+ },
+ {
+  "query": "What did Moroni say about faith?",
+  "status": "none",
+  "first": null
+ },
+ {
+  "query": "Who was Zzyzx?",
+  "status": "none",
+  "first": null
+ },
+ {
+  "query": "¿Quién fue el capitán Moroni?",
+  "status": "single",
+  "first": "person:moroni_captain"
+ },
+ {
+  "query": "¿Quién fue Moroni, el hijo de Mormón?",
+  "status": "single",
+  "first": "person:moroni_son_of_mormon"
+ },
+ {
+  "query": "Sino si kapitan Moroni?",
+  "status": "single",
+  "first": "person:moroni_captain"
+ },
+ {
+  "query": "Sino si Alma ang bata?",
+  "status": "single",
+  "first": "person:alma_the_younger"
+ }
+]

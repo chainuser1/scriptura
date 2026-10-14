@@ -1,0 +1,12 @@
+[
+ {"query": "Where is Bethlehem?", "status": "single", "first": "place:bethlehem_judaea"},
+ {"query": "Tell me about Jerusalem", "status": "single", "first": "place:jerusalem_israel"},
+ {"query": "What happened at Capernaum?", "status": "single", "first": "place:capernaum"},
+ {"query": "Donde esta Zarahemla?", "status": "single", "first": "place:zarahemla"},
+ {"query": "Where is Egypt?", "status": "single", "first": "place:egypt"},
+ {"query": "Tell me about Zarahemla", "status": "single", "first": "place:zarahemla"},
+ {"query": "Tell me about Nephi", "status": "ambiguous", "first": "person:nephi_son_of_lehi"},
+ {"query": "Who is Nephi?", "status": "ambiguous", "first": "person:nephi_son_of_lehi"},
+ {"query": "Where was Jesus born?", "status": "none", "first": null},
+ {"query": "Who is Captain Moroni?", "status": "single", "first": "person:moroni_captain"}
+]

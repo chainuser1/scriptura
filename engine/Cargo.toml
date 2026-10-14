@@ -1,0 +1,34 @@
+[package]
+name = "scripture_engine"
+version = "0.1.0"
+edition = "2021"
+description = "Offline scripture search engine (tokenizer, kernels, fusion) behind a C ABI"
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[features]
+# Windows/desktop: ONNX Runtime downloaded at build time and linked into the library.
+default = ["bundled-ort"]
+bundled-ort = ["ort/download-binaries", "ort/tls-native", "ort/copy-dylibs"]
+# Android: libonnxruntime.so (from the official onnxruntime-android AAR) is loaded at runtime.
+dynamic-ort = ["ort/load-dynamic"]
+
+[dependencies]
+tokenizers = { version = "=0.22.2", default-features = false, features = ["onig"] }
+
+ort = { version = "=2.0.0-rc.14", default-features = false, features = ["std", "ndarray", "tracing", "api-31"] }
+half = "2.7.1"
+memmap2 = "0.9.11"
+libm = "0.2.16"
+bytemuck = "1.25.2"
+zip = { version = "9.0.3", default-features = false, features = ["deflate"] }
+rusqlite = { version = "0.40.2", features = ["bundled"] }
+regex = "1.13.1"
+unicode-normalization = "0.1.25"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+
+[dev-dependencies]
+

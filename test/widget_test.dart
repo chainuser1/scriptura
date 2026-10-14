@@ -1,0 +1,320 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:scriptures_reader_mobile/app/nav_state.dart';
+import 'package:scriptures_reader_mobile/app_controller.dart';
+import 'package:scriptures_reader_mobile/data/content/catalog.dart';
+import 'package:scriptures_reader_mobile/data/content/content_database.dart';
+import 'package:scriptures_reader_mobile/data/content/content_repository.dart';
+import 'package:scriptures_reader_mobile/data/user/user_store.dart';
+import 'package:scriptures_reader_mobile/main.dart';
+import 'package:scriptures_reader_mobile/services/engine/search_models.dart';
+import 'package:scriptures_reader_mobile/services/engine/search_service.dart';
+
+import 'fakes/fake_search_service.dart';
+
+ContentRepository fixtureRepository() {
+  final db = ContentDatabase.open('test/fixtures/content_v2_mini.db');
+  return ContentRepository(db, Catalog.load('test/fixtures/catalog_mini.db', contract: db.contract));
+}
+
+Future<AppController> boot(WidgetTester tester, {SearchService? search, Size size = const Size(1280, 800)}) async {
+  tester.view.physicalSize = size;
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+  final app = AppController.fixed(repository: fixtureRepository(), search: search, user: UserStore.memory());
+  await tester.pumpWidget(ScripturesReaderApp(app: app));
+  await tester.pumpAndSettle();
+  return app;
+}
+
+Future<void> openSection(WidgetTester tester, String label) async {
+  await tester.tap(find.descendant(of: find.byType(NavigationRail), matching: find.text(label)));
+  await tester.pumpAndSettle();
+}
+
+Future<void> typeAndSubmit(WidgetTester tester, Finder field, String text) async {
+  await tester.enterText(field, text);
+  await tester.testTextInput.receiveAction(TextInputAction.search);
+  await tester.pumpAndSettle();
+}
+
+void main() {
+  testWidgets('without content the welcome screen waits for the automatic setup; nothing to choose', (tester) async {
+    await tester.pumpWidget(ScripturesReaderApp(app: AppController.fixed()));
+    expect(find.text('Welcome'), findsOneWidget);
+    expect(find.text('Choose folder…'), findsNothing);
+    expect(find.textContaining('Download instead'), findsNothing);
+  });
+
+  group('home', () {
+    testWidgets('offers the ask box, starter questions and the guide', (tester) async {
+      await boot(tester, search: FakeSearchService((r, i) async => semantic([1])));
+      expect(find.textContaining('Ask a question'), findsWidgets);
+      expect(find.text('What is faith?'), findsOneWidget);
+      expect(find.text('Start here'), findsOneWidget);
+      await tester.tap(find.text('Start here'));
+      await tester.pumpAndSettle();
+      expect(find.text('What is in the library'), findsOneWidget);
+      expect(find.text('Book of Mormon'), findsOneWidget);
+    });
+
+    testWidgets('a starter question becomes a search with results', (tester) async {
+      final svc = FakeSearchService((r, i) async => semantic([2, 5]));
+      await boot(tester, search: svc);
+      await tester.tap(find.text('What is faith?'));
+      await tester.pumpAndSettle();
+      expect(svc.requests.single.query, 'What is faith?');
+      expect(find.text('Alpha Book 1:2'), findsWidgets);
+      expect(find.text('Passages for “What is faith?”'), findsOneWidget);
+    });
+
+    testWidgets('when search is unavailable, Home says so and still lets you read', (tester) async {
+      await boot(tester, search: UnavailableSearchService('The search data is not installed.'));
+      expect(find.textContaining('The search data is not installed.'), findsWidgets);
+      expect(find.text('Open Settings'), findsOneWidget);
+    });
+  });
+
+  group('reading', () {
+    testWidgets('browse to a chapter and read; the position is remembered', (tester) async {
+      final app = await boot(tester, search: FakeSearchService((r, i) async => semantic([1])));
+      await openSection(tester, 'Read');
+      expect(find.text('Old Testament'), findsOneWidget);
+      expect(find.widgetWithText(ChoiceChip, '1'), findsOneWidget); // the first book is open
+      await tester.tap(find.widgetWithText(ChoiceChip, '2'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Synthetic English passage 4.'), findsOneWidget);
+      expect(app.user.position!.chapter, 2);
+    });
+
+    testWidgets('a verse menu bookmarks, and Study lists it', (tester) async {
+      final app = await boot(tester, search: FakeSearchService((r, i) async => semantic([1])));
+      app.nav.openChapter(1, 1);
+      await tester.pumpAndSettle();
+      await tester.tap(find.textContaining('Synthetic English passage 2.'));
+      await tester.pumpAndSettle();
+      expect(find.text('Copy with reference'), findsOneWidget);
+      await tester.tap(find.text('Bookmark'));
+      await tester.pumpAndSettle();
+      expect(app.user.isBookmarked(2), isTrue);
+      await openSection(tester, 'Study');
+      expect(find.text('Alpha Book 1:2'), findsOneWidget);
+    });
+
+    testWidgets('highlight and note from the verse menu are saved', (tester) async {
+      final app = await boot(tester, search: FakeSearchService((r, i) async => semantic([1])));
+      app.nav.openChapter(1, 1);
+      await tester.pumpAndSettle();
+      await tester.tap(find.textContaining('Synthetic English passage 3.'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Green'));
+      await tester.pumpAndSettle();
+      expect(app.user.highlightsIn(1, 8), {3: 1});
+      await tester.tap(find.textContaining('Synthetic English passage 3.'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Add note'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).last, 'a thought');
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(app.user.notes(verseId: 3).single.text, 'a thought');
+    });
+
+    testWidgets('switching language re-renders the text and names', (tester) async {
+      final app = await boot(tester, search: FakeSearchService((r, i) async => semantic([1])));
+      app.nav.openChapter(1, 1);
+      await tester.pumpAndSettle();
+      app.setLanguage('spanish');
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Pasaje sintético 1'), findsOneWidget);
+      expect(find.text('Libro Alfa 1'), findsWidgets);
+    });
+
+    testWidgets('a second language can sit beside the first', (tester) async {
+      final app = await boot(tester, search: FakeSearchService((r, i) async => semantic([1])));
+      app.user.setPref('parallel', 'spanish');
+      app.nav.openChapter(1, 1);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Synthetic English passage 1.'), findsOneWidget);
+      expect(find.textContaining('Pasaje sintético 1'), findsOneWidget);
+    });
+  });
+
+  group('command bar', () {
+    testWidgets('Ctrl+K with a reference opens that verse', (tester) async {
+      final svc = FakeSearchService((r, i) async => SearchResponse(
+          mode: 'reference', reference: ReferenceResult(status: 'ok', book: 'Alpha Book', kind: 'verse', firstVerseId: 3, lastVerseId: 3)));
+      final app = await boot(tester, search: svc);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyK);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.pumpAndSettle();
+      expect(find.text('Enter to go · Esc to close'), findsOneWidget);
+      await tester.enterText(find.descendant(of: find.byType(Dialog), matching: find.byType(TextField)), 'Alpha Book 1:3');
+      await tester.testTextInput.receiveAction(TextInputAction.go);
+      await tester.pumpAndSettle();
+      expect(app.nav.dest, Dest.read);
+      expect(app.nav.verse, 3);
+      expect(svc.requests.single.op, 'reference');
+    });
+
+    testWidgets('anything else becomes a question', (tester) async {
+      final svc = FakeSearchService((r, i) async {
+        if (r.op == 'reference') return SearchResponse(mode: 'reference', reference: ReferenceResult(status: 'not_a_reference'));
+        return semantic([4]);
+      });
+      final app = await boot(tester, search: svc);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyK);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.pumpAndSettle();
+      await tester.enterText(find.descendant(of: find.byType(Dialog), matching: find.byType(TextField)), 'how do I pray');
+      await tester.testTextInput.receiveAction(TextInputAction.go);
+      await tester.pumpAndSettle();
+      expect(app.nav.dest, Dest.search);
+      expect(svc.requests.last.query, 'how do I pray');
+    });
+  });
+
+  group('search', () {
+    Future<AppController> inSearch(WidgetTester tester, SearchService svc) async {
+      final app = await boot(tester, search: svc);
+      await openSection(tester, 'Search');
+      return app;
+    }
+
+    testWidgets('results show reference and text with a live preview beside them', (tester) async {
+      await inSearch(tester, FakeSearchService((r, id) async => semantic([2, 5])));
+      await typeAndSubmit(tester, find.byType(TextField).first, 'faith');
+      expect(find.text('Alpha Book 1:2'), findsWidgets);
+      expect(find.text('Read the chapter'), findsOneWidget); // preview pane
+      await tester.tap(find.byKey(const ValueKey('hit-5')));
+      await tester.pumpAndSettle();
+      expect(find.text('Alpha Book 2:2'), findsWidgets);
+    });
+
+    testWidgets('the search style chosen in Settings is sent with the next search', (tester) async {
+      final svc = FakeSearchService((r, id) async => semantic([2]));
+      final app = await boot(tester, search: svc);
+      await openSection(tester, 'Search');
+      await typeAndSubmit(tester, find.byType(TextField).first, 'faith');
+      expect(svc.requests.last.profile, isNull, reason: 'the default (Compass) leaves the choice to the engine');
+
+      await openSection(tester, 'Settings');
+      await tester.dragUntilVisible(find.text('Search style'), find.byType(ListView), const Offset(0, -300));
+      await tester.tap(find.text('Search style'));
+      await tester.pumpAndSettle();
+      await tester.dragUntilVisible(find.text('Tide'), find.byType(ListView), const Offset(0, -200));
+      await tester.tap(find.text('Tide'));
+      await tester.pumpAndSettle();
+      expect(app.searchProfile, 'tide');
+
+      await openSection(tester, 'Search');
+      await typeAndSubmit(tester, find.byType(TextField).first, 'hope');
+      expect(svc.requests.last.profile, 'tide');
+    });
+
+    testWidgets('exact phrase mode sends a phrase request and reports the total', (tester) async {
+      final svc = FakeSearchService((r, id) async => SearchResponse(mode: 'phrase', hits: [Hit(1, 0), Hit(3, 0)], total: 2));
+      await inSearch(tester, svc);
+      await tester.tap(find.text('Exact phrase'));
+      await tester.pump();
+      await typeAndSubmit(tester, find.byType(TextField).first, 'english passage');
+      expect(svc.requests.single.op, 'phrase');
+      expect(find.textContaining('2 verses contain'), findsOneWidget);
+    });
+
+    testWidgets('a reference result offers to open the passage', (tester) async {
+      final svc = FakeSearchService((r, id) async => SearchResponse(
+          mode: 'reference', reference: ReferenceResult(status: 'ok', book: 'Alpha Book', kind: 'verse', firstVerseId: 3, lastVerseId: 3)));
+      await inSearch(tester, svc);
+      await typeAndSubmit(tester, find.byType(TextField).first, 'Alpha Book 1:3');
+      expect(find.text('Open Alpha Book 1:3'), findsOneWidget);
+    });
+
+    testWidgets('an out-of-range reference says why', (tester) async {
+      final svc = FakeSearchService((r, id) async => SearchResponse(
+          mode: 'reference', reference: ReferenceResult(status: 'out_of_range', reason: 'Alpha Book has 2 chapters, not 9')));
+      await inSearch(tester, svc);
+      await typeAndSubmit(tester, find.byType(TextField).first, 'Alpha Book 9');
+      expect(find.text('Alpha Book has 2 chapters, not 9'), findsOneWidget);
+    });
+
+    testWidgets('an ambiguous person shows one chip per candidate and re-runs with the chosen person', (tester) async {
+      final svc = FakeSearchService((r, id) async {
+        final amb = r.person == null;
+        return semantic([1, 2],
+            person: PersonInterpretation(
+                amb ? 'ambiguous' : 'single',
+                [PersonChip('person:a', 'Moroni', 'captain', !amb), PersonChip('person:b', 'Moroni', 'son of Mormon', false)],
+                !amb));
+      });
+      await inSearch(tester, svc);
+      await typeAndSubmit(tester, find.byType(TextField).first, 'Who is Moroni?');
+      expect(find.text('Several people or places share this name. Which one?'), findsOneWidget);
+      await tester.tap(find.text('Moroni · son of Mormon'));
+      await tester.pumpAndSettle();
+      expect(svc.requests.last.person, 'person:b');
+      expect(find.text('Showing passages about the person you named.'), findsOneWidget);
+    });
+
+    testWidgets('a fallback profile is disclosed', (tester) async {
+      await inSearch(tester, FakeSearchService((r, id) async => semantic([1], profile: 'lantern', requested: 'compass'), colbert: false));
+      await typeAndSubmit(tester, find.byType(TextField).first, 'faith');
+      expect(find.textContaining('lantern search profile'), findsOneWidget);
+    });
+
+    testWidgets('a newer request wins; the older response is ignored and the older request cancelled', (tester) async {
+      final first = Completer<SearchResponse>();
+      final svc = FakeSearchService((r, id) => r.query == 'first' ? first.future : Future.value(semantic([4])));
+      await inSearch(tester, svc);
+      final field = find.byType(TextField).first;
+      await tester.enterText(field, 'first');
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pump();
+      await tester.enterText(field, 'second');
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pumpAndSettle();
+      expect(svc.cancelled, hasLength(1));
+      first.complete(semantic([1]));
+      await tester.pumpAndSettle();
+      expect(find.text('Alpha Book 2:1'), findsWidgets);
+      expect(find.text('Alpha Book 1:1'), findsNothing);
+    });
+
+    testWidgets('cancelling shows a cancelled note and keeps the screen usable', (tester) async {
+      await inSearch(tester, FakeSearchService((r, id) => Future.error(SearchFailure('cancelled', 'request cancelled'))));
+      await typeAndSubmit(tester, find.byType(TextField).first, 'faith');
+      expect(find.text('Search cancelled.'), findsOneWidget);
+    });
+
+    testWidgets('engine errors are shown with their reason', (tester) async {
+      await inSearch(tester, FakeSearchService((r, id) => Future.error(SearchFailure('inference_failure', 'model file is corrupt'))));
+      await typeAndSubmit(tester, find.byType(TextField).first, 'faith');
+      expect(find.textContaining('model file is corrupt'), findsOneWidget);
+    });
+
+    testWidgets('similar verses from a result run a similar request', (tester) async {
+      final svc = FakeSearchService((r, id) async => r.op == 'similar' ? semantic([6, 7]) : semantic([2]));
+      await inSearch(tester, svc);
+      await typeAndSubmit(tester, find.byType(TextField).first, 'faith');
+      await tester.tap(find.byTooltip('More').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Similar verses').last);
+      await tester.pumpAndSettle();
+      expect(svc.requests.last.op, 'similar');
+      expect(svc.requests.last.verseId, 2);
+    });
+  });
+
+  testWidgets('the narrow layout uses a bottom bar and nothing overflows', (tester) async {
+    await boot(tester, search: FakeSearchService((r, i) async => semantic([1])), size: const Size(420, 760));
+    expect(find.byType(NavigationBar), findsOneWidget);
+    await tester.tap(find.descendant(of: find.byType(NavigationBar), matching: find.text('Read')));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+}

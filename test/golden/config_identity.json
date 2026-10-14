@@ -1,0 +1,46 @@
+{
+ "parts": {
+  "base_model_revision": "r",
+  "tokenizer_sha256": "t",
+  "encoder": {
+   "graph_sha256": "g",
+   "name": "é"
+  },
+  "head_sha256": "h",
+  "index": {
+   "dense_sha256": "d",
+   "colbert_dtype": "float16"
+  },
+  "fusion": {
+   "weights": {
+    "dense": 0.28,
+    "sparse": 0.14,
+    "colbert": 0.28,
+    "genome": 0.3
+   },
+   "family_weights": {
+    "B": 0.75,
+    "I": 0.5,
+    "N": 0.5,
+    "Q": 0.0,
+    "T": 0.75,
+    "U": 0.75,
+    "default": 1.0
+   },
+   "lane_k": 200,
+   "zscore_ddof": 1,
+   "tie_break": "ascending_verse_id"
+  },
+  "candidate_language": "english"
+ },
+ "filter_ids": [
+  3,
+  1,
+  2,
+  2
+ ],
+ "filter_sha256": "8a6ae15122001229edb8866f56e342af12ae8187203c3e3b33931743e7c0c48d",
+ "configuration_id_semantic": "20cb0fbbfce14afe7bfbbdedf66af3f4c9c7304f1eb9caf5689cd483a26e2d7a",
+ "configuration_id_phrase": "d8920b454bd6164f4d612e1a51c9fc3e6e45f81e55f2c03c9f5bb5db2205dbc6",
+ "cache_key": "c7b407196793c848306a185a71f674345e5ab07fdaf27b790e6f6c5106b9b51f"
+}

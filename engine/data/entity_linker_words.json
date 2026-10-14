@@ -1,0 +1,209 @@
+{
+ "_note": "Shared by tool/entity_linker.py and engine/src/entities.rs. Words are lower-case and accent-folded.",
+ "stop": [
+  "a",
+  "about",
+  "an",
+  "and",
+  "ang",
+  "are",
+  "at",
+  "ay",
+  "be",
+  "can",
+  "de",
+  "del",
+  "did",
+  "do",
+  "does",
+  "el",
+  "era",
+  "es",
+  "for",
+  "from",
+  "fue",
+  "has",
+  "have",
+  "how",
+  "i",
+  "in",
+  "is",
+  "kay",
+  "kinsa",
+  "kinsay",
+  "la",
+  "las",
+  "los",
+  "me",
+  "mga",
+  "my",
+  "ng",
+  "ni",
+  "of",
+  "og",
+  "on",
+  "que",
+  "quien",
+  "quién",
+  "qué",
+  "sa",
+  "said",
+  "say",
+  "si",
+  "sino",
+  "sobre",
+  "that",
+  "the",
+  "this",
+  "to",
+  "un",
+  "una",
+  "was",
+  "were",
+  "what",
+  "who",
+  "why",
+  "with",
+  "y",
+  "you",
+  "your",
+  "ήταν",
+  "είναι",
+  "η",
+  "και",
+  "ο",
+  "ποια",
+  "ποιος",
+  "της",
+  "το",
+  "του"
+ ],
+ "title_only": [
+  "angel",
+  "apostle",
+  "brother",
+  "captain",
+  "elder",
+  "judge",
+  "king",
+  "lord",
+  "priest",
+  "prophet",
+  "queen",
+  "sister"
+ ],
+ "person_question": [
+  "^who\\s+(?:is|was|were)\\b",
+  "^quien(?:es)?\\s+(?:es|fue|era|eran|fueron)\\b",
+  "^sino\\s+(?:si|ang|ba\\s+si|ba\\s+ang)\\b",
+  "^kinsa\\s+(?:si|ang|man)\\b",
+  "^ποιος\\s+(?:ηταν|ειναι)\\b"
+ ],
+ "qualifier_words": {
+  "captain": [
+   "capitan",
+   "kapitan",
+   "kapitan",
+   "καπετανιος",
+   "λοχαγος",
+   "στρατηγος"
+  ],
+  "son": [
+   "hijo",
+   "anak",
+   "υιος",
+   "γιος"
+  ],
+  "elder": [
+   "anciano",
+   "mayor",
+   "matanda",
+   "πρεσβυτερος",
+   "γεροντας"
+  ],
+  "younger": [
+   "joven",
+   "menor",
+   "bata",
+   "νεωτερος",
+   "νεος"
+  ],
+  "king": [
+   "rey",
+   "hari",
+   "βασιλιας",
+   "βασιλευς"
+  ],
+  "prophet": [
+   "profeta",
+   "propeta",
+   "προφητης"
+  ],
+  "angel": [
+   "angel",
+   "anghel",
+   "αγγελος"
+  ],
+  "apostle": [
+   "apostol",
+   "apostol",
+   "αποστολος"
+  ],
+  "brother": [
+   "hermano",
+   "kapatid",
+   "utol",
+   "αδελφος"
+  ],
+  "father": [
+   "padre",
+   "ama",
+   "πατερας"
+  ],
+  "baptist": [
+   "bautista",
+   "tagapagbautismo",
+   "βαπτιστης"
+  ],
+  "judge": [
+   "juez",
+   "hukom",
+   "κριτης"
+  ],
+  "disciple": [
+   "discipulo",
+   "alagad",
+   "μαθητης"
+  ],
+  "mormon": [
+   "mormon",
+   "μορμον"
+  ],
+  "lamanite": [
+   "lamanita",
+   "lamanita",
+   "λαμανιτης"
+  ]
+ },
+ "min_verses": 8,
+ "generic_share": 0.05,
+ "dominance": 3.0,
+ "total_verses": 41995,
+ "place_question": [
+  "^where\\s+(?:is|was|are|were|did|do|does)\\b",
+  "^donde\\s+(?:esta|estaba|queda|quedaba|es|era|fue|estan)\\b",
+  "^saan\\s+(?:ang|ba|matatagpuan|nakatira|naroon|ipinanganak)\\b",
+  "^asa\\s+(?:ang|man|na|sa|ba)\\b",
+  "^που\\s+(?:ειναι|ηταν|βρισκεται|βρισκονται)\\b"
+ ],
+ "about_question": [
+  "^tell\\s+me\\s+about\\b",
+  "^what\\s+(?:do\\s+you\\s+know|can\\s+you\\s+tell\\s+me)\\s+about\\b",
+  "^what\\s+happened\\s+(?:in|at|to|with)\\b",
+  "^cuentame\\s+(?:sobre|de|acerca\\s+de)\\b",
+  "^que\\s+paso\\s+(?:en|con|a)\\b",
+  "^ano\\s+ang\\s+nangyari\\s+(?:sa|kay)\\b",
+  "^unsay\\s+nahitabo\\s+(?:sa|kang|kay)\\b",
+  "^τι\\s+εγινε\\s+(?:στο|στη|στην|με)\\b"
+ ]
+}

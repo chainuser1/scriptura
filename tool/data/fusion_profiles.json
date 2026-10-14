@@ -1,0 +1,15 @@
+{
+  "_note": "Search profiles (display names are labels; configurationId hashes the weights). Signals: echo=dense, spark=sparse, thread=ColBERT, root=genome. Evidence: docs/ENGINE_PLAN.md 2c-ii.",
+  "default": "compass",
+  "fallback_without_thread": "lantern",
+  "signals": {"echo": "dense", "spark": "sparse", "thread": "colbert", "root": "genome"},
+  "profiles": {
+    "compass":  {"name": "Compass",  "echo": 0.10, "spark": 0.10, "thread": 0.20, "root": 0.60, "was": "balanced B2", "note": "default; best all-rounder"},
+    "wayfarer": {"name": "Wayfarer", "echo": 0.15, "spark": 0.10, "thread": 0.25, "root": 0.50, "was": "balanced B1", "note": "text-leaning; names and definitions"},
+    "lantern":  {"name": "Lantern",  "echo": 0.25, "spark": 0.15, "thread": 0.00, "root": 0.60, "was": "balanced no-ColBERT", "note": "fallback when the ColBERT pack is absent"},
+    "chorus":   {"name": "Chorus",   "echo": 0.28, "spark": 0.14, "thread": 0.28, "root": 0.30, "was": "Experiment D", "note": "validated reference; weak on how-to"},
+    "tide":     {"name": "Tide",     "echo": 0.00, "spark": 0.10, "thread": 0.20, "root": 0.70, "was": "genomic", "note": "topic and feeling over wording"},
+    "feather":  {"name": "Feather",  "echo": 0.10, "spark": 0.10, "thread": 0.00, "root": 0.80, "was": "lean g80", "note": "smallest and fastest; weak on names; never default"},
+    "gemini":   {"name": "Gemini",   "echo": 0.00, "spark": 0.00, "thread": 0.15, "root": 0.85, "was": "best duo", "note": "genome plus ColBERT only"}
+  }
+}

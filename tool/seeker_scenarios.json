@@ -1,0 +1,59 @@
+{
+  "_note": "Exploratory seeker scenarios authored by the engineering assistant, NOT an independently reviewed benchmark (PLAN 12.1 still requires >=100 independently reviewed intents). Anchors are well-known passages a reasonable reader would expect among the top results; 'X N:*' matches any verse of that chapter. Absence of an anchor is not proof of a bad result.",
+  "scenarios": [
+    {"id": "doc-faith", "category": "doctrine", "query": "What is faith?", "anchors": ["Hebrews 11:1", "Alma 32:21", "Ether 12:6", "Romans 10:17", "James 2:17"]},
+    {"id": "doc-atonement", "category": "doctrine", "query": "What is the Atonement of Jesus Christ?", "anchors": ["Alma 34:9", "2 Nephi 9:21", "Isaiah 53:5", "Mosiah 3:7", "Alma 7:11", "Doctrine and Covenants 19:16", "1 John 2:2"]},
+    {"id": "doc-baptism", "category": "doctrine", "query": "Why is baptism necessary?", "anchors": ["John 3:5", "2 Nephi 31:5", "2 Nephi 31:17", "Matthew 3:15", "Mosiah 18:10", "Mark 16:16", "Acts 2:38"]},
+    {"id": "doc-plan", "category": "doctrine", "query": "What is the plan of salvation?", "anchors": ["Alma 42:5", "Alma 12:25", "Alma 42:8", "2 Nephi 2:25", "Moses 1:39"]},
+    {"id": "doc-holyghost", "category": "doctrine", "query": "Who is the Holy Ghost and what does he do?", "anchors": ["John 14:26", "Moroni 10:5", "Galatians 5:22", "2 Nephi 32:5", "Doctrine and Covenants 8:2", "John 16:13"]},
+    {"id": "doc-repentance", "category": "doctrine", "query": "What is repentance and how do I repent?", "anchors": ["Doctrine and Covenants 58:42", "Doctrine and Covenants 58:43", "Isaiah 1:18", "Acts 3:19", "1 John 1:9", "Mosiah 4:10", "Ezekiel 18:21"]},
+    {"id": "doc-grace", "category": "doctrine", "query": "What is grace?", "anchors": ["Ephesians 2:8", "2 Nephi 25:23", "Moroni 10:32", "2 Corinthians 12:9", "Titus 3:5"]},
+    {"id": "doc-purpose", "category": "doctrine", "query": "What is the purpose of life?", "anchors": ["2 Nephi 2:25", "Moses 1:39", "Abraham 3:25", "John 17:3", "Ecclesiastes 12:13", "Alma 34:32"]},
+    {"id": "doc-afterlife", "category": "doctrine", "query": "What happens after we die?", "anchors": ["Alma 40:11", "Alma 40:12", "Ecclesiastes 12:7", "Luke 23:43", "1 Corinthians 15:22", "Alma 11:44"]},
+    {"id": "doc-melchizedek", "category": "doctrine", "query": "Who was Melchizedek?", "anchors": ["Genesis 14:18", "Hebrews 7:1", "Alma 13:14", "Psalms 110:4", "Hebrews 7:3"]},
+    {"id": "doc-bornagain", "category": "doctrine", "query": "What does it mean to be born again?", "anchors": ["John 3:3", "Mosiah 27:25", "Alma 5:14", "Mosiah 5:2", "1 Peter 1:23"]},
+    {"id": "doc-gospel", "category": "doctrine", "query": "What is the gospel of Jesus Christ?", "anchors": ["3 Nephi 27:13", "3 Nephi 27:20", "Romans 1:16", "1 Corinthians 15:3", "Doctrine and Covenants 76:40"]},
+
+    {"id": "per-anxiety", "category": "personal", "query": "I feel anxious and afraid about the future", "anchors": ["Philippians 4:6", "Isaiah 41:10", "Matthew 6:34", "Doctrine and Covenants 6:36", "2 Timothy 1:7", "Psalms 56:3", "John 14:27", "1 Peter 5:7"]},
+    {"id": "per-forgive", "category": "personal", "query": "How do I forgive someone who hurt me?", "anchors": ["Matthew 6:14", "Colossians 3:13", "Ephesians 4:32", "Doctrine and Covenants 64:10", "Luke 6:37", "Matthew 18:22", "Mosiah 26:31"]},
+    {"id": "per-lonely", "category": "personal", "query": "I feel so alone and no one cares about me", "anchors": ["Isaiah 49:15", "John 14:18", "Deuteronomy 31:6", "Psalms 34:18", "Hebrews 13:5", "Matthew 28:20", "Psalms 27:10"]},
+    {"id": "per-doubt", "category": "personal", "query": "I am struggling with doubt in my faith", "anchors": ["Mark 9:24", "Alma 32:27", "John 20:29", "James 1:5", "James 1:6", "Doctrine and Covenants 6:36"]},
+    {"id": "per-serioussin", "category": "personal", "query": "Can I be forgiven for a serious sin?", "anchors": ["Isaiah 1:18", "Isaiah 55:7", "1 John 1:9", "Doctrine and Covenants 58:42", "Psalms 103:12", "Alma 36:19"]},
+    {"id": "per-grief", "category": "personal", "query": "My loved one died and I am grieving", "anchors": ["Revelation 21:4", "John 11:25", "Psalms 23:4", "Matthew 5:4", "Alma 28:12", "Doctrine and Covenants 42:45", "1 Thessalonians 4:13", "Mosiah 16:8"]},
+    {"id": "per-peace", "category": "personal", "query": "How can I find peace in a troubled time?", "anchors": ["John 14:27", "Philippians 4:7", "Doctrine and Covenants 19:23", "John 16:33", "Isaiah 26:3", "Doctrine and Covenants 6:23", "Psalms 4:8"]},
+    {"id": "per-trials", "category": "personal", "query": "I am overwhelmed by my trials. Does God care?", "anchors": ["Doctrine and Covenants 121:7", "Doctrine and Covenants 122:7", "Isaiah 43:2", "2 Corinthians 4:8", "Matthew 11:28", "Psalms 46:1", "Romans 8:28"]},
+
+    {"id": "prac-pray", "category": "practical", "query": "How should I pray?", "anchors": ["Matthew 6:9", "3 Nephi 18:19", "2 Nephi 32:9", "Alma 34:17", "Philippians 4:6", "James 1:5", "Doctrine and Covenants 88:63", "Moroni 10:4"]},
+    {"id": "prac-answer", "category": "practical", "query": "How do I know if God is answering my prayer?", "anchors": ["Doctrine and Covenants 9:8", "Doctrine and Covenants 8:2", "1 Kings 19:12", "Moroni 10:4", "Helaman 5:30", "Doctrine and Covenants 6:23"]},
+    {"id": "prac-neighbor", "category": "practical", "query": "How should we treat other people?", "anchors": ["Micah 6:8", "Matthew 22:39", "Mosiah 4:16", "Matthew 25:40", "John 13:34", "Mosiah 2:17", "James 1:27"]},
+    {"id": "prac-sabbath", "category": "practical", "query": "Why should we keep the Sabbath day holy?", "anchors": ["Exodus 20:8", "Doctrine and Covenants 59:9", "Mosiah 13:16", "Isaiah 58:13", "Mark 2:27", "Doctrine and Covenants 59:12"]},
+    {"id": "prac-wow", "category": "practical", "query": "What is the Word of Wisdom?", "anchors": ["Doctrine and Covenants 89:5", "Doctrine and Covenants 89:18", "Doctrine and Covenants 89:20", "Doctrine and Covenants 89:7", "1 Corinthians 6:19", "Daniel 1:8"]},
+    {"id": "prac-tithing", "category": "practical", "query": "What is tithing?", "anchors": ["Malachi 3:10", "Doctrine and Covenants 119:4", "Doctrine and Covenants 119:3", "3 Nephi 24:10", "Genesis 14:20", "Leviticus 27:30"]},
+    {"id": "prac-parenting", "category": "practical", "query": "How can I teach my children the gospel?", "anchors": ["Proverbs 22:6", "Mosiah 4:14", "Doctrine and Covenants 68:25", "Deuteronomy 6:7", "Ephesians 6:4", "Mosiah 4:15"]},
+
+    {"id": "nar-goliath", "category": "narrative", "query": "David and Goliath", "anchors": ["1 Samuel 17:45", "1 Samuel 17:49", "1 Samuel 17:4", "1 Samuel 17:50", "1 Samuel 17:32"]},
+    {"id": "nar-nephi", "category": "narrative", "query": "What did Nephi do when his brothers tried to stop him from getting the plates?", "anchors": ["1 Nephi 3:7", "1 Nephi 4:6", "1 Nephi 4:10", "1 Nephi 4:13", "1 Nephi 3:15"]},
+    {"id": "nar-prodigal", "category": "narrative", "query": "parable of the prodigal son", "anchors": ["Luke 15:11", "Luke 15:20", "Luke 15:24", "Luke 15:32", "Luke 15:13"]},
+    {"id": "nar-beatitudes", "category": "narrative", "query": "Sermon on the Mount beatitudes", "anchors": ["Matthew 5:3", "Matthew 5:4", "Matthew 5:5", "Matthew 5:9", "3 Nephi 12:3", "3 Nephi 12:6"]},
+    {"id": "nar-firstvision", "category": "narrative", "query": "Joseph Smith's First Vision", "anchors": ["Joseph Smith--History 1:16", "Joseph Smith--History 1:17", "Joseph Smith--History 1:15", "Joseph Smith--History 1:11", "Joseph Smith--History 1:25"]},
+
+    {"id": "key-charity", "category": "keyword", "query": "charity", "anchors": ["Moroni 7:47", "Moroni 7:45", "1 Corinthians 13:*"]},
+    {"id": "key-humility", "category": "keyword", "query": "humility", "anchors": ["Ether 12:27", "Matthew 23:12", "James 4:10", "1 Peter 5:5", "Proverbs 11:2"]},
+    {"id": "key-shepherd", "category": "keyword", "query": "the Lord is my shepherd", "anchors": ["Psalms 23:1", "John 10:11", "John 10:14", "Isaiah 40:11"]},
+    {"id": "ref-john316", "category": "reference", "query": "John 3:16", "anchors": ["John 3:16"]},
+    {"id": "ref-alma32", "category": "reference", "query": "Alma 32", "anchors": ["Alma 32:*"]},
+    {"id": "ref-psalm23", "category": "reference", "query": "Psalm 23", "anchors": ["Psalms 23:*"]},
+
+    {"id": "ml-es-forgive", "category": "multilingual", "query": "¿Cómo puedo perdonar a quien me ofendió?", "anchors": ["Matthew 6:14", "Colossians 3:13", "Ephesians 4:32", "Doctrine and Covenants 64:10", "Luke 6:37", "Matthew 18:22", "Mosiah 26:31"]},
+    {"id": "ml-tl-pray", "category": "multilingual", "query": "Paano ako dapat magdasal?", "anchors": ["Matthew 6:9", "3 Nephi 18:19", "2 Nephi 32:9", "Alma 34:17", "Philippians 4:6", "James 1:5", "Doctrine and Covenants 88:63", "Moroni 10:4"]},
+    {"id": "ml-ceb-faith", "category": "multilingual", "query": "Unsa ang pagtuo?", "anchors": ["Hebrews 11:1", "Alma 32:21", "Ether 12:6", "Romans 10:17", "James 2:17"]},
+    {"id": "ml-de-grace", "category": "multilingual", "query": "Was bedeutet Gnade?", "anchors": ["Ephesians 2:8", "2 Nephi 25:23", "Moroni 10:32", "2 Corinthians 12:9", "Titus 3:5"]},
+
+    {"id": "long-story", "category": "long", "query": "My husband and I have been married for twelve years and we lost our youngest child last spring. Since then I have not been able to pray, and I go to church but feel nothing. I am angry at God and I am tired of people telling me everything happens for a reason. I still want to believe, but I do not know how to come back to Him when I feel this broken. What can I hold on to?", "anchors": ["Matthew 11:28", "Psalms 34:18", "Isaiah 41:10", "Doctrine and Covenants 121:7", "Revelation 21:4", "Mark 9:24", "Alma 36:3", "Isaiah 49:15"]},
+
+    {"id": "edge-weather", "category": "edge", "query": "what is the weather tomorrow", "anchors": []},
+    {"id": "edge-gibberish", "category": "edge", "query": "asdfghjkl", "anchors": []},
+    {"id": "edge-vote", "category": "edge", "query": "Who should I vote for in the election?", "anchors": []},
+    {"id": "edge-crisis", "category": "edge", "query": "I want to end my life", "anchors": []}
+  ]
+}

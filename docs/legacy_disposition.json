@@ -1,0 +1,293 @@
+{
+ "root": "assets/resources",
+ "files": [
+  {
+   "path": "db/cebuano-scriptures-sqlite.db",
+   "bytes": 29270016,
+   "sha256": "710418bea83299935e263e1be3bdc9ffa917b2c4a9d0f494c1c60fc25958dd45",
+   "class": "archive",
+   "pack": null,
+   "reason": "Already represented in scriptures_genome.db"
+  },
+  {
+   "path": "db/chapter-summaries-fts.db",
+   "bytes": 6680576,
+   "sha256": "24507cdb399d21575d9023073618d2ece2180205a5ed5ca4d3122b8c74601dc3",
+   "class": "optional_pack",
+   "pack": "ai-summaries",
+   "reason": "AI-generated (kimi-k2); must be labeled AI-generated"
+  },
+  {
+   "path": "db/concept-embeddings.db",
+   "bytes": 35880960,
+   "sha256": "eb68ab5dbc925f94b7bb4a82f38976a4b4c221f18f1881daec93f69021ddabd6",
+   "class": "discard",
+   "pack": null,
+   "reason": "Legacy concept embeddings for query expansion; superseded (PLAN 1.8)"
+  },
+  {
+   "path": "db/concept-embeddings.db-shm",
+   "bytes": 32768,
+   "sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb",
+   "class": "discard",
+   "pack": null,
+   "reason": "SQLite shm sidecar of concept-embeddings.db"
+  },
+  {
+   "path": "db/concept-embeddings.db-wal",
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "class": "discard",
+   "pack": null,
+   "reason": "SQLite wal sidecar of concept-embeddings.db"
+  },
+  {
+   "path": "db/footnotes-lds-summaries.db",
+   "bytes": 16801792,
+   "sha256": "19ee1d163bb069c0e2f5a4eaee5e176df51acf5b13fa86dde028b26dd788a403",
+   "class": "optional_pack",
+   "pack": "study-aids-footnotes",
+   "reason": "Chapter summaries and notes; per-column rights unreviewed"
+  },
+  {
+   "path": "db/footnotes-lds-summaries.db-shm",
+   "bytes": 32768,
+   "sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb",
+   "class": "optional_pack",
+   "pack": "study-aids-footnotes",
+   "reason": "SQLite shm sidecar of footnotes-lds-summaries.db"
+  },
+  {
+   "path": "db/footnotes-lds-summaries.db-wal",
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "class": "optional_pack",
+   "pack": "study-aids-footnotes",
+   "reason": "SQLite wal sidecar of footnotes-lds-summaries.db"
+  },
+  {
+   "path": "db/greek-scriptures-sqlite.db",
+   "bytes": 39006208,
+   "sha256": "245879d984d401d425986ed4bd2376f08631d5a15047ada9e7378174ef19d310",
+   "class": "archive",
+   "pack": null,
+   "reason": "Already represented in scriptures_genome.db (text identical)"
+  },
+  {
+   "path": "db/ilocano-scriptures-sqlite.db",
+   "bytes": 27029504,
+   "sha256": "e285efcee671d24218d45315310313b20f3ba99a47f0fd6e5bb3e546bd2cfe4b",
+   "class": "archive",
+   "pack": null,
+   "reason": "Not served: the encoder and genome head were not trained on this language (owner decision D7, 2026-10-13)"
+  },
+  {
+   "path": "db/japanese-scriptures-sqlite.db",
+   "bytes": 32047104,
+   "sha256": "df63f7b9456cbc7fa16a7f5ca90e55a896cb502b86bc67d817ff9ee592bfd1b0",
+   "class": "discard",
+   "pack": null,
+   "reason": "Excluded by owner decision D6 (2026-10-13)"
+  },
+  {
+   "path": "db/lds-scriptures-sqlite.db",
+   "bytes": 36699136,
+   "sha256": "2049a570a98d47ced8b4e6c2ff1d40bfe50657a1557f1ad5a1e27f685796b909",
+   "class": "required_pack",
+   "pack": "edition-kjv-lds",
+   "reason": "Default English display edition (owner decision D1); full KJV/LDS text, same IDs"
+  },
+  {
+   "path": "db/lds-scriptures-sqlite.db-shm",
+   "bytes": 32768,
+   "sha256": "3b960c6a2e7f78e3ca70e84e52004fd13efee6083059c900a84f3246d7956259",
+   "class": "required_pack",
+   "pack": "edition-kjv-lds",
+   "reason": "SQLite shm sidecar of lds-scriptures-sqlite.db"
+  },
+  {
+   "path": "db/lds-scriptures-sqlite.db-wal",
+   "bytes": 146752,
+   "sha256": "e42a2091f7ca28025e743d099acf43f401cd53938716176579aebcfd5d62cb1a",
+   "class": "required_pack",
+   "pack": "edition-kjv-lds",
+   "reason": "SQLite wal sidecar of lds-scriptures-sqlite.db"
+  },
+  {
+   "path": "db/nrsvue-scriptures-sqlite.db",
+   "bytes": 26181632,
+   "sha256": "d9ef5f724b3fdb0791a6a329d7306a86b576ff52389233f2c3fbc3f82b70157f",
+   "class": "archive",
+   "pack": null,
+   "reason": "NRSVue; already the base English source for 27,567 verses"
+  },
+  {
+   "path": "db/rotherham-scriptures-sqlite.db",
+   "bytes": 7405568,
+   "sha256": "3e967abb3c9fe20f0ce0cd0ec2ad141733b1982adeb1f72a00ff9ed89626dede",
+   "class": "optional_pack",
+   "pack": "edition-rotherham",
+   "reason": "Rotherham, full"
+  },
+  {
+   "path": "db/search-graph.db",
+   "bytes": 87982080,
+   "sha256": "e1805d91c53aee9d3942b8caf36fd700cf0e2e2b26d5853b56aab716482acfbc",
+   "class": "discard",
+   "pack": null,
+   "reason": "Legacy PageRank/PMI/entity graph; superseded (PLAN 1.8)"
+  },
+  {
+   "path": "db/spanish-scriptures-sqlite.db",
+   "bytes": 25776128,
+   "sha256": "efc55b00ed23c8749c66ebbdc633aa62e8e2fa4018c51f391d02d3b379ba906e",
+   "class": "archive",
+   "pack": null,
+   "reason": "Already represented in scriptures_genome.db"
+  },
+  {
+   "path": "db/tagalog-scriptures-sqlite.db",
+   "bytes": 29175808,
+   "sha256": "3fb8956af744cede43b01e7ab1a9c2524ffd08469dd6bc575b01f61104a48d59",
+   "class": "archive",
+   "pack": null,
+   "reason": "Already represented in scriptures_genome.db"
+  },
+  {
+   "path": "db/topical-guide.db",
+   "bytes": 54382592,
+   "sha256": "62bacbe21acfdf9fa61f5c3d86985c6b000f771336b1e6c5e50cadb9ee233b7c",
+   "class": "optional_pack",
+   "pack": "study-aids-topics",
+   "reason": "Topical Guide index; drop topic_ppr/verse_pagerank (old graph); rights unreviewed"
+  },
+  {
+   "path": "db/triple-index.db",
+   "bytes": 8269824,
+   "sha256": "3e0a9a9c2dd15e554c28e135c599f2bcd7c0444e779db91d6a1581ac7cf8f719",
+   "class": "optional_pack",
+   "pack": "study-aids-index",
+   "reason": "Triple Combination index; rights unreviewed"
+  },
+  {
+   "path": "db/user-data.db",
+   "bytes": 237568,
+   "sha256": "677455e9eb979de97c88c9d1ec4656b68c0bcebef0dfad517a7e36ce44e37a1b",
+   "class": "archive",
+   "pack": null,
+   "reason": "Old adaptive-search learning state; contains no notes, bookmarks or highlights"
+  },
+  {
+   "path": "db/verse-cross-refs.db",
+   "bytes": 46338048,
+   "sha256": "2b591c129cc870699a1c69429774e21cce36bd767981f4ba63001996bf484d68",
+   "class": "optional_pack",
+   "pack": "study-aids-crossrefs",
+   "reason": "Cross-references with snippets; provenance unreviewed"
+  },
+  {
+   "path": "db/verse-embeddings.db",
+   "bytes": 485732352,
+   "sha256": "02178c539774bfb277f021f30a82f9aa96bb021b9c51cc39e9aa5b2311636e3f",
+   "class": "discard",
+   "pack": null,
+   "reason": "Legacy 768-d embeddings + HNSW; superseded (PLAN 1.8)"
+  },
+  {
+   "path": "db/verse-graph.db",
+   "bytes": 64512000,
+   "sha256": "1c3f3f867f5142427295087ca11f3adac92b2bba8d32220e1f941f4860e701c5",
+   "class": "discard",
+   "pack": null,
+   "reason": "Legacy kNN/clusters/spectral; superseded (PLAN 1.8)"
+  },
+  {
+   "path": "db/verse-summaries.db",
+   "bytes": 92504064,
+   "sha256": "df2efa5025792dc1653344475ddd7b3a756375c55c4d6adb19af5783f806092b",
+   "class": "optional_pack",
+   "pack": "ai-summaries",
+   "reason": "AI-generated (kimi-k2); must be labeled AI-generated"
+  },
+  {
+   "path": "db/verse-summaries.db-shm",
+   "bytes": 32768,
+   "sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb",
+   "class": "optional_pack",
+   "pack": "ai-summaries",
+   "reason": "SQLite shm sidecar of verse-summaries.db"
+  },
+  {
+   "path": "db/verse-summaries.db-wal",
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "class": "optional_pack",
+   "pack": "ai-summaries",
+   "reason": "SQLite wal sidecar of verse-summaries.db"
+  },
+  {
+   "path": "db/verse-tags.db",
+   "bytes": 90697728,
+   "sha256": "582340fc918cae56a69ad14b0ba89bdfd7f2f6ab85f35e3bd277b8f550f7f9f1",
+   "class": "optional_pack",
+   "pack": "entities",
+   "reason": "AI people/places/doctrine tags; quality unreviewed"
+  },
+  {
+   "path": "db/verse-tags.db-shm",
+   "bytes": 32768,
+   "sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb",
+   "class": "optional_pack",
+   "pack": "entities",
+   "reason": "SQLite shm sidecar of verse-tags.db"
+  },
+  {
+   "path": "db/verse-tags.db-wal",
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "class": "optional_pack",
+   "pack": "entities",
+   "reason": "SQLite wal sidecar of verse-tags.db"
+  },
+  {
+   "path": "db/verse_embeddings.db",
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "class": "discard",
+   "pack": null,
+   "reason": "Empty legacy file"
+  },
+  {
+   "path": "db/waray-scriptures-sqlite.db",
+   "bytes": 21725184,
+   "sha256": "9f7faa4d7b06c8cea0c9e924bc592721edfe470fe7c65c2e863540fee9bf0a52",
+   "class": "archive",
+   "pack": null,
+   "reason": "Not served: the encoder and genome head were not trained on this language (owner decision D7, 2026-10-13)"
+  },
+  {
+   "path": "db/ylt-scriptures-sqlite.db",
+   "bytes": 26214400,
+   "sha256": "9993dfe6152ee5c756f78f02c4ab800da49de230a1abf18e95943a6b8b45a38f",
+   "class": "optional_pack",
+   "pack": "edition-ylt",
+   "reason": "Young's Literal Translation, full"
+  },
+  {
+   "path": "models/scripture-bge/onnx/model_quantized.onnx",
+   "bytes": 137914868,
+   "sha256": "c0992eb0ad5a0ffd386260d55ad5b6d514d4e027798efb16bedf7def0d7f9079",
+   "class": "discard",
+   "pack": null,
+   "reason": "Legacy encoder, hashed-word tokenizer; never a substitute (PLAN 2, 3)"
+  },
+  {
+   "path": "models/scripture-bge/onnx/tokenizer.json",
+   "bytes": 711649,
+   "sha256": "91f1def9b9391fdabe028cd3f3fcc4efd34e5d1f08c3bf2de513ebb5911a1854",
+   "class": "discard",
+   "pack": null,
+   "reason": "Legacy tokenizer; the pinned BGE-M3 tokenizer is authoritative"
+  }
+ ]
+}

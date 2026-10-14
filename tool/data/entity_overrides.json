@@ -1,0 +1,24 @@
+{
+ "_note": "Owner-editable corrections applied by tool/build_entities_pack.py after purification. \"drop\": true removes an entity; \"qualifier\" replaces a machine-written description; \"name\" replaces the display name.",
+ "place:judah": {
+  "qualifier": "land and kingdom of Judah"
+ },
+ "place:naphtali": {
+  "qualifier": "tribal land of Naphtali"
+ },
+ "place:dan": {
+  "qualifier": "city and tribal land of Dan"
+ },
+ "place:noah": {
+  "drop": true
+ },
+ "place:gilead": {
+  "qualifier": "region east of the Jordan"
+ },
+ "place:lebanon": {
+  "qualifier": "mountain range and land north of Israel"
+ },
+ "place:zion": {
+  "qualifier": "hill of Jerusalem; the city of God"
+ }
+}
