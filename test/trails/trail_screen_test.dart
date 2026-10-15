@@ -13,7 +13,8 @@ import '../fakes/fake_search_service.dart';
 import 'trail_harness.dart';
 
 Future<(AppController, FakeSearchService)> pumpTrail(WidgetTester tester,
-    {Size size = const Size(420, 800), List<List<int>>? batches, SearchService? service, bool reduceMotion = false}) async {
+    {Size size = const Size(420, 800), List<List<int>>? batches, SearchService? service, bool reduceMotion = false,
+    EdgeInsets inset = EdgeInsets.zero}) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
@@ -36,7 +37,7 @@ Future<(AppController, FakeSearchService)> pumpTrail(WidgetTester tester,
   final app = AppController.fixed(repository: fixtureRepository(), search: service ?? svc, user: UserStore.memory());
   final trail = app.user.createTrail(name: 'Alpha trail', seed: const TrailSeed.verse(1));
   await tester.pumpWidget(MediaQuery(
-    data: MediaQueryData(size: size, disableAnimations: reduceMotion),
+    data: MediaQueryData(size: size, disableAnimations: reduceMotion, padding: inset, viewPadding: inset),
     child: MaterialApp(theme: appTheme(Brightness.light), home: TrailScreen(app: app, trail: trail, catalog: testCatalog())),
   ));
   await tester.pumpAndSettle();
@@ -44,6 +45,14 @@ Future<(AppController, FakeSearchService)> pumpTrail(WidgetTester tester,
 }
 
 void main() {
+  testWidgets('on a phone the earlier-verses row stays above the system navigation bar', (tester) async {
+    await pumpTrail(tester, size: const Size(390, 844), inset: const EdgeInsets.only(top: 24, bottom: 48));
+    await tester.tap(find.text('Like'));
+    await tester.pumpAndSettle();
+    final chip = find.byType(ActionChip).first;
+    expect(tester.getRect(chip).bottom, lessThanOrEqualTo(844 - 48));
+  });
+
   testWidgets('the first card shows a verse and the actions; Like moves to the next with no dialog', (tester) async {
     final (app, _) = await pumpTrail(tester);
     expect(find.text('Alpha trail'), findsOneWidget);

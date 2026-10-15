@@ -275,7 +275,8 @@ class _TrailScreenState extends State<TrailScreen> {
               ),
             ),
           ),
-          _History(controller: c, app: app),
+          // keep the earlier-verses row clear of the phone's navigation bar (the trail is its own route, no shell inset)
+          SafeArea(top: false, child: _History(controller: c, app: app)),
         ]),
       ),
     );
