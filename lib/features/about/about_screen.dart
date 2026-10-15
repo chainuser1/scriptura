@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/brand.dart';
+import '../../app/contact.dart';
 
 /// Our story: why Scriptura exists, told for readers in plain words (the same story as the Scriptura Labs website).
 /// No technical detail here; the research records stay in the project, the licences in Settings, Sources and licences.
@@ -81,6 +82,20 @@ class AboutScreen extends StatelessWidget {
                 p(kAuthorNote),
               ],
               p('— Jayson Rael Ramos, Founder, Scriptura Labs'),
+              h('Get in touch'),
+              p('Questions, problems or ideas? We would love to hear from you.'),
+              Wrap(spacing: 8, runSpacing: 4, children: [
+                TextButton.icon(
+                  onPressed: () => openOrCopy(context, contactUri(), kContactEmail),
+                  icon: const Icon(Icons.mail_outline),
+                  label: const Text(kContactEmail),
+                ),
+                TextButton.icon(
+                  onPressed: () => openOrCopy(context, Uri.parse(kWebsite), kWebsite),
+                  icon: const Icon(Icons.language),
+                  label: const Text(kWebsiteLabel),
+                ),
+              ]),
               h('Text and licences'),
               p('The Bible text is in the public domain. The licence and copyright of the Book of Mormon, the Doctrine and Covenants '
                   'and the Pearl of Great Price belong to The Church of Jesus Christ of Latter-day Saints (© Intellectual Reserve, '

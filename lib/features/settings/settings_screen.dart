@@ -1,8 +1,7 @@
-import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
+import '../../app/contact.dart';
 import '../../app/keyboard_hints.dart';
 import '../../app/search_styles.dart';
 import '../../app/version.dart';
@@ -161,8 +160,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ListTile(
                   leading: const Icon(Icons.auto_stories_outlined),
                   title: const Text('Our story'),
-                  subtitle: const Text('From the scripture genome research to this reader'),
+                  subtitle: const Text('Why Scriptura exists'),
                   onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AboutScreen())),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.language),
+                  title: const Text('Website'),
+                  subtitle: const Text(kWebsiteLabel),
+                  onTap: () => openOrCopy(context, Uri.parse(kWebsite), kWebsite),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.mail_outline),
+                  title: const Text('Contact us'),
+                  subtitle: const Text(kContactEmail),
+                  onTap: () => openOrCopy(context, contactUri(), kContactEmail),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.bug_report_outlined),
+                  title: const Text('Report a problem'),
+                  subtitle: const Text('Opens an email to us with your app version and device'),
+                  onTap: () => openOrCopy(context, reportProblemUri(), kContactEmail),
                 ),
                 ListTile(
                   leading: const Icon(Icons.explore_outlined),
@@ -228,11 +245,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           if (link != null)
             TextButton(
               onPressed: () async {
-                await Clipboard.setData(ClipboardData(text: link));
-                if (Platform.isWindows) await Process.start('explorer', [link]);
+                await openOrCopy(context, Uri.parse(link), link);
                 if (ctx.mounted) Navigator.pop(ctx);
               },
-              child: Text(Platform.isWindows ? 'Open download' : 'Copy link'),
+              child: const Text('Open download'),
             ),
           FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
         ],

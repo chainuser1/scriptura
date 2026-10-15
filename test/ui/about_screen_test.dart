@@ -12,8 +12,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(theme: appTheme(Brightness.light), home: const AboutScreen()));
       expect(find.text('Our story'), findsOneWidget);
       // every section is reachable by scrolling and nothing overflows
-      await tester.scrollUntilVisible(find.text('CREDITS'), 300, scrollable: find.byType(Scrollable).first);
-      expect(find.textContaining('Jayson Rael Ramos'), findsWidgets);
+      await tester.scrollUntilVisible(find.textContaining('Founder and designer: Jayson Rael Ramos'), 300, scrollable: find.byType(Scrollable).first);
       expect(tester.takeException(), isNull);
     });
   }
@@ -28,7 +27,7 @@ void main() {
     }
     expect(find.textContaining('powered by the Scripture Genome Project'), findsOneWidget);
     expect(find.text('A NOTE FROM THE FOUNDER'), findsOneWidget);
-    expect(find.textContaining('scriptura.space'), findsOneWidget);
+    expect(find.textContaining('scriptura.space'), findsWidgets);
     expect(find.textContaining('no one should have to know the right words'), findsOneWidget);
     for (final word in ['language model', 'encoder', 'Rust', 'engine', '568', 'genes', 'embedding', 'schema']) {
       expect(find.textContaining(word), findsNothing, reason: word);
