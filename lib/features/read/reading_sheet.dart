@@ -41,6 +41,7 @@ Future<void> showReadingSheet(BuildContext context, AppController app) {
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (ctx) => ConstrainedBox(constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(ctx).height * 0.85), child: body(ctx)),
+    // SafeArea: on phones the sheet's last controls stay above the system navigation bar
+    builder: (ctx) => SafeArea(top: false, child: ConstrainedBox(constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(ctx).height * 0.85), child: body(ctx))),
   );
 }

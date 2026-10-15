@@ -26,7 +26,35 @@ Future<AppController> boot(WidgetTester tester, {Size size = const Size(390, 800
   return app;
 }
 
+Future<void> openAa(WidgetTester tester, AppController app) async {
+  app.nav.openChapter(1, 1);
+  await tester.pumpAndSettle();
+  await tester.tap(find.byTooltip('Reading look, text size and colour'));
+  await tester.pumpAndSettle();
+}
+
 void main() {
+  testWidgets('on a phone the Aa sheet ends above the system navigation bar', (tester) async {
+    tester.view.viewPadding = const FakeViewPadding(top: 24, bottom: 48);
+    tester.view.padding = const FakeViewPadding(top: 24, bottom: 48);
+    addTearDown(tester.view.reset);
+    final app = await boot(tester, size: const Size(390, 844));
+    await openAa(tester, app);
+    await tester.ensureVisible(find.text('All reading settings'));
+    await tester.pumpAndSettle();
+    expect(tester.getRect(find.text('All reading settings')).bottom, lessThanOrEqualTo(844 - 48));
+  });
+
+  testWidgets('spacing choices stay on one line with a larger system font on a small phone', (tester) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 1.15;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    final app = await boot(tester, size: const Size(360, 800));
+    await openAa(tester, app);
+    await tester.ensureVisible(find.text('Comfortable'));
+    await tester.pumpAndSettle();
+    expect(tester.getSize(find.text('Comfortable')).height, tester.getSize(find.text('Airy')).height);
+  });
+
   testWidgets('Settings shows the looks first; one tap applies a look and the controls say Custom once changed', (tester) async {
     final app = await boot(tester);
     app.nav.go(Dest.settings);

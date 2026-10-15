@@ -236,53 +236,51 @@ class _TrailScreenState extends State<TrailScreen> {
               ),
             ),
           if (leans != null) Padding(padding: const EdgeInsets.fromLTRB(20, 8, 20, 0), child: Align(alignment: Alignment.centerLeft, child: Text(leans, style: t.bodySmall))),
+          // The card and its actions are one centred group: the buttons sit right under the verse on every screen, and
+          // a verse too long for the screen scrolls inside the group while the buttons stay visible.
           Expanded(
-            child: LayoutBuilder(
-              builder: (context, box) => SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: box.maxHeight - 32),
-                  child: Center(
-                    child: Column(mainAxisSize: MainAxisSize.min, children: [
-                      AnimatedSwitcher(
-                        duration: reduce ? Duration.zero : const Duration(milliseconds: 180),
-                        transitionBuilder: (child, anim) => FadeTransition(
-                          opacity: anim,
-                          child: SlideTransition(position: Tween(begin: const Offset(0.06, 0), end: Offset.zero).animate(anim), child: child),
-                        ),
-                        child: KeyedSubtree(
-                          key: ValueKey(c.current),
-                          child: TrailCard(
-                            passage: passage,
-                            prefs: prefs,
-                            bookmarked: user.isBookmarked(passage.verseId),
-                            onBookmark: () => user.toggleBookmark(passage.verseId),
-                            hint: c.reasonHint,
-                          ),
+            child: Center(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: AnimatedSwitcher(
+                      duration: reduce ? Duration.zero : const Duration(milliseconds: 180),
+                      transitionBuilder: (child, anim) => FadeTransition(
+                        opacity: anim,
+                        child: SlideTransition(position: Tween(begin: const Offset(0.06, 0), end: Offset.zero).animate(anim), child: child),
+                      ),
+                      child: KeyedSubtree(
+                        key: ValueKey(c.current),
+                        child: TrailCard(
+                          passage: passage,
+                          prefs: prefs,
+                          bookmarked: user.isBookmarked(passage.verseId),
+                          onBookmark: () => user.toggleBookmark(passage.verseId),
+                          hint: c.reasonHint,
                         ),
                       ),
-                    ]),
+                    ),
                   ),
                 ),
-              ),
+                // Two buttons only. "Less like this" is the strong negative (it also hides near neighbours); it is a
+                // quiet text action, worded for scripture rather than as a thumbs-down.
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    Wrap(alignment: WrapAlignment.center, spacing: 12, runSpacing: 8, children: [
+                      _Action(label: 'Skip', tooltip: 'Skip this verse', icon: Icons.skip_next, onPressed: () => _feedback(TrailAction.skip)),
+                      _Action(label: 'Like', tooltip: 'Like: show more like this', icon: Icons.thumb_up_outlined, filled: true, onPressed: () => _feedback(TrailAction.like)),
+                    ]),
+                    const SizedBox(height: 4),
+                    Wrap(alignment: WrapAlignment.center, spacing: 4, children: [
+                      TextButton(onPressed: () => _feedback(TrailAction.dislike), child: const Text('Less like this')),
+                      TextButton.icon(onPressed: _why, icon: const Icon(Icons.expand_more), label: const Text('Why this verse')),
+                    ]),
+                  ]),
+                ),
+              ]),
             ),
-          ),
-          // The actions stay put below the card: a long verse scrolls, the buttons never leave the screen.
-          // Two buttons only. "Less like this" is the strong negative (it also hides near neighbours); it is a quiet text
-          // action, worded for scripture rather than as a thumbs-down.
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Wrap(alignment: WrapAlignment.center, spacing: 12, runSpacing: 8, children: [
-                _Action(label: 'Skip', tooltip: 'Skip this verse', icon: Icons.skip_next, onPressed: () => _feedback(TrailAction.skip)),
-                _Action(label: 'Like', tooltip: 'Like: show more like this', icon: Icons.thumb_up_outlined, filled: true, onPressed: () => _feedback(TrailAction.like)),
-              ]),
-              const SizedBox(height: 4),
-              Wrap(alignment: WrapAlignment.center, spacing: 4, children: [
-                TextButton(onPressed: () => _feedback(TrailAction.dislike), child: const Text('Less like this')),
-                TextButton.icon(onPressed: _why, icon: const Icon(Icons.expand_more), label: const Text('Why this verse')),
-              ]),
-            ]),
           ),
           // keep the earlier-verses row clear of the phone's navigation bar (the trail is its own route, no shell inset)
           SafeArea(top: false, child: _History(controller: c, app: app)),

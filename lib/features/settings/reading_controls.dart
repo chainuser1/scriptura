@@ -161,34 +161,34 @@ class ReadingControls extends StatelessWidget {
             Icon(Icons.text_fields, size: 26, color: scheme.onSurfaceVariant),
           ]),
           label('Line spacing'),
-          SegmentedButton<LineSpacing>(
+          _oneLine(SegmentedButton<LineSpacing>(
             showSelectedIcon: false,
             segments: [for (final s in LineSpacing.values) ButtonSegment(value: s, label: Text(s.label))],
             selected: {p.spacing},
             onSelectionChanged: (s) => user.setPref('line_spacing', s.first.name),
-          ),
+          )),
           if (!compact) ...[
             label('Line width'),
-            SegmentedButton<int>(
+            _oneLine(SegmentedButton<int>(
               showSelectedIcon: false,
               segments: const [ButtonSegment(value: 0, label: Text('Narrow')), ButtonSegment(value: 1, label: Text('Medium')), ButtonSegment(value: 2, label: Text('Wide'))],
               selected: {p.width},
               onSelectionChanged: (s) => user.setPref('reading_width', '${s.first}'),
-            ),
+            )),
             label('Verse numbers'),
-            SegmentedButton<VerseNumbers>(
+            _oneLine(SegmentedButton<VerseNumbers>(
               showSelectedIcon: false,
               segments: [for (final n in VerseNumbers.values) ButtonSegment(value: n, label: Text(n.label))],
               selected: {p.numbers},
               onSelectionChanged: (s) => user.setPref('verse_numbers', s.first.name),
-            ),
+            )),
             label('Layout'),
-            SegmentedButton<VerseLayout>(
+            _oneLine(SegmentedButton<VerseLayout>(
               showSelectedIcon: false,
               segments: [for (final l in VerseLayout.values) ButtonSegment(value: l, label: Text(l.label))],
               selected: {p.layout},
               onSelectionChanged: (s) => user.setPref('verse_layout', s.first.name),
-            ),
+            )),
             const SizedBox(height: 8),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
@@ -225,3 +225,7 @@ class ReadingPreview extends StatelessWidget {
     );
   }
 }
+
+/// A row of choices keeps its words whole: on a narrow screen with a large font it scrolls sideways instead of breaking
+/// "Comfortable" across lines.
+Widget _oneLine(Widget choices) => SingleChildScrollView(scrollDirection: Axis.horizontal, child: choices);

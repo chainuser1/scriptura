@@ -5,6 +5,7 @@ import 'package:scriptures_reader_mobile/app/theme.dart';
 import 'package:scriptures_reader_mobile/app_controller.dart';
 import 'package:scriptures_reader_mobile/data/trails/trail_models.dart';
 import 'package:scriptures_reader_mobile/data/user/user_store.dart';
+import 'package:scriptures_reader_mobile/features/trails/trail_card.dart';
 import 'package:scriptures_reader_mobile/features/trails/trail_screen.dart';
 import 'package:scriptures_reader_mobile/services/engine/search_models.dart';
 import 'package:scriptures_reader_mobile/services/engine/search_service.dart';
@@ -45,6 +46,13 @@ Future<(AppController, FakeSearchService)> pumpTrail(WidgetTester tester,
 }
 
 void main() {
+  testWidgets('on a tall screen the actions sit right under the card, not at the bottom of the window', (tester) async {
+    await pumpTrail(tester, size: const Size(1200, 1000));
+    final card = tester.getRect(find.byType(TrailCard));
+    final like = tester.getRect(find.widgetWithText(FilledButton, 'Like'));
+    expect(like.top - card.bottom, lessThan(60));
+  });
+
   testWidgets('on a phone Tune is an icon, so the trail name has room', (tester) async {
     await pumpTrail(tester, size: const Size(390, 844));
     expect(find.byTooltip('Tune'), findsOneWidget);
