@@ -10,15 +10,27 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
       await tester.pumpWidget(MaterialApp(theme: appTheme(Brightness.light), home: const AboutScreen()));
-      expect(find.text('The story behind this app'), findsOneWidget);
-      expect(find.textContaining('Scripture Genome Project'), findsWidgets);
-      expect(find.text('1 · THE GENOME'), findsOneWidget);
+      expect(find.text('Our story'), findsOneWidget);
       // every section is reachable by scrolling and nothing overflows
-      await tester.dragUntilVisible(find.text('CREDITS'), find.byType(ListView), const Offset(0, -300));
+      await tester.scrollUntilVisible(find.text('CREDITS'), 300, scrollable: find.byType(Scrollable).first);
       expect(find.textContaining('Jayson Rael Ramos'), findsWidgets);
       expect(tester.takeException(), isNull);
     });
   }
+
+  testWidgets('the story is told for readers: no technical terms', (tester) async {
+    tester.view.physicalSize = const Size(1100, 4000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(MaterialApp(theme: appTheme(Brightness.light), home: const AboutScreen()));
+    for (final heading in ['WORDS ARE NOT THE WHOLE STORY', 'THE SCRIPTURE GENOME PROJECT', 'FROM RESEARCH TO A READER', 'HOW WE MADE IT']) {
+      expect(find.text(heading), findsOneWidget, reason: heading);
+    }
+    expect(find.textContaining('powered by the Scripture Genome Project'), findsOneWidget);
+    for (final word in ['language model', 'encoder', 'Rust', 'engine', '568', 'genes', 'embedding', 'schema']) {
+      expect(find.textContaining(word), findsNothing, reason: word);
+    }
+  });
 
   testWidgets('guidelines: labelled, tappable targets and contrast', (tester) async {
     final handle = tester.ensureSemantics();

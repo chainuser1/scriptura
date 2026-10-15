@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../app/brand.dart';
 
-/// Where this app comes from: the research that preceded it, told from the project's own records
-/// (the Scripture Genome Project, PLAN 1 and PLAN 2). Facts only; the author's own words go in [kAuthorNote].
+/// Our story: why Scriptura exists, told for readers in plain words (the same story as the Scriptura Labs website).
+/// No technical detail here; the research records stay in the project, the licences in Settings, Sources and licences.
 ///
-/// Set [kAuthorNote] to a sentence or two in your own voice about what moved you to start; it appears under the opening.
-/// It is left empty because the project records state the design, not the personal reason.
+/// Set [kAuthorNote] to a sentence or two in your own voice about what moved you to start; it appears as the founder's note.
 const String kAuthorNote = '';
 
 class AboutScreen extends StatelessWidget {
@@ -20,16 +19,16 @@ class AboutScreen extends StatelessWidget {
           padding: const EdgeInsets.only(top: 32, bottom: 8),
           child: Semantics(header: true, child: Text(s.toUpperCase(), style: t.labelLarge?.copyWith(fontWeight: FontWeight.w700, letterSpacing: 1.2, color: scheme.primary))),
         );
-    Widget p(String s) => Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(s, style: t.bodyLarge?.copyWith(height: 1.5)));
-    Widget fact(String k, String v) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            SizedBox(width: 150, child: Text(k, style: t.bodyMedium?.copyWith(fontWeight: FontWeight.w700))),
-            Expanded(child: Text(v, style: t.bodyMedium)),
-          ]),
+    Widget p(String s) => Padding(padding: const EdgeInsets.only(bottom: 12), child: Text(s, style: t.bodyLarge?.copyWith(height: 1.55)));
+    Widget point(String title, String s) => Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Text.rich(TextSpan(children: [
+            TextSpan(text: '$title  ', style: t.bodyLarge?.copyWith(fontWeight: FontWeight.w700, height: 1.55)),
+            TextSpan(text: s, style: t.bodyLarge?.copyWith(height: 1.55)),
+          ])),
         );
     return Scaffold(
-      appBar: AppBar(title: const Text('The story behind this app')),
+      appBar: AppBar(title: const Text('Our story')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 760),
@@ -39,61 +38,55 @@ class AboutScreen extends StatelessWidget {
               Row(children: [
                 ScripturesMark(size: 56, onDark: Theme.of(context).brightness == Brightness.dark),
                 const SizedBox(width: 16),
-                Expanded(child: Text('From measuring what a verse is, to finding it by what you ask', style: t.headlineSmall)),
+                Expanded(child: Text("Finding the verse you need, even when you don't know the words", style: t.headlineSmall)),
               ]),
-              const SizedBox(height: 16),
-              p('This app grew out of the Scripture Genome Project by Jayson Rael Ramos, which set out to describe every verse by what '
-                  'the text itself carries, so that a person who does not know the right words can still be led to the right passage. '
-                  'The reader you are using is the last step of that work.'),
-              if (kAuthorNote.isNotEmpty) p(kAuthorNote),
-              h('1 · The genome'),
-              p('The Scripture Genome Project ("Scriptures in View") gives every verse of the standard works a fingerprint: '
-                  '568 scores, one for each of 568 "genes" grouped into 23 families. The families describe literary form, imagery, '
-                  'emotional texture, human themes, divine reference, moral texture, voice, covenant structure, historical context, '
-                  'doctrinal weight, and how a passage teaches or applies. Each gene is scored 1 to 5, from absent to defining.'),
-              p('The rule was to stay tradition-neutral: score what is present in the text, with no denominational interpretation '
-                  'and no outside commentary. Large language models did the scoring, one family at a time, and a verse was kept only when '
-                  'all 568 genes were present.'),
-              fact('Corpus', '41,995 verses: Bible 31,102, Book of Mormon 6,604, Doctrine and Covenants 3,654, Pearl of Great Price 635'),
-              fact('Schema', 'version 5.0: 495 locked genes (families A to U) plus 73 added in July 2026 (families V and W)'),
-              h('2 · The questions'),
-              p('A fingerprint on its own does not help someone who arrives with a question. So a set of 47,400 study questions was '
-                  'assembled in eight languages, each mapped to the verses that answer it (232,310 links, all marked reviewed in the '
-                  'project records). They span doctrine, '
-                  'discipleship, pastoral care and the Restoration, and they became the training signal that connects how people ask '
-                  'to what the scriptures contain.'),
-              h('3 · The model'),
-              p('A small trained network sits on top of the multilingual BGE-M3 encoder. It takes the meaning of a question and predicts '
-                  'which genes a good answer would light up (a 1024 to 4096 to 568 head, pinned to an exact base-model revision so '
-                  'results are reproducible). A question and a verse can then be compared in the same 568-dimensional space, '
-                  'even when they share no words.'),
-              h('4 · This app'),
-              p('The research became a reader that works offline, on your own device. A search combines four signals and names them: '
-                  'Echo (what the passage means, by embedding), Spark (the exact words), Thread (word-by-word matching) and Root '
-                  '(the genome). Compass, the default, leans on Root; other mixes are available for different questions. '
-                  'A native engine written in Rust runs the same model on Windows and on Android phones, with no account and no server.'),
-              fact('What it adds', 'reading with the standard works in five languages, search by meaning, exact phrases, similar verses, '
-                  'people and places, study questions for a passage, and your own notes and highlights'),
-              fact('Where it runs', 'on your device; scripture text and search data are downloaded once and checked before use'),
-              h('5 · What it does not claim'),
-              p('The genome scores and the question links were produced with large language models and have not been independently '
-                  'verified verse by verse; they are measurements, not doctrine. Only about 5,000 of the 41,995 verses are direct answer targets for the question set, so results for '
-                  'quieter parts of the canon rely more on meaning and wording than on curated links. People and place recognition '
-                  'is built to prefer being right over being complete. Where the app is unsure it shows what it understood and lets you choose.'),
-              h('Timeline from the project records'),
-              fact('30 May 2026', 'plan for the genome corpus written'),
-              fact('4 July 2026', 'schema v5.0: 568 genes, 23 families'),
-              fact('July to October', 'scoring, question writing and review, encoder head training and selection'),
-              fact('8 October 2026', 'research archived; three application databases separated from the code'),
-              fact('11 October 2026', 'model head prepared for public release'),
-              fact('October 2026', 'this reader: offline engine, Windows and Android apps'),
+              const SizedBox(height: 20),
+              p('Most of us know the feeling. You are carrying something heavy: worry, grief, a hard choice, a question you '
+                  "can't put down. You know the scriptures speak to it. But where?"),
+              p('If you remember the right words, a search can help. Type "peace" and you find verses with "peace" in them. '
+                  "But the verse you need may never use that word. You may only know how you feel, not how the passage is written."),
+              p("For a long time, finding the right passage depended on knowing the right words, or on knowing someone who did. "
+                  "We believed it shouldn't."),
+              h('Words are not the whole story'),
+              p('A verse is more than its words. It carries a feeling and speaks in its own voice. It may hold a promise, a warning '
+                  'or a comfort. Two verses can share none of the same words and still say the same thing to your heart.'),
+              p('We wanted a way to find scripture by what it carries, not only by what it says.'),
+              h('The Scripture Genome Project'),
+              p('So we began the Scripture Genome Project. The idea was simple to say and big to do: describe every verse by what is '
+                  'truly in the text, like a fingerprint for each one.'),
+              p('We described all 41,995 verses of the Holy Bible, the Book of Mormon, the Doctrine and Covenants and the Pearl of '
+                  'Great Price, one by one: their feeling, their themes, their voice and their place in the story.'),
+              p('We kept one rule from the start: describe what is in the text, and nothing more. No opinions added, and no reading '
+                  'from any one tradition. The scriptures speak for themselves.'),
+              h('From research to a reader'),
+              p('A description on its own is only a map. People need a way to ask a real question and be led to the right place. '
+                  'That is why we made Scriptura.'),
+              p('Scriptura is powered by the Scripture Genome Project. Ask in your own words, like "How can I find peace?" or '
+                  '"I feel alone", and Scriptura finds the verses that speak to it, even when they use different words, and even in '
+                  'a book you would not have thought to open.'),
+              h('How we made it'),
+              point('Free.', 'Scriptura costs nothing, and it will never be sold.'),
+              point('Private.', 'There is no account and no tracking. Your questions, notes and highlights stay on this device.'),
+              point('Offline.', 'Once it is set up, it works anywhere, even without internet.'),
+              point('Fair.', 'Every book of scripture gets a fair chance to answer you, so no volume crowds out the others.'),
+              point('In context.', 'Scriptura is a reading aid, not a teacher of doctrine. Every verse is one tap from its full '
+                  'chapter, so you can always read it where it stands.'),
+              h('Our hope'),
+              p("You don't need to know where a verse is to find it, and you don't need the exact words. You only need your "
+                  'question. Our hope is simple: when you need a verse, you find it.'),
+              if (kAuthorNote.isNotEmpty) ...[
+                h('A note from the founder'),
+                p(kAuthorNote),
+              ],
+              p('Jayson Rael Ramos, founder, Scriptura Labs'),
               h('Text and licences'),
-              p('The Bible text is in the public domain. The licence and copyright of the Book of Mormon, Doctrine and Covenants and '
-                  'Pearl of Great Price belong to The Church of Jesus Christ of Latter-day Saints (© Intellectual Reserve, Inc.). Their use '
-                  'is subject to the Church\'s terms and is not covered by the licence of this app. See Settings, Sources and licences.'),
+              p('The Bible text is in the public domain. The licence and copyright of the Book of Mormon, the Doctrine and Covenants '
+                  'and the Pearl of Great Price belong to The Church of Jesus Christ of Latter-day Saints (© Intellectual Reserve, '
+                  "Inc.), and their use follows the Church's terms. Scriptura is free of charge and is not an official app of any "
+                  'church. Details are in Settings, Sources and licences.'),
               h('Credits'),
-              p('Published by Scriptura Labs under the MIT licence. Author and designer: Jayson Rael Ramos. Base model BGE-M3 by BAAI (MIT licence). Interface type Inter and scripture type '
-                  'Source Serif 4 (with Literata and Atkinson Hyperlegible as optional reading faces), all under the SIL Open Font License.'),
+              p('Made by Scriptura Labs (MIT licence). Founder and designer: Jayson Rael Ramos. Search uses BGE-M3 by BAAI '
+                  '(MIT licence). Typefaces: Inter, Source Serif 4, Literata and Atkinson Hyperlegible (SIL Open Font License).'),
             ],
           ),
         ),

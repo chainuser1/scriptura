@@ -160,7 +160,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 header('About'),
                 ListTile(
                   leading: const Icon(Icons.auto_stories_outlined),
-                  title: const Text('The story behind this app'),
+                  title: const Text('Our story'),
                   subtitle: const Text('From the scripture genome research to this reader'),
                   onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AboutScreen())),
                 ),
