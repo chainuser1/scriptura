@@ -25,6 +25,25 @@ jobs:
           v=$(sed -n 's/^version:[[:space:]]*\([0-9.]*\).*/\1/p' pubspec.yaml)
           test "v$v" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME but pubspec.yaml says $v"; exit 1; }
 
+      # Every machine here would make its own temporary key, so phones could never update from one release to the next.
+      # The release stops unless the store key is in the repository secrets (Settings > Secrets and variables > Actions):
+      # ANDROID_KEYSTORE_BASE64 (the .jks file, base64), ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD.
+      - name: Android store key
+        shell: bash
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE" ]; then
+            echo "::error::No Android store key in the repository secrets: add it before releasing (see the comment above)."
+            exit 1
+          fi
+          echo "$KEYSTORE" | base64 -d > android/app/release.jks
+          printf 'storeFile=release.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
+            "$STORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > android/key.properties
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
