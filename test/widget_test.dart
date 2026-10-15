@@ -55,6 +55,8 @@ void main() {
       expect(find.textContaining('Ask a question'), findsWidgets);
       expect(find.text('What is faith?'), findsOneWidget);
       expect(find.text('Start here'), findsOneWidget);
+      await tester.ensureVisible(find.text('Start here')); // below the starter trails on a small window
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Start here'));
       await tester.pumpAndSettle();
       expect(find.text('What is in the library'), findsOneWidget);
@@ -204,10 +206,10 @@ void main() {
       expect(svc.requests.last.profile, isNull, reason: 'the default (Compass) leaves the choice to the engine');
 
       await openSection(tester, 'Settings');
-      await tester.dragUntilVisible(find.text('Search style'), find.byType(ListView), const Offset(0, -300));
+      await tester.dragUntilVisible(find.text('Search style'), find.byType(ListView).first, const Offset(0, -300));
       await tester.tap(find.text('Search style'));
       await tester.pumpAndSettle();
-      await tester.dragUntilVisible(find.text('Tide'), find.byType(ListView), const Offset(0, -200));
+      await tester.dragUntilVisible(find.text('Tide'), find.byType(ListView).first, const Offset(0, -200));
       await tester.tap(find.text('Tide'));
       await tester.pumpAndSettle();
       expect(app.searchProfile, 'tide');

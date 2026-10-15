@@ -3,13 +3,14 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../app/keyboard_hints.dart';
 import '../../app/search_styles.dart';
-import '../../app/theme.dart';
 import '../../app/version.dart';
 import '../../services/update_check.dart';
 import '../../app_controller.dart';
 import '../../services/engine/benchmark.dart';
 import '../data/setup_progress.dart';
+import 'reading_controls.dart';
 import '../about/about_screen.dart';
 import '../guide/guide_screen.dart';
 
@@ -52,9 +53,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         final repo = app.repository!;
         final user = app.user;
         final t = Theme.of(context).textTheme;
-        final theme = ReadingTheme.parse(user.pref('reading_theme'));
-        final scale = user.prefDouble('text_scale', 1.0);
-        final width = user.prefInt('reading_width', 1);
         final parallel = user.pref('parallel');
         final langs = repo.servedLanguages;
         final colbert = app.canInstall ? app.colbertPacks.active() : null;
@@ -66,6 +64,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
               padding: const EdgeInsets.all(24),
               children: [
                 Text('Settings', style: t.headlineSmall),
+                header('Look and feel'),
+                LookGallery(user: user, wrapWhenWide: true),
+                Theme(
+                  data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                  child: ExpansionTile(
+                    tilePadding: EdgeInsets.zero,
+                    title: const Text('Fine-tune the look'),
+                    subtitle: const Text('Page colour, typeface, size, spacing, line width, verse numbers, layout'),
+                    childrenPadding: const EdgeInsets.only(bottom: 8),
+                    expandedCrossAxisAlignment: CrossAxisAlignment.start,
+                    children: [ReadingControls(user: user)],
+                  ),
+                ),
+                ReadingPreview(user: user),
                 header('Reading'),
                 ListTile(
                   title: const Text('Language'),
@@ -89,44 +101,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onChanged: (l) => user.setPref('parallel', l ?? ''),
                     ),
                   ),
-                ListTile(
-                  title: const Text('Reading theme'),
-                  trailing: SegmentedButton<ReadingTheme>(
-                    showSelectedIcon: false,
-                    segments: [for (final r in ReadingTheme.values) ButtonSegment(value: r, label: Text(r.label))],
-                    selected: {theme},
-                    onSelectionChanged: (s) => user.setPref('reading_theme', s.first.name),
-                  ),
-                ),
-                ListTile(
-                  title: const Text('Text size'),
-                  subtitle: Slider(
-                    value: scale,
-                    min: 0.8,
-                    max: 1.8,
-                    divisions: 10,
-                    label: '${(scale * 100).round()}%',
-                    onChanged: (v) => user.setPref('text_scale', v.toStringAsFixed(2)),
-                  ),
-                ),
-                ListTile(
-                  title: const Text('Line width'),
-                  trailing: SegmentedButton<int>(
-                    showSelectedIcon: false,
-                    segments: const [ButtonSegment(value: 0, label: Text('Narrow')), ButtonSegment(value: 1, label: Text('Medium')), ButtonSegment(value: 2, label: Text('Wide'))],
-                    selected: {width},
-                    onSelectionChanged: (s) => user.setPref('reading_width', '${s.first}'),
-                  ),
-                ),
-                Container(
-                  margin: const EdgeInsets.only(top: 8),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(color: theme.background, borderRadius: BorderRadius.circular(8), border: Border.all(color: theme.text.withValues(alpha: 0.2))),
-                  child: Text(
-                    'In the beginning God created the heaven and the earth.',
-                    style: scriptureStyle(context, scale: scale, color: theme.text),
-                  ),
-                ),
                 header('Search data'),
                 if (_working != null) ...[Text(_working!), const SizedBox(height: 6), const LinearProgressIndicator(), const SizedBox(height: 12)],
                 ListTile(
@@ -179,8 +153,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                   ),
                 ),
-                header('Keyboard'),
-                const _Shortcuts(),
+                if (showKeyboardHints(context)) ...[
+                  header('Keyboard'),
+                  const _Shortcuts(),
+                ],
                 header('About'),
                 ListTile(
                   leading: const Icon(Icons.auto_stories_outlined),
@@ -297,7 +273,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 12),
               const Text('Descriptions of the volumes are written to state what each is and who holds it, without argument.'),
               const SizedBox(height: 12),
-              const Text('Scripture text is set in Source Serif 4 © Adobe, used under the SIL Open Font License 1.1.'),
+              const Text('Scripture text is set in Source Serif 4 © Adobe by default, and optionally in Literata © The Literata Project Authors or Atkinson Hyperlegible © Braille Institute of America, all used under the SIL Open Font License 1.1.'),
             ]),
           ),
         ),

@@ -45,6 +45,7 @@ struct Person {
 pub struct PeopleIndex {
     people: Vec<(String, Person)>,
     verses: HashMap<String, Vec<i64>>,
+    by_verse: HashMap<i64, Vec<String>>,
     stop: HashSet<String>,
     title_only: HashSet<String>,
     to_english: HashMap<String, String>,
@@ -71,6 +72,7 @@ impl PeopleIndex {
         let mut me = Self {
             people: Vec::new(),
             verses: HashMap::new(),
+            by_verse: HashMap::new(),
             stop,
             title_only: w.title_only.into_iter().collect(),
             to_english,
@@ -101,6 +103,7 @@ impl PeopleIndex {
         let mut st = c.prepare("SELECT entity_id, verse_id FROM person_verses ORDER BY entity_id, verse_id").map_err(|e| e.to_string())?;
         for r in st.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?))).map_err(|e| e.to_string())? {
             let (id, v) = r.map_err(|e| e.to_string())?;
+            me.by_verse.entry(v).or_default().push(id.clone());
             me.verses.entry(id).or_default().push(v);
         }
         drop(st);
@@ -124,6 +127,11 @@ impl PeopleIndex {
         } else {
             None
         }
+    }
+
+    /// Entities linked to a verse, by entity id.
+    pub fn entities_of(&self, verse: i64) -> Vec<String> {
+        self.by_verse.get(&verse).cloned().unwrap_or_default()
     }
 
     pub fn verses_of(&self, entity_id: &str) -> &[i64] {

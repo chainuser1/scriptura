@@ -29,6 +29,15 @@ class NavState extends ChangeNotifier {
   int? verse;
   PendingSearch? pending;
 
+  /// True while the Trail page is on screen; the return bar hides itself then.
+  bool trailOpen = false;
+
+  void setTrailOpen(bool open) {
+    if (trailOpen == open) return;
+    trailOpen = open;
+    notifyListeners();
+  }
+
   void go(Dest d) {
     if (dest == d) return;
     dest = d;

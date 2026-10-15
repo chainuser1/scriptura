@@ -111,6 +111,7 @@ pub struct Index {
     genome: Vec<f32>, // [n, genes], rows L2-normalised
     genes: usize,
     sw: Vec<f32>,
+    gene_ids: Vec<String>,
     csr: Csr,
     head: Head,
     pack: Option<Pack>,
@@ -136,6 +137,7 @@ impl Index {
         genome.chunks_exact_mut(genes).for_each(l2_normalize);
 
         let gene_ids = std::fs::read_to_string(retrieval.join("gene_ids.txt")).map_err(|e| e.to_string())?;
+        let gene_names: Vec<String> = gene_ids.lines().filter(|l| !l.is_empty()).map(String::from).collect();
         let sw: Vec<f32> = gene_ids
             .lines()
             .filter(|l| !l.is_empty())
@@ -166,7 +168,45 @@ impl Index {
             b1: Npy::from_npz(head, "b1.npy")?.to_f32()?,
         };
         let pack = pack.map(Pack::open).transpose()?;
-        Ok(Self { verse_ids, dense, genome, genes, sw, csr, head, pack })
+        Ok(Self { verse_ids, dense, genome, genes, sw, gene_ids: gene_names, csr, head, pack })
+    }
+
+    pub fn genes(&self) -> usize {
+        self.genes
+    }
+
+    pub fn genome_row(&self, row: usize) -> &[f32] {
+        &self.genome[row * self.genes..(row + 1) * self.genes]
+    }
+
+    pub fn genome_matrix(&self) -> &[f32] {
+        &self.genome
+    }
+
+    pub fn sw(&self) -> &[f32] {
+        &self.sw
+    }
+
+    pub fn gene_ids(&self) -> &[String] {
+        &self.gene_ids
+    }
+
+    /// Predicted genome of an encoded query (family-weighted, unit length): the space the verse vectors live in.
+    pub fn predicted_genome(&self, dense_q: &[f32]) -> Vec<f32> {
+        self.query_genome(dense_q)
+    }
+
+    /// Sparse terms both verses carry: (token id, weight product), best first.
+    pub fn shared_terms(&self, a: usize, b: usize, top: usize) -> Vec<(u32, f32)> {
+        let row = |r: usize| -> std::collections::HashMap<u32, f32> {
+            let (lo, hi) = (self.csr.indptr[r] as usize, self.csr.indptr[r + 1] as usize);
+            (lo..hi).map(|k| (self.csr.indices[k] as u32, self.csr.data[k])).collect()
+        };
+        let (ra, rb) = (row(a), row(b));
+        let mut shared: Vec<(u32, f32)> = ra.iter().filter_map(|(t, wa)| rb.get(t).map(|wb| (*t, wa * wb))).collect();
+        shared.sort_by(|x, y| y.1.partial_cmp(&x.1).unwrap().then(x.0.cmp(&y.0)));
+        shared.truncate(top);
+        shared
     }
 
     pub fn row_of(&self, verse_id: i64) -> Option<usize> {
@@ -250,14 +290,35 @@ impl Index {
         allowed: Option<&[bool]>,
         cancel: &dyn Fn() -> bool,
     ) -> Result<Outcome, String> {
+        self.search_balanced(q, w, top, allowed, cancel, None)
+    }
+
+    /// As [`Index::search`], with the dense and genome lanes volume-balanced (crate::balance) before the per-lane
+    /// candidate pick. Spark is left as it is: most rows score 0 there, and an offset would rank verses without the word
+    /// above verses with it. Thread scores only the candidates and is left as it is too.
+    pub fn search_balanced(
+        &self,
+        q: &Encoded,
+        w: &Weights,
+        top: usize,
+        allowed: Option<&[bool]>,
+        cancel: &dyn Fn() -> bool,
+        balance: Option<(&crate::balance::Volumes, f64)>,
+    ) -> Result<Outcome, String> {
         let eligible: Option<Vec<usize>> = allowed.map(|m| m.iter().enumerate().filter(|(_, &a)| a).map(|(i, _)| i).collect());
         if matches!(&eligible, Some(e) if e.is_empty()) {
             return Ok(Outcome { hits: Vec::new(), candidates: 0 });
         }
         let ids = &self.verse_ids;
-        let da: Vec<f64> = dot_rows_f16(self.dense.f16_bits()?, DIM, &q.dense).into_iter().map(f64::from).collect();
-        let ga: Vec<f64> = dot_rows_f32(&self.genome, self.genes, &self.query_genome(&q.dense)).into_iter().map(f64::from).collect();
+        let mut da: Vec<f64> = dot_rows_f16(self.dense.f16_bits()?, DIM, &q.dense).into_iter().map(f64::from).collect();
+        let mut ga: Vec<f64> = dot_rows_f32(&self.genome, self.genes, &self.query_genome(&q.dense)).into_iter().map(f64::from).collect();
         let sa = self.sparse_scores(&q.sparse);
+        if let Some((v, strength)) = balance {
+            let ok = |r: usize| allowed.map_or(true, |m| m[r]);
+            for lane in [&mut da, &mut ga] {
+                v.balance(lane, &ok, strength, false);
+            }
+        }
         if cancel() {
             return Err("cancelled".into());
         }

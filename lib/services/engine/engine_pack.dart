@@ -172,6 +172,8 @@ class EnginePaths {
       if (colbert != null && colbert!.has('shard-0000.vec.npy')) 'pack_dir': colbert!.dir.path,
       if (phraseDb != null) 'phrase_db': phraseDb,
       if (topicsDb != null) 'topics_db': topicsDb,
+      // no volume wins only for being itself (engine/src/balance.rs); strength chosen in tool/volume_balance.py
+      'volume_balance': 0.75,
       if (catalogDb != null) 'catalog_db': catalogDb,
       if (entitiesDb != null) 'entities_db': entitiesDb else if (engine.has('entities.db')) 'entities_db': engine.path('entities.db'),
       'profiles': m['profiles'],

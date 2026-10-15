@@ -39,6 +39,7 @@ class Engine:
             'encoder_model': str(pack / m['encoder_file']), 'tokenizer_json': str(pack / 'tokenizer.json'),
             'pack_dir': str(colbert), 'phrase_db': str(GEN / 'release' / 'phrase-index.db'),
             'catalog_db': str(GEN / 'release' / 'catalog.db'), 'entities_db': str(pack / 'entities.db'),
+            'topics_db': str(GEN / 'topics-pack-v1' / 'topics.db'),  # the engine ignores a missing file
             'profiles': m['profiles'], 'default_profile': m['default_profile'],
             'fallback_without_thread': m['fallback_without_thread'], 'threads': 4, 'identity': m['identity'],
         }

@@ -56,6 +56,16 @@ Future<Map<String, dynamic>> runBenchmark(SearchService service, {int rounds = 3
   p.reset();
   await service.search(SearchRequest.search('John 3:16'));
   extras['reference_ms'] = p.elapsedMilliseconds;
+  final tn = <double>[];
+  for (var i = 0; i < 15; i++) {
+    final w = Stopwatch()..start();
+    await service.search(SearchRequest.raw('trail_next', {
+      'k': 10, 'step': 0, 'seed': {'verse_id': 26137}, 'events': <Object>[], 'recent': <int>[], 'moods': <Object>[],
+      'mood_strength': 0.5, 'focus': 0.5, 'filter': null, 'language': 'english',
+    }));
+    tn.add(w.elapsedMicroseconds / 1000);
+  }
+  extras['trail_next_ms'] = _pct([...tn]..sort(), 0.5);
   return {
     'platform': Platform.operatingSystem,
     'os_version': Platform.operatingSystemVersion,

@@ -34,6 +34,9 @@ pub struct Config {
     pub entities_db: Option<PathBuf>,
     /// Optional topics pack database; adds the topic lane to similar verses.
     pub topics_db: Option<PathBuf>,
+    /// Volume balance strength (crate::balance; 0 = off). The app passes the value chosen in tool/volume_balance.py.
+    #[serde(default)]
+    pub volume_balance: f64,
     /// profile id -> [echo, spark, thread, root]
     pub profiles: BTreeMap<String, [f64; 4]>,
     pub default_profile: String,
@@ -53,6 +56,9 @@ pub struct Engine {
     tok: QueryTokenizer,
     enc: Mutex<Encoder>,
     index: Index,
+    trails: crate::trails::TrailModel,
+    volumes: Option<crate::balance::Volumes>,
+    balance_default: f64,
     phrase: Option<PhraseIndex>,
     catalog: Option<Catalog>,
     people: Option<PeopleIndex>,
@@ -85,6 +91,11 @@ impl Engine {
         }
         let pack = cfg.pack_dir.as_deref().filter(|p| p.join("shard-0000.vec.npy").exists());
         let index = Index::open(&cfg.retrieval_dir, &cfg.head_npz, pack)?;
+        let trails = crate::trails::TrailModel::build(&index);
+        let volumes = crate::balance::Volumes::open_embedded(&index);
+        if !(0.0..=1.0).contains(&cfg.volume_balance) {
+            return Err(format!("volume_balance must be between 0 and 1, not {}", cfg.volume_balance));
+        }
         let profiles: BTreeMap<String, Weights> = cfg
             .profiles
             .iter()
@@ -99,6 +110,9 @@ impl Engine {
             tok: QueryTokenizer::from_file(&cfg.tokenizer_json)?,
             enc: Mutex::new(Encoder::open(&cfg.encoder_model, cfg.threads.max(1))?),
             index,
+            trails,
+            volumes,
+            balance_default: cfg.volume_balance,
             phrase: cfg.phrase_db.as_deref().map(PhraseIndex::open).transpose()?,
             catalog: cfg.catalog_db.as_deref().map(Catalog::open).transpose()?,
             people: cfg.entities_db.as_deref().filter(|p| p.exists()).map(PeopleIndex::open).transpose()?,
@@ -152,6 +166,9 @@ impl Engine {
                 let text = req.get("text").and_then(Value::as_str).unwrap_or("");
                 Ok(json!({"mode": "reference", "reference": c.parse(text, lang(req))}))
             }
+            "trail_next" => self.trail_op(req),
+            "explain" => self.explain_op(req),
+            "taste" => crate::trails::taste(&self.index, &self.trails, req).map_err(|m| ("invalid_input", m)),
             other => fail("invalid_input", format!("unknown op {other:?}")),
         }
     }
@@ -167,7 +184,7 @@ impl Engine {
             "version": env!("CARGO_PKG_VERSION"), "verses": self.index.verse_ids.len(), "colbert_pack": has_pack,
             "phrase_languages": self.phrase.as_ref().map(|p| p.languages()).unwrap_or_default(),
             "catalog_languages": self.catalog.as_ref().map(|c| c.languages.clone()).unwrap_or_default(),
-            "entities": self.people.is_some(), "topics": self.topics.is_some(), "profiles": profiles, "default_profile": self.default_profile,
+            "entities": self.people.is_some(), "topics": self.topics.is_some(), "volume_balance": self.volumes.is_some(), "profiles": profiles, "default_profile": self.default_profile,
         })
     }
 
@@ -189,6 +206,19 @@ impl Engine {
         }
     }
 
+    /// The volume balance this request asks for: the request's `volume_balance` (0..=1), else the engine default.
+    /// None when it is 0 or the volume table does not fit the index.
+    fn balance_for(&self, req: &Value) -> Result<Option<(&crate::balance::Volumes, f64)>, Fail> {
+        let s = match req.get("volume_balance") {
+            None | Some(Value::Null) => self.balance_default,
+            Some(v) => match v.as_f64() {
+                Some(x) if (0.0..=1.0).contains(&x) => x,
+                _ => return fail("invalid_input", format!("volume_balance must be a number between 0 and 1, not {v}")),
+            },
+        };
+        Ok(self.volumes.as_ref().filter(|_| s > 0.0).map(|v| (v, s)))
+    }
+
     fn filter_ids(&self, mask: &Option<Vec<bool>>) -> Option<Vec<i64>> {
         mask.as_ref().map(|m| self.index.verse_ids.iter().zip(m).filter(|(_, &a)| a).map(|(&v, _)| v).collect())
     }
@@ -198,7 +228,15 @@ impl Engine {
     }
 
     fn config_id(&self, mode: &str, weights: Option<&Weights>, filter_sha: Option<String>) -> String {
+        self.config_id_balanced(mode, weights, filter_sha, 0.0)
+    }
+
+    /// The configuration id; a volume balance strength above 0 is part of it (0 keeps today's ids).
+    fn config_id_balanced(&self, mode: &str, weights: Option<&Weights>, filter_sha: Option<String>, s: f64) -> String {
         let mut parts = self.identity.as_object().cloned().unwrap_or_default();
+        if s > 0.0 {
+            parts.insert("volume_balance".into(), json!({"strength": s, "top_frac": crate::balance::TOP_FRAC, "min_top": crate::balance::MIN_TOP}));
+        }
         if let Some(w) = weights {
             let mut fusion = parts.get("fusion").and_then(Value::as_object).cloned().unwrap_or_default();
             fusion.insert("weights".into(), json!({"dense": w.echo, "sparse": w.spark, "colbert": w.thread, "genome": w.root}));
@@ -266,9 +304,10 @@ impl Engine {
         let encoded = self.enc.lock().unwrap().encode(&ids).map_err(|e| ("inference_failure", e))?;
         let encode_ms = te.elapsed().as_secs_f64() * 1000.0;
         let mask = self.mask(req)?;
+        let vb = self.balance_for(req)?;
         let ts = Instant::now();
         let is_cancelled = || cancel.load(Ordering::SeqCst);
-        let mut out = self.index.search(&encoded, &weights, top_k.max(if link.is_some() { 60 } else { 0 }), mask.as_deref(), &is_cancelled)
+        let mut out = self.index.search_balanced(&encoded, &weights, top_k.max(if link.is_some() { 60 } else { 0 }), mask.as_deref(), &is_cancelled, vb)
             .map_err(internal)?;
 
         // person questions: the linked person's verses first, ordered by the engine's own score
@@ -292,7 +331,7 @@ impl Engine {
             "candidates": out.candidates,
             "profile": used, "requested_profile": wanted,
             "interpretation": interpretation,
-            "configuration_id": self.config_id("semantic", Some(&weights), fsha),
+            "configuration_id": self.config_id_balanced("semantic", Some(&weights), fsha, vb.map_or(0.0, |b| b.1)),
             "timings_ms": {"encode": encode_ms, "search": search_ms, "total": t0.elapsed().as_secs_f64() * 1000.0},
         }))
     }
@@ -310,9 +349,9 @@ impl Engine {
     }
 
     /// Genome cosine fused with the topic lane: z-scores over the union of each lane's top `lane_k` candidates.
-    fn similar_with_topics(&self, v: i64, top: usize, allowed: Option<&[bool]>) -> Result<Value, Fail> {
+    fn similar_with_topics(&self, v: i64, top: usize, allowed: Option<&[bool]>, vb: Option<(&crate::balance::Volumes, f64)>) -> Result<Value, Fail> {
         let t = self.topics.as_ref().unwrap();
-        let (row, g) = self.index.genome_scores(v).map_err(|e| {
+        let (row, mut g) = self.index.genome_scores(v).map_err(|e| {
             if e.starts_with("unknown verse") { ("unknown_verse", e) } else { ("internal", e) }
         })?;
         let ids = &self.index.verse_ids;
@@ -327,6 +366,11 @@ impl Engine {
                     topic_rows.push(r);
                 }
             }
+        }
+        if let Some((vol, strength)) = vb {
+            // topic_rows (who is in the topic lane) was taken from the raw overlap above
+            vol.balance(&mut g, &ok, strength, false);
+            vol.balance(&mut tscore, &ok, strength, true);
         }
         let mut cand: Vec<usize> = crate::kernels::top_k(&g, ids, Some(&rows), t.lane_k);
         cand.extend(crate::kernels::top_k(&tscore, ids, Some(&topic_rows), t.lane_k));
@@ -343,6 +387,9 @@ impl Engine {
         let mut parts = self.identity.as_object().cloned().unwrap_or_default();
         parts.insert("topics".into(), json!({"sha256": t.sha256, "weight": t.weight, "lane_k": t.lane_k}));
         parts.insert("filter_sha256".into(), json!(fsha));
+        if let Some((_, s)) = vb {
+            parts.insert("volume_balance".into(), json!({"strength": s, "top_frac": crate::balance::TOP_FRAC, "min_top": crate::balance::MIN_TOP}));
+        }
         Ok(json!({
             "mode": "similar", "profile": "genome_topics_v1",
             "hits": order.iter().map(|&r| json!({"verse_id": ids[r], "score": fused[r]})).collect::<Vec<_>>(),
@@ -350,14 +397,67 @@ impl Engine {
         }))
     }
 
+    fn trail_op(&self, req: &Value) -> Result<Value, Fail> {
+        let text = |t: &str| -> Result<Vec<f32>, String> {
+            let ids = self.tok.encode(t)?;
+            if ids.len() > MAX_TOKENS {
+                return Err(format!("the question has {} tokens; the limit is {MAX_TOKENS}", ids.len()));
+            }
+            let enc = self.enc.lock().unwrap().encode(&ids)?;
+            Ok(self.index.predicted_genome(&enc.dense))
+        };
+        let entity = |id: &str| -> Vec<i64> { self.people.as_ref().map(|p| p.verses_of(id).to_vec()).unwrap_or_default() };
+        let vb = self.balance_for(req)?;
+        let mut out = crate::trails::trail_next(&self.index, &self.trails, self.topics.as_ref(), req, &text, &entity, vb)
+            .map_err(|m| ("invalid_input", m))?;
+        let mut parts = self.identity.as_object().cloned().unwrap_or_default();
+        if let Some(t) = &self.topics {
+            parts.insert("topics".into(), json!({"sha256": t.sha256, "weight": t.weight, "lane_k": t.lane_k}));
+        }
+        if let Some((_, s)) = vb {
+            parts.insert("volume_balance".into(), json!({"strength": s, "top_frac": crate::balance::TOP_FRAC, "min_top": crate::balance::MIN_TOP}));
+        }
+        out["configuration_id"] = json!(identity::configuration_id(&Value::Object(parts), "trail"));
+        Ok(out)
+    }
+
+    fn explain_op(&self, req: &Value) -> Result<Value, Fail> {
+        let piece = |id: u32| self.tok.piece(id);
+        let people = self.people.as_ref();
+        let shared = |a: i64, b: i64| -> Vec<Value> {
+            let Some(p) = people else { return vec![] };
+            let (ea, eb) = (p.entities_of(a), p.entities_of(b));
+            ea.iter()
+                .filter(|x| eb.contains(x))
+                .take(3)
+                .map(|id| json!({"id": id, "name": p.display(id).map(|d| d.0).unwrap_or("")}))
+                .collect()
+        };
+        crate::trails::explain(&self.index, &self.trails, req, &piece, &shared).map_err(|m| ("invalid_input", m))
+    }
+
     fn similar_op(&self, req: &Value) -> Result<Value, Fail> {
         let Some(v) = req.get("verse_id").and_then(Value::as_i64) else {
             return fail("invalid_input", "verse_id is required");
         };
         let mask = self.mask(req)?;
+        let vb = self.balance_for(req)?;
         let use_topics = self.topics.is_some() && req.get("topics").and_then(Value::as_bool).unwrap_or(true);
         if use_topics {
-            return self.similar_with_topics(v, Self::top_k(req).min(100), mask.as_deref());
+            return self.similar_with_topics(v, Self::top_k(req).min(100), mask.as_deref(), vb);
+        }
+        if let Some((vol, strength)) = vb {
+            let unknown = |e: String| if e.starts_with("unknown verse") { ("unknown_verse", e) } else { ("internal", e) };
+            let (row, mut g) = self.index.genome_scores(v).map_err(unknown)?;
+            let ok = |r: usize| r != row && mask.as_deref().map_or(true, |m| m[r]);
+            vol.balance(&mut g, &ok, strength, false);
+            let rows: Vec<usize> = (0..g.len()).filter(|&r| ok(r)).collect();
+            let order = crate::kernels::top_k(&g, &self.index.verse_ids, Some(&rows), Self::top_k(req).min(100));
+            return Ok(json!({
+                "mode": "similar", "profile": "genome_weighted_cosine_v1",
+                "hits": order.iter().map(|&r| json!({"verse_id": self.index.verse_ids[r], "score": g[r]})).collect::<Vec<_>>(),
+                "configuration_id": self.config_id_balanced("similar", None, identity::filter_hash(self.filter_ids(&mask).as_deref()), strength),
+            }));
         }
         let hits = self.index.similar(v, Self::top_k(req).min(100), mask.as_deref()).map_err(|e| {
             if e.starts_with("unknown verse") { ("unknown_verse", e) } else { ("internal", e) }

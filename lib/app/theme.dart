@@ -2,25 +2,34 @@ import 'package:flutter/material.dart';
 
 import 'brand.dart';
 
-/// The reading surface has its own three looks, independent of the window chrome (which follows the system).
+/// The reading surface has its own colours, independent of the window chrome (which follows the system). Every pair keeps
+/// a contrast of at least 7:1 (WCAG AAA); looks_test.dart enforces it.
 enum ReadingTheme {
   paper('Paper', Color(0xFFFBF8F1), Color(0xFF2A2420)),
   sepia('Sepia', Color(0xFFF1E4C8), Color(0xFF4A3A28)),
-  night('Night', Color(0xFF16181C), Color(0xFFD9D4C7));
+  white('Clean', Color(0xFFFFFFFF), Color(0xFF1F1F1F)),
+  mist('Mist', Color(0xFFEEF2F6), Color(0xFF1F2933)),
+  forest('Forest', Color(0xFFE9F0E4), Color(0xFF22301F)),
+  slate('Slate', Color(0xFF2B2F36), Color(0xFFE4E6EA)),
+  night('Night', Color(0xFF16181C), Color(0xFFD9D4C7)),
+  black('Black', Color(0xFF000000), Color(0xFFC8C3B8)),
+  contrast('High contrast', Color(0xFFFFFFFF), Color(0xFF000000));
 
   const ReadingTheme(this.label, this.background, this.text);
   final String label;
   final Color background, text;
 
+  bool get isDark => background.computeLuminance() < 0.2;
+
   static ReadingTheme parse(String? s) => values.firstWhere((t) => t.name == s, orElse: () => ReadingTheme.paper);
 }
 
 /// Scripture is set in Source Serif 4, bundled with the app (SIL OFL); system serifs are only a fallback.
-TextStyle scriptureStyle(BuildContext context, {required double scale, required Color color}) => TextStyle(
-      fontFamily: 'ScriptureSerif',
-      fontFamilyFallback: const ['Georgia', 'Cambria', 'Times New Roman', 'serif'],
+TextStyle scriptureStyle(BuildContext context, {required double scale, required Color color, String family = 'ScriptureSerif', List<String>? fallback, double height = 1.65}) => TextStyle(
+      fontFamily: family,
+      fontFamilyFallback: fallback ?? const ['Georgia', 'Cambria', 'Times New Roman', 'serif'],
       fontSize: 19 * scale,
-      height: 1.65,
+      height: height,
       color: color,
     );
 
@@ -121,7 +130,7 @@ ThemeData appTheme(Brightness brightness) {
       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: scheme.primary, width: 2)),
     ),
     filledButtonTheme: FilledButtonThemeData(
-      style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), textStyle: const TextStyle(fontWeight: FontWeight.w600)),
+      style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), textStyle: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600)),
     ),
     navigationRailTheme: NavigationRailThemeData(
       backgroundColor: scheme.surfaceContainerLowest,

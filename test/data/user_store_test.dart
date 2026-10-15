@@ -1,7 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:scriptures_reader_mobile/data/trails/trail_models.dart';
 import 'package:scriptures_reader_mobile/data/user/user_store.dart';
+import 'package:sqlite3/sqlite3.dart';
 
 void main() {
   late UserStore s;
@@ -90,11 +92,11 @@ void main() {
     final backup = s.exportAll();
     final other = UserStore.memory();
     addTearDown(other.dispose);
-    expect(other.importAll(backup), (bookmarks: 1, highlights: 1, notes: 1));
+    expect(other.importAll(backup), (bookmarks: 1, highlights: 1, notes: 1, trails: 0));
     expect(other.isBookmarked(11), isTrue);
     expect(other.highlightsIn(1, 20), {12: 3});
     expect(other.notes(verseId: 13).single.text, 'kept');
-    expect(other.importAll(backup), (bookmarks: 0, highlights: 0, notes: 0));
+    expect(other.importAll(backup), (bookmarks: 0, highlights: 0, notes: 0, trails: 0));
   });
 
   test('restore never overwrites existing highlights and refuses foreign or invalid data', () {
@@ -105,7 +107,7 @@ void main() {
       'bookmarks': [{'verse_id': 'nope'}],
       'notes': [{'verse_id': 7, 'text': '   '}],
     });
-    expect(r, (bookmarks: 0, highlights: 0, notes: 0));
+    expect(r, (bookmarks: 0, highlights: 0, notes: 0, trails: 0));
     expect(s.highlightsIn(1, 10), {5: 0});
     expect(() => s.importAll({'format': 'something-else'}), throwsA(isA<UserDataException>()));
   });
@@ -124,5 +126,32 @@ void main() {
     final c = UserStore.open(path, contract: 'layoutA');
     expect(c.isBookmarked(42), isTrue, reason: 'refusal must not alter or delete data');
     c.dispose();
+  });
+
+  test('a version 1 file migrates to version 2 with its data untouched and no trails', () {
+    final dir = Directory.systemTemp.createTempSync('userstore-v1-');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final path = '${dir.path}/user.db';
+    final raw = sqlite3.open(path);
+    raw.execute('''
+      CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT NOT NULL) WITHOUT ROWID;
+      CREATE TABLE bookmarks(verse_id INTEGER PRIMARY KEY, created_at INTEGER NOT NULL) WITHOUT ROWID;
+      CREATE TABLE highlights(verse_id INTEGER PRIMARY KEY, color INTEGER NOT NULL, created_at INTEGER NOT NULL) WITHOUT ROWID;
+      CREATE TABLE notes(id INTEGER PRIMARY KEY AUTOINCREMENT, verse_id INTEGER NOT NULL, body TEXT NOT NULL,
+                         created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
+      CREATE INDEX notes_verse ON notes(verse_id);
+      CREATE TABLE searches(id INTEGER PRIMARY KEY AUTOINCREMENT, query TEXT NOT NULL, mode TEXT NOT NULL, at INTEGER NOT NULL);
+      CREATE TABLE prefs(key TEXT PRIMARY KEY, value TEXT NOT NULL) WITHOUT ROWID;
+      INSERT INTO meta VALUES ('verse_order_sha256', 'layoutA');
+      INSERT INTO bookmarks VALUES (42, 1000);
+      PRAGMA user_version = 1;
+    ''');
+    raw.close();
+    final s = UserStore.open(path, contract: 'layoutA');
+    expect(s.isBookmarked(42), isTrue);
+    expect(s.trails(), isEmpty);
+    s.createTrail(name: 'T', seed: const TrailSeed.verse(1));
+    expect(s.trails().length, 1);
+    s.dispose();
   });
 }

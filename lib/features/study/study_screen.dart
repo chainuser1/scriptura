@@ -10,6 +10,7 @@ import '../../app/verse_tools.dart';
 import '../../app_controller.dart';
 import '../../data/content/content_repository.dart';
 import '../../data/user/user_store.dart';
+import '../trails/trails_tab.dart';
 
 /// Everything the reader has made: bookmarks, highlights, notes and recent searches, with export.
 class StudyScreen extends StatelessWidget {
@@ -82,7 +83,7 @@ class StudyScreen extends StatelessWidget {
       final books = app.repository!.listBooks();
       final r = app.user.importAll(data, maxVerseId: books.last.firstVerseId + books.last.verses - 1);
       messenger.showSnackBar(SnackBar(
-        content: Text('Restored ${r.notes} notes, ${r.bookmarks} bookmarks and ${r.highlights} highlights. Nothing was overwritten.'),
+        content: Text('Restored ${r.notes} notes, ${r.bookmarks} bookmarks, ${r.highlights} highlights and ${r.trails} trails. Nothing was overwritten.'),
       ));
     } on UserDataException catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Could not restore: ${e.message}')));
@@ -108,7 +109,7 @@ class StudyScreen extends StatelessWidget {
       listenable: Listenable.merge([app, app.user]),
       builder: (context, _) {
         return DefaultTabController(
-          length: 4,
+          length: 5,
           child: Column(
             children: [
               Material(
@@ -120,6 +121,7 @@ class StudyScreen extends StatelessWidget {
                       Tab(text: 'Highlights'),
                       Tab(text: 'Notes'),
                       Tab(text: 'Recent searches'),
+                      Tab(text: 'Trails'),
                     ]),
                   ),
                   Padding(
@@ -141,10 +143,12 @@ class StudyScreen extends StatelessWidget {
                         PopupMenuItem(value: 'backup', child: ListTile(dense: true, leading: Icon(Icons.save_alt), title: Text('Back up everything'))),
                         PopupMenuItem(value: 'restore', child: ListTile(dense: true, leading: Icon(Icons.restore), title: Text('Restore from a backup…'))),
                       ],
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.ios_share), SizedBox(width: 8), Text('Export & backup')]),
-                      ),
+                      child: MediaQuery.sizeOf(context).width < 700
+                          ? const Padding(padding: EdgeInsets.all(12), child: Icon(Icons.ios_share))
+                          : const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.ios_share), SizedBox(width: 8), Text('Export & backup')]),
+                            ),
                     ),
                   ),
                 ]),
@@ -156,6 +160,7 @@ class StudyScreen extends StatelessWidget {
                   _list(context, [for (final h in app.user.highlights()) _Entry(h.verseId, color: h.color)], 'No highlights yet', 'Choose a colour from a verse’s menu.'),
                   _list(context, [for (final n in app.user.notes()) _Entry(n.verseId, note: n.text, noteId: n.id)], 'No notes yet', 'Add a note from a verse’s menu.'),
                   _searches(context),
+                  TrailsTab(app: app),
                 ]),
               ),
             ],

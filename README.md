@@ -17,6 +17,8 @@ file, and then works entirely offline.
   Echo (embedding), Spark (exact words), Thread (word-level matching, optional) and Root (the genome). The mix is a
   setting; **Compass** is the default.
 - **Exact phrases**, **references** ("John 3:16", in five languages) and **similar verses**.
+- **Trails**: start from a verse, a question or one of eight starters and read an endless stream of related verses,
+  steered by Like, Skip and Less like this, with the reason under every verse. Learning stays on your device.
 - **People, places and groups**: "Who is Captain Moroni?", "Where is Bethlehem?" are understood, and the app shows what
   it understood.
 - **Study questions** a passage speaks to, a story page, accessibility (keyboard, screen reader, contrast, text size).

@@ -26,5 +26,7 @@ Scriptura is published by Scriptura Labs under the MIT licence (see LICENSE). Th
 |---|---|---|
 | Inter | interface | SIL Open Font License 1.1 (`assets/fonts/Inter-LICENSE.txt`) |
 | Source Serif 4 © Adobe | scripture text | SIL Open Font License 1.1 (`assets/fonts/SourceSerif4-LICENSE.md`) |
+| Literata © The Literata Project Authors | optional reading face | SIL Open Font License 1.1 (`assets/fonts/Literata-OFL.txt`) |
+| Atkinson Hyperlegible © Braille Institute of America | optional reading face | SIL Open Font License 1.1 (`assets/fonts/AtkinsonHyperlegible-OFL.txt`) |
 
 The Loos typeface from the owner's brand kit is **not** bundled.

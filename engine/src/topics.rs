@@ -40,6 +40,16 @@ impl TopicIndex {
         Ok(Self { by_verse, postings, weight, lane_k, sha256 })
     }
 
+    /// The topic vector of a verse (empty when it has none).
+    pub fn vector_of(&self, verse: i64) -> &[(u32, f32)] {
+        self.by_verse.get(&verse).map(Vec::as_slice).unwrap_or(&[])
+    }
+
+    /// The verses carrying a topic, with their weights (empty for an unknown topic).
+    pub fn postings_of(&self, topic: u32) -> &[(i64, f32)] {
+        self.postings.get(&topic).map(Vec::as_slice).unwrap_or(&[])
+    }
+
     /// Topic cosine of `verse_id` against every verse that shares a topic with it (the source itself excluded).
     pub fn scores(&self, verse_id: i64) -> HashMap<i64, f64> {
         let mut out: HashMap<i64, f64> = HashMap::new();

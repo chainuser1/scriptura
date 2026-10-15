@@ -30,7 +30,16 @@ class SimilarVerses:
         self.vectors /= np.linalg.norm(self.vectors, axis=1, keepdims=True).clip(1e-12)
         self.row_of = {int(v): i for i, v in enumerate(self.verse_ids)}
 
-    def similar(self, verse_id, top_k=10, allowed_verse_ids=None):
+    def _balanced(self, x, ok, strength, positive_only=False):
+        """Volume balance (tool/volume_balance.py) of one lane's scores; strength 0 = unchanged."""
+        if not strength:
+            return x
+        from volume_balance import balance, volume_of_rows
+        if getattr(self, '_vol', None) is None:
+            self._vol = volume_of_rows(self.verse_ids)
+        return balance(x, self._vol, ok, strength, positive_only=positive_only)
+
+    def similar(self, verse_id, top_k=10, allowed_verse_ids=None, volume_balance=0.0):
         row = self.row_of.get(int(verse_id))
         if row is None:
             raise KeyError(f'unknown verse id {verse_id}')
@@ -44,6 +53,7 @@ class SimilarVerses:
                 if r is not None:
                     allowed[r] = True
             mask &= allowed
+        scores = self._balanced(scores.astype(np.float64), mask, volume_balance)
         cand = np.flatnonzero(mask)
         order = np.lexsort((self.verse_ids[cand], -scores[cand]))[:top_k]
         return [{'verse_id': int(self.verse_ids[cand[i]]), 'score': float(scores[cand[i]])} for i in order]
@@ -60,7 +70,7 @@ class SimilarVerses:
             self._by_verse, self._postings, self._topic_db = by_verse, postings, str(db)
         return self._by_verse, self._postings, self._topic_meta
 
-    def similar_with_topics(self, verse_id, top_k=10, allowed_verse_ids=None, topics_db=TOPICS_DB):
+    def similar_with_topics(self, verse_id, top_k=10, allowed_verse_ids=None, topics_db=TOPICS_DB, volume_balance=0.0):
         """Profile genome_topics_v1: genome cosine fused (z-score, ddof=1) with the topic-overlap cosine over the union
         of each lane's top `lane_k` candidates; fused = z(genome) + weight * z(topic); ties by ascending verse id."""
         by_verse, postings, meta = self._topics(topics_db)
@@ -84,9 +94,11 @@ class SimilarVerses:
                 r = self.row_of.get(u)
                 if r is not None and r != row:
                     t[r] += w * wu
+        has_topic = t > 0                          # taken before balancing: balance must not change who is in the topic lane
+        g, t = self._balanced(g, ok, volume_balance), self._balanced(t, ok, volume_balance, positive_only=True)
         rows = np.flatnonzero(ok)
         cg = rows[np.lexsort((self.verse_ids[rows], -g[rows]))][:lane_k]
-        trows = rows[t[rows] > 0]
+        trows = rows[has_topic[rows]]
         ct = trows[np.lexsort((self.verse_ids[trows], -t[trows]))][:lane_k]
         cand = np.unique(np.concatenate([cg, ct]))
 

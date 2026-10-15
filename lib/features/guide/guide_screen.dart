@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/guide_content.dart';
+import '../../app/keyboard_hints.dart';
 import '../../app/nav_state.dart';
 import '../../app_controller.dart';
 
@@ -74,8 +75,10 @@ class GuideScreen extends StatelessWidget {
                   const Text('• “Exact phrase” finds verses containing those words in that order, and tells you how many there are.'),
                   const SizedBox(height: 4),
                   const Text('• “Similar verses” on any verse finds passages with a related message.'),
-                  const SizedBox(height: 4),
-                  const Text('• Ctrl+K opens a command bar from anywhere.'),
+                  if (showKeyboardHints(context)) ...[
+                    const SizedBox(height: 4),
+                    const Text('• Ctrl+K opens a command bar from anywhere.'),
+                  ],
                 ]),
                 section('Reading', [
                   const Text(

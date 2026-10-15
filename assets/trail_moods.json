@@ -1,0 +1,73 @@
+{
+  "moods": [
+    {"id": "comfort", "label": "Comfort", "blurb": "Verses that console, steady and shelter.",
+     "genes": [
+       {"id": "D18_emotion_comfort_consolation", "weight": 1.0},
+       {"id": "D05_emotion_tenderness", "weight": 1.0},
+       {"id": "D08_emotion_peace_stillness", "weight": 1.0},
+       {"id": "D21_emotion_compassion_mercy", "weight": 1.0},
+       {"id": "E08_condition_protection_safety", "weight": 1.0},
+       {"id": "E26_condition_grief_bereavement", "weight": 1.0},
+       {"id": "E28_condition_restoration_healing", "weight": 1.0}]},
+    {"id": "hope", "label": "Hope", "blurb": "Verses of promise, deliverance and a way back.",
+     "genes": [
+       {"id": "D11_emotion_hope_expectation", "weight": 1.0},
+       {"id": "D26_emotion_relief_deliverance_felt", "weight": 1.0},
+       {"id": "E05_condition_redemption", "weight": 1.0},
+       {"id": "E15_condition_return_reconciliation", "weight": 1.0},
+       {"id": "P06_covenant_blessing_promised", "weight": 1.0}]},
+    {"id": "courage", "label": "Courage", "blurb": "Verses that steady you to stand and keep going.",
+     "genes": [
+       {"id": "G24_moral_courage_cowardice", "weight": 1.0},
+       {"id": "D14_emotion_confidence_certainty", "weight": 1.0},
+       {"id": "E20_condition_testing_trial", "weight": 1.0},
+       {"id": "D19_emotion_defiance_resistance", "weight": 1.0},
+       {"id": "E17_condition_vocation_calling", "weight": 1.0}]},
+    {"id": "gratitude", "label": "Gratitude and joy", "blurb": "Verses of thanks, rejoicing and provision.",
+     "genes": [
+       {"id": "D02_emotion_celebration_joy", "weight": 1.0},
+       {"id": "D16_emotion_gratitude_thanks", "weight": 1.0},
+       {"id": "D10_emotion_wonder_awe", "weight": 1.0},
+       {"id": "E09_condition_provision_need_met", "weight": 1.0}]},
+    {"id": "repentance", "label": "Repentance", "blurb": "Verses about turning back and being forgiven.",
+     "genes": [
+       {"id": "D17_emotion_guilt_conviction", "weight": 1.0},
+       {"id": "G32_moral_repentance_turning", "weight": 1.0},
+       {"id": "G14_moral_mercy_over_law", "weight": 1.0},
+       {"id": "E15_condition_return_reconciliation", "weight": 1.0},
+       {"id": "E27_condition_waywardness_straying", "weight": 1.0}]},
+    {"id": "peace", "label": "Peace", "blurb": "Quiet, still and unhurried verses.",
+     "genes": [
+       {"id": "D08_emotion_peace_stillness", "weight": 1.0},
+       {"id": "O01_motion_static_meditative", "weight": 1.0},
+       {"id": "O13_motion_stillness_delayed", "weight": 1.0},
+       {"id": "M08_phenom_rest_physical", "weight": 1.0},
+       {"id": "M15_phenom_silence_absence_sound", "weight": 1.0},
+       {"id": "M12_phenom_lightness_freedom", "weight": 1.0}]},
+    {"id": "wisdom", "label": "Wisdom", "blurb": "Verses that teach and guide a decision.",
+     "genes": [
+       {"id": "E21_condition_wisdom_sought", "weight": 1.0},
+       {"id": "T01_pedagogical_mode_didactic", "weight": 1.0},
+       {"id": "R18_doctrinal_density_high", "weight": 1.0},
+       {"id": "T08_application_universal_transferable", "weight": 1.0}]},
+    {"id": "awe", "label": "Awe", "blurb": "Verses of wonder, vision and mystery.",
+     "genes": [
+       {"id": "D10_emotion_wonder_awe", "weight": 1.0},
+       {"id": "F14_vision_revelation_dream", "weight": 1.0},
+       {"id": "E25_condition_mystery_unknown", "weight": 1.0},
+       {"id": "D29_emotion_solemnity_gravity", "weight": 1.0}]},
+    {"id": "warning", "label": "Warning", "blurb": "Verses that caution and name consequences.",
+     "genes": [
+       {"id": "D12_emotion_warning_caution", "weight": 1.0},
+       {"id": "D03_emotion_urgency", "weight": 1.0},
+       {"id": "G05_moral_consequence_stated", "weight": 1.0},
+       {"id": "D27_emotion_indignation_righteous", "weight": 1.0}]},
+    {"id": "service", "label": "Service", "blurb": "Verses about caring for and serving others.",
+     "genes": [
+       {"id": "G21_moral_stewardship_responsibility", "weight": 1.0},
+       {"id": "G28_moral_solidarity_with_weak", "weight": 1.0},
+       {"id": "G22_moral_hospitality_stranger", "weight": 1.0},
+       {"id": "G25_moral_generosity_stinginess", "weight": 1.0},
+       {"id": "T12_application_missional_outward", "weight": 1.0}]}
+  ]
+}

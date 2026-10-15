@@ -7,6 +7,7 @@ import '../features/read/read_screen.dart';
 import '../features/search/search_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/study/study_screen.dart';
+import '../features/trails/return_bar.dart';
 import '../services/engine/search_models.dart';
 import 'brand.dart';
 import 'nav_state.dart';
@@ -35,17 +36,20 @@ class _AppShellState extends State<AppShell> {
   AppController get app => widget.app;
 
   Widget _page(Dest d) {
+    // Edge-to-edge on Android: keep every page below the status bar. The reader is the exception because it paints
+    // its own reading colour behind the bar.
+    Widget clear(Widget page) => SafeArea(bottom: false, child: page);
     switch (d) {
       case Dest.home:
-        return HomeScreen(app: app);
+        return clear(HomeScreen(app: app));
       case Dest.read:
         return ReadScreen(app: app);
       case Dest.search:
-        return SearchScreen(app: app);
+        return clear(SearchScreen(app: app));
       case Dest.study:
-        return StudyScreen(app: app);
+        return clear(StudyScreen(app: app));
       case Dest.settings:
-        return SettingsScreen(app: app);
+        return clear(SettingsScreen(app: app));
     }
   }
 
@@ -68,6 +72,8 @@ class _AppShellState extends State<AppShell> {
           index: index,
           children: [for (final d in _destinations) _visited.contains(d.$1) ? _page(d.$1) : const SizedBox.shrink()],
         );
+        // The return bar sits above the bottom navigation on narrow and at the foot of the content on wide.
+        final content = Column(children: [Expanded(child: body), ReturnBar(app: app)]);
         final shortcuts = <ShortcutActivator, VoidCallback>{
           const SingleActivator(LogicalKeyboardKey.keyK, control: true): _commandBar,
           for (var i = 0; i < _destinations.length; i++)
@@ -105,9 +111,9 @@ class _AppShellState extends State<AppShell> {
                         ],
                       ),
                       const VerticalDivider(),
-                      Expanded(child: body),
+                      Expanded(child: content),
                     ])
-                  : body,
+                  : content,
               bottomNavigationBar: wide
                   ? null
                   : NavigationBar(

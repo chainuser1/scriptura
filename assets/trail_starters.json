@@ -1,0 +1,20 @@
+{
+  "starters": [
+    {"id": "comfort", "title": "Finding comfort", "blurb": "When grief or worry is heavy", "mood": "comfort",
+     "question": "Where can I find comfort when I grieve?", "icon": "favorite_border"},
+    {"id": "hope", "title": "Hope when it is dark", "blurb": "Promise and deliverance", "mood": "hope",
+     "question": "How do I find hope when things look hopeless?", "icon": "wb_twilight"},
+    {"id": "forgive", "title": "Forgiving and being forgiven", "blurb": "Turning back, mercy", "mood": "repentance",
+     "question": "How do I forgive, and how am I forgiven?", "icon": "handshake_outlined"},
+    {"id": "courage", "title": "Courage to continue", "blurb": "Strength to keep going", "mood": "courage",
+     "question": "Where do I find courage to keep going?", "icon": "shield_outlined"},
+    {"id": "thanks", "title": "A thankful heart", "blurb": "Gratitude and joy", "mood": "gratitude",
+     "question": "What does it mean to be grateful?", "icon": "celebration_outlined"},
+    {"id": "peace", "title": "Peace in the storm", "blurb": "Stillness when anxious", "mood": "peace",
+     "question": "How do I find peace when I am anxious?", "icon": "spa_outlined"},
+    {"id": "wisdom", "title": "Wisdom for a decision", "blurb": "Guidance and teaching", "mood": "wisdom",
+     "question": "How do I know what to do?", "icon": "explore_outlined"},
+    {"id": "serve", "title": "Serving others", "blurb": "Caring for people near you", "mood": "service",
+     "question": "How can I serve the people around me?", "icon": "volunteer_activism_outlined"}
+  ]
+}

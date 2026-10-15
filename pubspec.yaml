@@ -22,6 +22,10 @@ dev_dependencies:
   flutter_lints: ^3.0.0
 flutter:
   uses-material-design: true
+  assets:
+    - assets/trail_moods.json
+    - assets/trail_starters.json
+    - assets/genome_labels.json
   fonts:
     # Interface face: Inter (SIL Open Font License; Inter-LICENSE.txt alongside)
     - family: Inter
@@ -34,6 +38,23 @@ flutter:
         - asset: assets/fonts/Inter-SemiBold.ttf
           weight: 600
         - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700
+    # Optional reading faces (SIL Open Font License; licence files alongside): Literata and Atkinson Hyperlegible
+    - family: Literata
+      fonts:
+        - asset: assets/fonts/Literata-Regular.ttf
+        - asset: assets/fonts/Literata-Italic.ttf
+          style: italic
+        - asset: assets/fonts/Literata-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Literata-Bold.ttf
+          weight: 700
+    - family: AtkinsonHyperlegible
+      fonts:
+        - asset: assets/fonts/AtkinsonHyperlegible-Regular.ttf
+        - asset: assets/fonts/AtkinsonHyperlegible-Italic.ttf
+          style: italic
+        - asset: assets/fonts/AtkinsonHyperlegible-Bold.ttf
           weight: 700
     # Scripture text face: Source Serif 4 (SIL Open Font License; licence file alongside)
     - family: ScriptureSerif

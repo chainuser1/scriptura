@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../../app/guide_content.dart';
+import '../../app/keyboard_hints.dart';
 import '../../app/nav_state.dart';
 import '../../app/theme.dart';
 import '../../app/verse_tools.dart';
 import '../../app_controller.dart';
 import '../../data/content/content_repository.dart';
 import '../guide/guide_screen.dart';
+import '../trails/starter_trails.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.app});
@@ -119,8 +121,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: [for (final q in starterQuestions) ActionChip(label: Text(q), onPressed: () => _submit(q))],
+                    children: [
+                      for (final q in starterQuestions.take(MediaQuery.sizeOf(context).width < 600 ? 4 : starterQuestions.length))
+                        ActionChip(label: Text(q), onPressed: () => _submit(q)),
+                    ],
                   ),
+                  const SizedBox(height: 24),
+                  StarterTrails(app: app),
                   const SizedBox(height: 28),
                   Wrap(
                     spacing: 16,
@@ -205,8 +212,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  Text('Tip: press Ctrl+K anywhere to jump to a verse or ask a question.', style: t.bodySmall),
+                  if (showKeyboardHints(context)) ...[
+                    const SizedBox(height: 16),
+                    Text('Tip: press Ctrl+K anywhere to jump to a verse or ask a question.', style: t.bodySmall),
+                  ],
                 ],
               ),
             ),
@@ -238,7 +247,7 @@ class _Card extends StatelessWidget {
               Row(children: [
                 Icon(icon, size: 18),
                 const SizedBox(width: 8),
-                Text(title, style: Theme.of(context).textTheme.labelLarge),
+                Expanded(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.labelLarge)),
               ]),
               const SizedBox(height: 12),
               child,

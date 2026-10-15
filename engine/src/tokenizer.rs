@@ -14,6 +14,11 @@ impl QueryTokenizer {
         Ok(Self { inner })
     }
 
+    /// The token piece for an id (word starts carry the leading `\u{2581}`).
+    pub fn piece(&self, id: u32) -> Option<String> {
+        self.inner.id_to_token(id)
+    }
+
     /// Token IDs including `<s>` and `</s>`.
     pub fn encode(&self, text: &str) -> Result<Vec<u32>, String> {
         let enc = self.inner.encode(text, true).map_err(|e| e.to_string())?;

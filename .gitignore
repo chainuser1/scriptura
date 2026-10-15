@@ -83,3 +83,6 @@ android/.kotlin/
 /android/key.properties
 *.jks
 *.keystore
+
+# executor scratch
+.superpowers/

@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 
 import '../../app/guide_content.dart';
+import '../../app/looks.dart';
 import '../../app/nav_state.dart';
 import '../../app/theme.dart';
 import '../../app/verse_tools.dart';
 import '../../app_controller.dart';
 import '../../data/content/content_repository.dart';
+import '../../data/trails/trail_models.dart';
 import '../../services/engine/search_models.dart';
 import '../../services/engine/search_service.dart';
+import '../trails/start_trail.dart';
 
 /// Meaning and exact-phrase search with an honest account of what was understood, results beside a live preview of
 /// the passage in context, and similar verses.
@@ -32,6 +35,7 @@ class _SearchScreenState extends State<SearchScreen> {
   String _lastQuery = '';
   List<Passage> _passages = const [];
   Passage? _selected;
+  final _resultsScroll = ScrollController();
 
   AppController get app => widget.app;
   ContentRepository get repo => app.repository!;
@@ -49,6 +53,7 @@ class _SearchScreenState extends State<SearchScreen> {
     app.nav.removeListener(_onNav);
     if (_activeRequest != null) _service.cancel(_activeRequest!);
     _text.dispose();
+    _resultsScroll.dispose();
     super.dispose();
   }
 
@@ -94,6 +99,10 @@ class _SearchScreenState extends State<SearchScreen> {
         _passages = passages;
         _selected = passages.isEmpty ? null : passages.first;
         _busy = false;
+      });
+      // a new search is read from its first result, not from where the last list happened to be scrolled
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_resultsScroll.hasClients) _resultsScroll.jumpTo(0);
       });
     } on SearchFailure catch (e) {
       if (!mounted || _activeRequest != id) return;
@@ -226,7 +235,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   isExpanded: true,
                   value: _scopeVolume,
                   items: [
-                    const DropdownMenuItem<int?>(value: null, child: Text('Whole library')),
+                    const DropdownMenuItem<int?>(value: null, child: Text('Across the canon')),
                     for (final v in repo.volumes(language: app.language))
                       DropdownMenuItem<int?>(value: v.id, child: Text(v.name, overflow: TextOverflow.ellipsis)),
                   ],
@@ -260,6 +269,8 @@ class _SearchScreenState extends State<SearchScreen> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 900),
         child: ListView(
+          key: const ValueKey('search-results'),
+          controller: _resultsScroll,
           padding: const EdgeInsets.only(bottom: 32),
           children: [
             if (_busy) const LinearProgressIndicator(),
@@ -454,6 +465,8 @@ class _SearchScreenState extends State<SearchScreen> {
                 _open(p);
               case 'similar':
                 _runSimilar(p.verseId, 'Verses similar to ${p.reference}');
+              case 'trail':
+                startTrail(context, app, seed: TrailSeed.verse(p.verseId), name: p.reference);
               case 'copy':
                 copyText(context, formatForCopy([p]), message: 'Copied with reference');
               case 'bookmark':
@@ -463,6 +476,7 @@ class _SearchScreenState extends State<SearchScreen> {
           itemBuilder: (_) => const [
             PopupMenuItem(value: 'open', child: Text('Read in context')),
             PopupMenuItem(value: 'similar', child: Text('Similar verses')),
+            PopupMenuItem(value: 'trail', child: Text('Start a trail from this verse')),
             PopupMenuItem(value: 'copy', child: Text('Copy with reference')),
             PopupMenuItem(value: 'bookmark', child: Text('Bookmark')),
           ],
@@ -502,10 +516,11 @@ class _Preview extends StatelessWidget {
   Widget build(BuildContext context) {
     final repo = app.repository!;
     final user = app.user;
-    final theme = ReadingTheme.parse(user.pref('reading_theme'));
+    final prefs = ReadingPrefs.of(user);
+    final theme = prefs.theme;
     final chapter = repo.getChapter(passage.bookId, passage.chapter, language: app.language);
     final around = chapter.where((p) => (p.verse - passage.verse).abs() <= 6).toList();
-    final style = scriptureStyle(context, scale: 0.9, color: theme.text);
+    final style = prefs.style(color: theme.text, extraScale: 0.9);
     return Container(
       color: theme.background,
       child: Column(
@@ -530,6 +545,7 @@ class _Preview extends StatelessWidget {
           Expanded(
             child: SelectionArea(
               child: ListView(
+                key: ValueKey('preview-${passage.verseId}'), // a new passage starts at its top
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                 children: [
                   for (final p in around)

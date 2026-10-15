@@ -40,6 +40,17 @@ class SearchRequest {
         person = null,
         filter = null;
 
+  /// An engine request whose body is sent as is (the trail operations: `trail_next`, `explain`, `taste`).
+  SearchRequest.raw(this.op, Map<String, dynamic> this.body)
+      : query = null,
+        phrase = null,
+        profile = null,
+        person = null,
+        verseId = null,
+        language = 'english',
+        topK = 10,
+        filter = null;
+
   final String op;
   final String? query, phrase, profile, person;
   final String language;
@@ -47,18 +58,23 @@ class SearchRequest {
   final int? verseId;
   final List<VerseRange>? filter;
 
-  Map<String, dynamic> toJson(int requestId) => {
-        'op': op,
-        'request_id': requestId,
-        if (query != null) 'query': query,
-        if (phrase != null) 'phrase': phrase,
-        if (verseId != null) 'verse_id': verseId,
-        'language': language,
-        'top_k': topK,
-        if (profile != null) 'profile': profile,
-        if (person != null) 'person': person,
-        if (filter != null) 'filter': [for (final r in filter!) r.toJson()],
-      };
+  /// Set only by [SearchRequest.raw].
+  Map<String, dynamic>? body;
+
+  Map<String, dynamic> toJson(int requestId) => body != null
+      ? {...body!, 'op': op, 'request_id': requestId}
+      : {
+          'op': op,
+          'request_id': requestId,
+          if (query != null) 'query': query,
+          if (phrase != null) 'phrase': phrase,
+          if (verseId != null) 'verse_id': verseId,
+          'language': language,
+          'top_k': topK,
+          if (profile != null) 'profile': profile,
+          if (person != null) 'person': person,
+          if (filter != null) 'filter': [for (final r in filter!) r.toJson()],
+        };
 }
 
 class Hit {
@@ -131,6 +147,7 @@ class SearchResponse {
     this.totalMs,
     this.encodeMs,
     this.searchMs,
+    this.raw = const {},
   });
 
   /// semantic | phrase | similar | reference
@@ -142,6 +159,9 @@ class SearchResponse {
   final PersonInterpretation? person;
   final String? profile, requestedProfile, configurationId;
   final double? totalMs, encodeMs, searchMs;
+
+  /// The decoded response body, for operations whose payload has no typed field (trail_next, explain, taste).
+  final Map<String, dynamic> raw;
 
   /// The profile fell back (for example Thread-based profiles when the ColBERT pack is not installed).
   bool get profileFellBack => profile != null && requestedProfile != null && profile != requestedProfile;
@@ -178,6 +198,7 @@ class SearchResponse {
       totalMs: ((j['timings_ms'] as Map?)?['total'] as num?)?.toDouble(),
       encodeMs: ((j['timings_ms'] as Map?)?['encode'] as num?)?.toDouble(),
       searchMs: ((j['timings_ms'] as Map?)?['search'] as num?)?.toDouble(),
+      raw: j,
     );
   }
 }

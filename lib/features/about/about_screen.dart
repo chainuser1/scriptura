@@ -93,7 +93,7 @@ class AboutScreen extends StatelessWidget {
                   'is subject to the Church\'s terms and is not covered by the licence of this app. See Settings, Sources and licences.'),
               h('Credits'),
               p('Published by Scriptura Labs under the MIT licence. Author and designer: Jayson Rael Ramos. Base model BGE-M3 by BAAI (MIT licence). Interface type Inter and scripture type '
-                  'Source Serif 4, both under the SIL Open Font License.'),
+                  'Source Serif 4 (with Literata and Atkinson Hyperlegible as optional reading faces), all under the SIL Open Font License.'),
             ],
           ),
         ),

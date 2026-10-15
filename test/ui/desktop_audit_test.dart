@@ -26,14 +26,17 @@ final _shot = GlobalKey();
 Future<void> _loadFonts() async {
   final fonts = '${Platform.environment['USERPROFILE']}/develop/flutter/bin/cache/artifacts/material_fonts';
   Future<ByteData> bytes(String f) async => ByteData.view(File('$fonts/$f').readAsBytesSync().buffer);
-  // Segoe UI (window chrome) is not available to the test engine; Roboto stands in. The scripture face is bundled.
-  for (final family in ['Roboto', 'Segoe UI']) {
-    final l = FontLoader(family)
-      ..addFont(bytes('roboto-regular.ttf'))
-      ..addFont(bytes('roboto-bold.ttf'))
-      ..addFont(bytes('roboto-italic.ttf'));
+  // The app's own faces, straight from assets/fonts, so the audit images show the real typography.
+  Future<void> family(String name, List<String> files) async {
+    final l = FontLoader(name);
+    for (final f in files) {
+      l.addFont(Future.value(ByteData.view(File('assets/fonts/$f').readAsBytesSync().buffer)));
+    }
     await l.load();
   }
+
+  await family('Inter', ['Inter-Regular.ttf', 'Inter-Italic.ttf', 'Inter-Medium.ttf', 'Inter-SemiBold.ttf', 'Inter-Bold.ttf']);
+  await family('ScriptureSerif', ['SourceSerif4-Regular.ttf', 'SourceSerif4-It.ttf', 'SourceSerif4-Semibold.ttf', 'SourceSerif4-Bold.ttf']);
   final icons = FontLoader('MaterialIcons')..addFont(bytes('materialicons-regular.otf'));
   await icons.load();
 }
@@ -96,6 +99,8 @@ void main() {
 
         app.nav.openChapter(repo.catalog.chapterOfVerse(verseIdOf(repo, 'Alma', 32, 21)!)!.bookId, 32, verseNumber: 21);
         await tester.pumpAndSettle();
+        await tester.pump(const Duration(seconds: 1)); // the floating chapter buttons settle after the scroll
+        await tester.pump(const Duration(milliseconds: 400));
         await _snap(tester, 'read-$tag');
         expect(tester.takeException(), isNull);
 

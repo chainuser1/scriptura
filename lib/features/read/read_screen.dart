@@ -1,11 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../app/looks.dart';
 import '../../app/theme.dart';
 import '../../app/verse_tools.dart';
 import '../../app_controller.dart';
 import '../../data/content/content_repository.dart';
+import '../../data/trails/trail_models.dart';
+import 'reading_sheet.dart';
 import '../../data/user/user_store.dart';
+import '../trails/start_trail.dart';
 
 String _label(String language) => language[0].toUpperCase() + language.substring(1);
 
@@ -174,6 +180,107 @@ class _BrowserState extends State<_Browser> {
   }
 }
 
+/// Previous and next chapter, always within reach: two small buttons at the lower corners that rest faint, brighten when
+/// touched or hovered, and step aside while the page is being scrolled so they never sit on the words you are reading.
+class _FloatingFlip extends StatefulWidget {
+  const _FloatingFlip({required this.scroll, required this.theme, required this.onPrevious, required this.onNext});
+  final ScrollController scroll;
+  final ReadingTheme theme;
+  final VoidCallback? onPrevious, onNext;
+
+  @override
+  State<_FloatingFlip> createState() => _FloatingFlipState();
+}
+
+class _FloatingFlipState extends State<_FloatingFlip> {
+  bool _scrolling = false, _near = false;
+  Timer? _idle;
+  double _last = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.scroll.addListener(_onScroll);
+  }
+
+  @override
+  void didUpdateWidget(_FloatingFlip old) {
+    super.didUpdateWidget(old);
+    if (old.scroll != widget.scroll) {
+      old.scroll.removeListener(_onScroll);
+      widget.scroll.addListener(_onScroll);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.scroll.removeListener(_onScroll);
+    _idle?.cancel();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!widget.scroll.hasClients) return;
+    final at = widget.scroll.offset;
+    if ((at - _last).abs() < 1) return;
+    _last = at;
+    _idle?.cancel();
+    if (!_scrolling) setState(() => _scrolling = true);
+    _idle = Timer(const Duration(milliseconds: 700), () {
+      if (mounted) setState(() => _scrolling = false);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final opacity = _scrolling ? 0.0 : (_near ? 1.0 : 0.4);
+    final reduce = MediaQuery.disableAnimationsOf(context);
+    Widget button(IconData icon, String tip, VoidCallback? onTap) {
+      if (onTap == null) return const SizedBox(width: 48, height: 48);
+      return Tooltip(
+        message: tip,
+        child: Material(
+          color: widget.theme.background.withValues(alpha: 0.92),
+          elevation: 1,
+          shape: CircleBorder(side: BorderSide(color: widget.theme.text.withValues(alpha: 0.25))),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onTap,
+            child: SizedBox(width: 48, height: 48, child: Icon(icon, color: widget.theme.text)),
+          ),
+        ),
+      );
+    }
+
+    // Each button hit-tests on its own, so the strip between them never blocks selecting or tapping the text.
+    Widget slot({required bool left, required Widget child}) => Positioned(
+          left: left ? 8 : null,
+          right: left ? null : 8,
+          bottom: 12,
+          child: IgnorePointer(
+            ignoring: _scrolling,
+            child: MouseRegion(
+              onEnter: (_) => setState(() => _near = true),
+              onExit: (_) => setState(() => _near = false),
+              child: Listener(
+                onPointerDown: (_) => setState(() => _near = true),
+                child: AnimatedOpacity(
+                  opacity: opacity,
+                  duration: reduce ? Duration.zero : const Duration(milliseconds: 180),
+                  child: child,
+                ),
+              ),
+            ),
+          ),
+        );
+
+    return Stack(children: [
+      if (widget.onPrevious != null) slot(left: true, child: button(Icons.chevron_left, 'Previous chapter', widget.onPrevious)),
+      if (widget.onNext != null) slot(left: false, child: button(Icons.chevron_right, 'Next chapter', widget.onNext)),
+    ]);
+  }
+}
+
 class _Reading extends StatelessWidget {
   const _Reading({
     required this.app,
@@ -199,9 +306,9 @@ class _Reading extends StatelessWidget {
     final lang = app.language;
     final parallel = user.pref('parallel');
     final showParallel = parallel != null && parallel != lang && repo.servedLanguages.contains(parallel);
-    final theme = ReadingTheme.parse(user.pref('reading_theme'));
-    final scale = user.prefDouble('text_scale', 1.0);
-    final widthPref = user.prefInt('reading_width', 1);
+    final prefs = ReadingPrefs.of(user);
+    final theme = prefs.theme;
+    final widthPref = prefs.width;
     final maxWidth = showParallel ? 1100.0 : const [560.0, 700.0, 880.0][widthPref.clamp(0, 2)];
     final passages = repo.getChapter(book.id, chapter, language: lang);
     final other = showParallel ? repo.getChapter(book.id, chapter, language: parallel) : const <Passage>[];
@@ -210,7 +317,7 @@ class _Reading extends StatelessWidget {
     final bookmarks = user.bookmarkedIn(first, last);
     final noted = user.versesWithNotes(first, last);
     final marked = app.nav.verse;
-    final style = scriptureStyle(context, scale: scale, color: theme.text);
+    final style = prefs.style(color: theme.text);
 
     if (marked != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -226,6 +333,9 @@ class _Reading extends StatelessWidget {
         passage: p,
         style: style,
         numberColor: theme.text.withValues(alpha: 0.72),
+        numbers: prefs.numbers,
+        cards: prefs.layout == VerseLayout.cards,
+        cardColor: theme.text.withValues(alpha: 0.06),
         highlight: highlights[p.verseId],
         marked: isMarked,
         bookmarked: primary && bookmarks.contains(p.verseId),
@@ -239,11 +349,14 @@ class _Reading extends StatelessWidget {
 
     return Container(
       color: theme.background,
-      child: Column(
+      child: SafeArea(
+        bottom: false,
+        child: Column(
         children: [
           _Header(app: app, book: book, chapter: chapter, theme: theme, onBrowse: onBrowse, passages: passages),
           Expanded(
-            child: SelectionArea(
+            child: Stack(children: [
+            SelectionArea(
               child: SingleChildScrollView(
                 controller: scroll,
                 padding: const EdgeInsets.fromLTRB(24, 8, 24, 48),
@@ -280,8 +393,11 @@ class _Reading extends StatelessWidget {
                 ),
               ),
             ),
+            _FloatingFlip(scroll: scroll, theme: theme, onPrevious: canPrev ? () => onStep(-1) : null, onNext: canNext ? () => onStep(1) : null),
+            ]),
           ),
         ],
+      ),
       ),
     );
   }
@@ -321,6 +437,7 @@ class _Reading extends StatelessWidget {
         ),
         PopupMenuItem(value: 'note', child: ListTile(dense: true, leading: const Icon(Icons.edit_note), title: Text(noteCount == 0 ? 'Add note' : 'Notes ($noteCount)'))),
         const PopupMenuItem(value: 'similar', child: ListTile(dense: true, leading: Icon(Icons.hub_outlined), title: Text('Similar verses'))),
+        const PopupMenuItem(value: 'trail', child: ListTile(dense: true, leading: Icon(Icons.alt_route), title: Text('Start a trail from this verse'))),
         if (app.answers?.hasQuestions(p.verseId) ?? false)
           const PopupMenuItem(value: 'questions', child: ListTile(dense: true, leading: Icon(Icons.help_outline), title: Text('What this verse speaks to'))),
       ],
@@ -337,6 +454,8 @@ class _Reading extends StatelessWidget {
         await _notes(context, p);
       case 'similar':
         app.nav.askSimilar(p.verseId, 'Verses similar to ${p.reference}');
+      case 'trail':
+        await startTrail(context, app, seed: TrailSeed.verse(p.verseId), name: p.reference);
       case 'questions':
         await _questions(context, p);
       default:
@@ -435,12 +554,10 @@ class _Header extends StatelessWidget {
             style: TextStyle(color: fg),
             child: LayoutBuilder(builder: (context, box) {
               final compact = box.maxWidth < 640;
-              void scale(double d) => user.setPref('text_scale', (user.prefDouble('text_scale', 1.0) + d).clamp(0.8, 1.8).toStringAsFixed(2));
-              final themeMenu = PopupMenuButton<ReadingTheme>(
-                tooltip: 'Reading theme',
-                icon: const Icon(Icons.palette_outlined),
-                onSelected: (t) => user.setPref('reading_theme', t.name),
-                itemBuilder: (_) => [for (final t in ReadingTheme.values) CheckedPopupMenuItem(value: t, checked: t == theme, child: Text(t.label))],
+              final aa = IconButton(
+                tooltip: 'Reading look, text size and colour',
+                icon: Text('Aa', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17, color: fg)),
+                onPressed: () => showReadingSheet(context, app),
               );
               final languageItems = <PopupMenuEntry<String>>[
                 const PopupMenuItem(value: 'lang:', child: Text('One language')),
@@ -451,10 +568,6 @@ class _Header extends StatelessWidget {
                   copyText(context, '${formatForCopy(passages, withReference: false)}\n— ${book.name} $chapter', message: 'Chapter copied');
                 } else if (v == 'range') {
                   _copyRange(context);
-                } else if (v == 'bigger') {
-                  scale(0.1);
-                } else if (v == 'smaller') {
-                  scale(-0.1);
                 } else if (v.startsWith('lang:')) {
                   user.setPref('parallel', v.substring(5));
                 }
@@ -479,13 +592,11 @@ class _Header extends StatelessWidget {
                   ),
                 const Spacer(),
                 if (compact) ...[
-                  themeMenu,
+                  aa,
                   PopupMenuButton<String>(
                     tooltip: 'More',
                     onSelected: onMore,
                     itemBuilder: (_) => [
-                      const PopupMenuItem(value: 'bigger', child: Text('Larger text')),
-                      const PopupMenuItem(value: 'smaller', child: Text('Smaller text')),
                       const PopupMenuItem(value: 'chapter', child: Text('Copy whole chapter')),
                       const PopupMenuItem(value: 'range', child: Text('Copy verses…')),
                       if (langs.length > 1) ...[const PopupMenuDivider(), ...languageItems],
@@ -508,9 +619,7 @@ class _Header extends StatelessWidget {
                       PopupMenuItem(value: 'range', child: Text('Copy verses…')),
                     ],
                   ),
-                  IconButton(tooltip: 'Smaller text (Ctrl+-)', icon: const Icon(Icons.text_decrease), onPressed: () => scale(-0.1)),
-                  IconButton(tooltip: 'Larger text (Ctrl+=)', icon: const Icon(Icons.text_increase), onPressed: () => scale(0.1)),
-                  themeMenu,
+                  aa,
                 ],
               ]);
             }),
@@ -556,6 +665,9 @@ class _VerseRow extends StatefulWidget {
     required this.passage,
     required this.style,
     required this.numberColor,
+    required this.numbers,
+    required this.cards,
+    required this.cardColor,
     required this.highlight,
     required this.marked,
     required this.bookmarked,
@@ -564,7 +676,9 @@ class _VerseRow extends StatefulWidget {
   });
   final Passage passage;
   final TextStyle style;
-  final Color numberColor;
+  final Color numberColor, cardColor;
+  final VerseNumbers numbers;
+  final bool cards;
   final int? highlight;
   final bool marked, bookmarked, hasNote;
   final void Function(Offset globalPosition) onMenu;
@@ -611,11 +725,11 @@ class _VerseRowState extends State<_VerseRow> {
           onTapUp: (d) => widget.onMenu(d.globalPosition),
           onSecondaryTapUp: (d) => widget.onMenu(d.globalPosition),
           child: Container(
-            margin: const EdgeInsets.symmetric(vertical: 2),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            margin: EdgeInsets.symmetric(vertical: widget.cards ? 5 : 2),
+            padding: widget.cards ? const EdgeInsets.fromLTRB(14, 10, 6, 10) : const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: hl == null ? null : highlightPalette[hl % highlightPalette.length],
-              borderRadius: BorderRadius.circular(6),
+              color: hl == null ? (widget.cards ? widget.cardColor : null) : highlightPalette[hl % highlightPalette.length],
+              borderRadius: BorderRadius.circular(widget.cards ? 12 : 6),
               border: _focused
                   ? Border.all(color: scheme.tertiary, width: 2)
                   : widget.marked
@@ -623,20 +737,54 @@ class _VerseRowState extends State<_VerseRow> {
                       : Border.all(color: Colors.transparent, width: 1.5),
             ),
             child: ExcludeSemantics(
-              child: Text.rich(
+              child: _withNumber(
+                context,
+                Text.rich(
                 TextSpan(children: [
-                  TextSpan(text: '${p.verse}  ', style: style.copyWith(fontSize: style.fontSize! * 0.62, fontWeight: FontWeight.bold, color: widget.numberColor)),
+                  if (widget.numbers == VerseNumbers.inline)
+                    TextSpan(text: '${p.verse}  ', style: style.copyWith(fontSize: style.fontSize! * 0.62, fontWeight: FontWeight.bold, color: widget.numberColor)),
                   TextSpan(text: p.text),
                   if (widget.bookmarked) const WidgetSpan(alignment: PlaceholderAlignment.middle, child: Padding(padding: EdgeInsets.only(left: 6), child: Icon(Icons.bookmark, size: 15))),
                   if (widget.hasNote) const WidgetSpan(alignment: PlaceholderAlignment.middle, child: Padding(padding: EdgeInsets.only(left: 6), child: Icon(Icons.sticky_note_2_outlined, size: 15))),
                   if (p.isFallback) TextSpan(text: '  [${p.language}]', style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 13)),
                 ]),
                 style: style,
+                ),
               ),
             ),
           ),
         ),
       ),
     );
+  }
+
+  /// Margin numbers sit in their own column; cards add a visible menu button. Inline and hidden need neither.
+  Widget _withNumber(BuildContext context, Widget text) {
+    final style = widget.style;
+    final p = widget.passage;
+    if (widget.numbers != VerseNumbers.margin && !widget.cards) return text;
+    final top = style.fontSize! * (style.height! - 1) * 0.5 + style.fontSize! * 0.12;
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      if (widget.numbers == VerseNumbers.margin)
+        SizedBox(
+          width: 30,
+          child: Padding(
+            padding: EdgeInsets.only(top: top, right: 8),
+            child: Text('${p.verse}', textAlign: TextAlign.right, style: style.copyWith(fontSize: style.fontSize! * 0.62, fontWeight: FontWeight.bold, color: widget.numberColor, height: 1.2)),
+          ),
+        ),
+      Expanded(child: text),
+      if (widget.cards)
+        Builder(
+          builder: (ctx) => IconButton(
+            tooltip: 'Verse menu',
+            icon: Icon(Icons.more_horiz, color: widget.numberColor),
+            onPressed: () {
+              final box = ctx.findRenderObject() as RenderBox;
+              widget.onMenu(box.localToGlobal(box.size.center(Offset.zero)));
+            },
+          ),
+        ),
+    ]);
   }
 }
