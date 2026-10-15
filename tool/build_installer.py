@@ -7,6 +7,7 @@ with a code-signing certificate (set SIGNTOOL in the environment to sign the exe
   .venv\\Scripts\\python.exe -I tool/build_installer.py [--skip-build]
 """
 import argparse
+import os
 import re
 import subprocess
 import sys
@@ -14,7 +15,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 RELEASE = ROOT / 'build' / 'windows' / 'x64' / 'runner' / 'Release'
-ISCC = Path.home() / 'AppData' / 'Local' / 'Programs' / 'Inno Setup 6' / 'ISCC.exe'
+ISCC = Path(os.environ.get('ISCC') or Path.home() / 'AppData' / 'Local' / 'Programs' / 'Inno Setup 6' / 'ISCC.exe')  # CI sets ISCC
 CARGO = Path.home() / '.cargo' / 'bin' / 'cargo.exe'
 
 

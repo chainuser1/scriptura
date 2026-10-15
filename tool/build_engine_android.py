@@ -49,6 +49,7 @@ def main():
     shutil.copy2(ROOT / 'engine' / 'target' / TARGET / 'release' / 'libscripture_engine.so', out / 'libscripture_engine.so')
 
     aar = ROOT / '.artifact-staging' / f'onnxruntime-android-{a.ort}.aar'
+    aar.parent.mkdir(parents=True, exist_ok=True)
     if not aar.exists():
         url = f'https://repo1.maven.org/maven2/com/microsoft/onnxruntime/onnxruntime-android/{a.ort}/onnxruntime-android-{a.ort}.aar'
         print('downloading', url)
