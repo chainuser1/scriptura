@@ -6,7 +6,9 @@ import '../../app/brand.dart';
 /// No technical detail here; the research records stay in the project, the licences in Settings, Sources and licences.
 ///
 /// Set [kAuthorNote] to a sentence or two in your own voice about what moved you to start; it appears as the founder's note.
-const String kAuthorNote = '';
+const String kAuthorNote = 'So many times I knew the scriptures held an answer, but I could not find the words to search for it. '
+    'I started the Scripture Genome Project because I believe no one should have to know the right words to find the right '
+    'verse. My part was to build a better path to them, and to keep it free for everyone.';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -78,7 +80,7 @@ class AboutScreen extends StatelessWidget {
                 h('A note from the founder'),
                 p(kAuthorNote),
               ],
-              p('Jayson Rael Ramos, founder, Scriptura Labs'),
+              p('— Jayson Rael Ramos, Founder, Scriptura Labs'),
               h('Text and licences'),
               p('The Bible text is in the public domain. The licence and copyright of the Book of Mormon, the Doctrine and Covenants '
                   'and the Pearl of Great Price belong to The Church of Jesus Christ of Latter-day Saints (© Intellectual Reserve, '
