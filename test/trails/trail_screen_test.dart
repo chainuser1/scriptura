@@ -46,6 +46,15 @@ Future<(AppController, FakeSearchService)> pumpTrail(WidgetTester tester,
 }
 
 void main() {
+  testWidgets('on a wide screen the Why panel dims the trail behind it, so it reads as a panel on top', (tester) async {
+    await pumpTrail(tester, size: const Size(1200, 900));
+    await tester.tap(find.text('Why this verse'));
+    await tester.pumpAndSettle();
+    final barrier = tester.widgetList<ModalBarrier>(find.byType(ModalBarrier)).last;
+    expect(barrier.color, isNotNull);
+    expect(barrier.color!.a, greaterThan(0));
+  });
+
   testWidgets('on a tall screen the actions sit right under the card, not at the bottom of the window', (tester) async {
     await pumpTrail(tester, size: const Size(1200, 1000));
     final card = tester.getRect(find.byType(TrailCard));

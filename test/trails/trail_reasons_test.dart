@@ -43,7 +43,7 @@ void main() {
     );
     expect(r.length, 5);
     expect(r.map((x) => x.kind).toList(), [ReasonKind.themes, ReasonKind.mood, ReasonKind.words, ReasonKind.people, ReasonKind.question]);
-    expect(r[1].text, contains('Comfort'));
+    expect(r[1].text, 'Matches your Comfort mood'); // plain words only, no internal gene names
     expect(r[2].text, contains('believeth'));
     expect(r[3].text, contains('Moses'));
     expect(r[4].text, contains('What is faith?'));

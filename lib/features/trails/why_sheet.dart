@@ -22,7 +22,7 @@ Future<void> showWhy(BuildContext context, TrailController c) {
       context: context,
       barrierDismissible: true,
       barrierLabel: 'Close',
-      barrierColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.32), // dim the trail: the panel reads as on top, not as cutting the card
       transitionDuration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 180),
       pageBuilder: (ctx, _, __) => Align(
         alignment: Alignment.centerRight,

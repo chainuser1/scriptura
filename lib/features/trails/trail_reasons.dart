@@ -34,8 +34,8 @@ List<Reason> buildReasons({
     ));
   }
   if (explain != null && explain.moodMatches.isNotEmpty && parts.mood > 0 && moodLabels.isNotEmpty) {
-    out.add(Reason(ReasonKind.mood,
-        'Matches your ${moodLabels.join(' and ')} mood: ${explain.moodMatches.map((g) => lower(catalog.geneLabel(g))).join(', ')}'));
+    // plain words only: the matching genes' internal names ("peace stillness") mean nothing to a reader
+    out.add(Reason(ReasonKind.mood, 'Matches your ${moodLabels.join(' and ')} mood'));
   }
   if (explain != null && explain.sharedTerms.isNotEmpty) {
     out.add(Reason(ReasonKind.words, 'Shares the words ${explain.sharedTerms.take(4).map((w) => '“$w”').join(', ')}'));
