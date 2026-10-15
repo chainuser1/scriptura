@@ -28,6 +28,7 @@ void main() {
     }
     expect(find.textContaining('powered by the Scripture Genome Project'), findsOneWidget);
     expect(find.text('A NOTE FROM THE FOUNDER'), findsOneWidget);
+    expect(find.textContaining('scriptura.space'), findsOneWidget);
     expect(find.textContaining('no one should have to know the right words'), findsOneWidget);
     for (final word in ['language model', 'encoder', 'Rust', 'engine', '568', 'genes', 'embedding', 'schema']) {
       expect(find.textContaining(word), findsNothing, reason: word);

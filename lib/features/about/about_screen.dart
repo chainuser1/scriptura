@@ -87,7 +87,7 @@ class AboutScreen extends StatelessWidget {
                   "Inc.), and their use follows the Church's terms. Scriptura is free of charge and is not an official app of any "
                   'church. Details are in Settings, Sources and licences.'),
               h('Credits'),
-              p('Made by Scriptura Labs (MIT licence). Founder and designer: Jayson Rael Ramos. Search uses BGE-M3 by BAAI '
+              p('Made by Scriptura Labs, scriptura.space (MIT licence). Founder and designer: Jayson Rael Ramos. Search uses BGE-M3 by BAAI '
                   '(MIT licence). Typefaces: Inter, Source Serif 4, Literata and Atkinson Hyperlegible (SIL Open Font License).'),
             ],
           ),
