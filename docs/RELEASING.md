@@ -10,9 +10,8 @@ asset has the same file name in every release**. Each release therefore carries 
 
 | Asset | Purpose |
 |---|---|
-| `Scriptura-Setup.exe`, `Scriptura.apk` | stable names: the "latest" links |
-| `Scriptura-Setup-<version>.exe`, `Scriptura-<version>.apk` | the same files with the version, for an exact install |
-| `SHA256SUMS.txt` | checksums of the four files |
+| `Scriptura-Setup.exe`, `Scriptura.apk` | the same names in every release (the "latest" links); the version is shown in the app |
+| `SHA256SUMS.txt` | checksums of the two files |
 
 ## Signing
 

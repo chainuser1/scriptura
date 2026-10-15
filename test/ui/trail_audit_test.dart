@@ -148,7 +148,7 @@ void main() {
         await tester.tap(find.byTooltip('Close'));
         await tester.pumpAndSettle();
 
-        await tester.tap(find.text('Tune'));
+        await tester.tap(find.byIcon(Icons.tune));
         await tester.pumpAndSettle();
         await _snap(tester, 'trail-tune-$tag');
         expect(tester.takeException(), isNull);

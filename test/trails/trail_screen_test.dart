@@ -45,6 +45,19 @@ Future<(AppController, FakeSearchService)> pumpTrail(WidgetTester tester,
 }
 
 void main() {
+  testWidgets('on a phone Tune is an icon, so the trail name has room', (tester) async {
+    await pumpTrail(tester, size: const Size(390, 844));
+    expect(find.byTooltip('Tune'), findsOneWidget);
+    expect(find.text('Tune'), findsNothing);
+  });
+
+  testWidgets('the actions stay on screen when the verse is long (the card scrolls, not the buttons)', (tester) async {
+    await pumpTrail(tester, size: const Size(390, 330));
+    for (final label in ['Like', 'Skip', 'Less like this']) {
+      expect(tester.getRect(find.text(label)).bottom, lessThanOrEqualTo(330), reason: label);
+    }
+  });
+
   testWidgets('on a phone the earlier-verses row stays above the system navigation bar', (tester) async {
     await pumpTrail(tester, size: const Size(390, 844), inset: const EdgeInsets.only(top: 24, bottom: 48));
     await tester.tap(find.text('Like'));
@@ -152,7 +165,7 @@ void main() {
 
   testWidgets('Tune: choosing a mood is applied at once and shown as a chip', (tester) async {
     final (app, svc) = await pumpTrail(tester);
-    await tester.tap(find.text('Tune'));
+    await tester.tap(find.byIcon(Icons.tune));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilterChip, 'Comfort'));
     await tester.pumpAndSettle();

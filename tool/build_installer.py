@@ -1,4 +1,4 @@
-"""Build the Windows installer (Scriptura-Setup-<version>.exe).
+"""Build the Windows installer (Scriptura-Setup.exe; the version is inside the app, not in the file name).
 
 Steps: cargo build --release (engine DLL), flutter build windows --release, then Inno Setup (installer/scriptures.iss).
 Output goes to generated-artifacts/dist/. The installer is unsigned: Windows SmartScreen will warn until it is signed
@@ -39,7 +39,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     run([ISCC, f'/DSourceDir={RELEASE}', f'/DAppVersion={version}', f'/DSourceRoot={ROOT}', f'/DOutputDir={out}',
          f'/DIconFile={ROOT / "windows" / "runner" / "resources" / "app_icon.ico"}', ROOT / 'installer' / 'scriptures.iss'])
-    exe = out / f'Scriptura-Setup-{version}.exe'
+    exe = out / 'Scriptura-Setup.exe'
     print(f'{exe}  {exe.stat().st_size / 1e6:.1f} MB')
     return 0
 

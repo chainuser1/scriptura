@@ -3,11 +3,11 @@
 GitHub serves  https://github.com/<owner>/<repo>/releases/latest/download/<asset>  for the newest release, but only if the
 asset has the same file name in every release. So each release carries:
 
-  Scriptura-Setup.exe            Windows installer (stable name: the "latest" link)
-  Scriptura.apk                  Android package   (stable name)
-  Scriptura-Setup-<version>.exe  the same files with the version in the name, for people who want an exact one
-  Scriptura-<version>.apk
-  SHA256SUMS.txt                  checksums of the four files
+  Scriptura-Setup.exe            Windows installer
+  Scriptura.apk                  Android package
+  SHA256SUMS.txt                 checksums of the two files
+
+File names never carry the version (owner's rule): the version is shown inside the app and in the release title.
 
 and the app's update check reads  https://api.github.com/repos/<owner>/<repo>/releases/latest  (kReleasesApi).
 
@@ -45,7 +45,7 @@ def main():
     code = re.search(r"kAppVersion\s*=\s*'([^']+)'", (ROOT / 'lib' / 'app' / 'version.dart').read_text('utf-8')).group(1)
     if version != code:
         sys.exit(f'pubspec.yaml says {version} but lib/app/version.dart says {code}; make them equal and rebuild')
-    exe, apk = DIST / f'Scriptura-Setup-{version}.exe', DIST / 'app-release.apk'
+    exe, apk = DIST / 'Scriptura-Setup.exe', DIST / 'app-release.apk'
     for f in (exe, apk):
         if not f.exists():
             sys.exit(f'missing {f}: build it first')
@@ -55,8 +55,8 @@ def main():
         shutil.rmtree(out)
     out.mkdir(parents=True)
     names = {
-        'Scriptura-Setup.exe': exe, f'Scriptura-Setup-{version}.exe': exe,
-        'Scriptura.apk': apk, f'Scriptura-{version}.apk': apk,
+        'Scriptura-Setup.exe': exe,
+        'Scriptura.apk': apk,
     }
     for name, src in names.items():
         shutil.copy2(src, out / name)
