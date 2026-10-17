@@ -63,3 +63,24 @@ search as the yardstick. Trails need their own test.
 
 Grades with reasons: `tool/reranker_stage2_key.json` (references only, no text). Model revision is recorded in
 `local-benchmarks/reranker-stage2/report.json`.
+
+## Cost test (2026-10-17, `tool/reranker_speed.py`, `tool/reranker_gpu.py`)
+
+Same 72 questions and candidates, idle machine (Ryzen 5 5500U, built-in Radeon graphics, 4 threads). 97 passages that
+the variants newly placed in a top five were graded blind with the same rubric (`local-benchmarks/reranker-speed`).
+
+| Variant | Size | Median per search | Fresh direct P@5 (today 29.4%) | Gain, 95% interval | Development direct (today 48.3%) |
+|---|---:|---:|---:|---|---:|
+| PyTorch fp32, 30 | | 16.6 s | 39.4% | +10.0 [+2.8, +17.2] | 45.6% |
+| ONNX fp32, 30 | 2.17 GB | 12.4 s | 39.4% | +10.0 [+2.8, +17.2] | 45.6% |
+| ONNX int8 (CPU), 30 | 543 MB | 8.8 s | 40.0% | +10.6 [+3.3, +17.8] | 46.1% |
+| ONNX int8 (CPU), 15 | 543 MB | 3.4 s | 38.3% | +8.9 [+2.8, +15.0] | 46.7% |
+| ONNX int8 (CPU), 10 | 543 MB | 2.0 s | 37.2% | +7.8 [+2.8, +12.8] | 48.9% |
+| ONNX fp16 (graphics, DirectML), 30 | 1.08 GB | 4.7 s | 39.4% | +10.0 [+2.8, +17.2] | 45.6% |
+| ONNX fp16 (graphics, DirectML), 15 | 1.08 GB | 2.2 s | 37.8% | +8.3 [+2.2, +14.4] | 47.2% |
+| ONNX fp16 (graphics, DirectML), 10 | 1.08 GB | 1.4 s | 36.1% | +6.7 [+1.7, +11.7] | 50.0% |
+
+Compression costs nothing measurable: int8 and fp16 match fp32. Fewer candidates trade a little of the gain for speed
+and stop the development regression (at 10 the reranker only reorders the engine's own top ten). **Gate (Answer focus
+plan, Task 1): passed** — every variant keeps a gain with its interval above zero, and fp16 on this laptop's graphics
+meets 1.5 s at 10 candidates. On this machine the CPU alone needs about 2 s at 10.
