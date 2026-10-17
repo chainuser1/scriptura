@@ -85,10 +85,20 @@ if(EXISTS "${SCRIPTURE_ENGINE_DLL}")
 else()
   message(WARNING "scripture_engine.dll not found; the app will start without search. Run: cargo build --release (engine/)")
 endif()
-# DirectML (copied there by the engine build): lets Answer focus use the graphics chip; without it, the CPU is used.
+# DirectML: the engine imports it directly (Answer focus on the graphics chip), so it must ship beside the engine.
+# The engine build leaves a symbolic link into the ort download cache; install the real file it points to.
 set(DIRECTML_DLL "${CMAKE_CURRENT_SOURCE_DIR}/../engine/target/release/DirectML.dll")
-if(EXISTS "${DIRECTML_DLL}")
-  install(FILES "${DIRECTML_DLL}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}" COMPONENT Runtime)
+if(EXISTS "${SCRIPTURE_ENGINE_DLL}")
+  if(NOT EXISTS "${DIRECTML_DLL}")
+    message(FATAL_ERROR "DirectML.dll is missing next to scripture_engine.dll; rebuild the engine (cargo build --release in engine/)")
+  endif()
+  set(DIRECTML_REAL "${DIRECTML_DLL}")
+  if(IS_SYMLINK "${DIRECTML_DLL}")
+    file(READ_SYMLINK "${DIRECTML_DLL}" DIRECTML_REAL)
+    string(REGEX REPLACE "^[^A-Za-z]*([A-Za-z]:.*)$" "\\1" DIRECTML_REAL "${DIRECTML_REAL}") # drop the NT prefix
+    file(TO_CMAKE_PATH "${DIRECTML_REAL}" DIRECTML_REAL)
+  endif()
+  install(FILES "${DIRECTML_REAL}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}" RENAME "DirectML.dll" COMPONENT Runtime)
 endif()
 
 install(FILES "${FLUTTER_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"

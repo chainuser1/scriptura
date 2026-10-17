@@ -36,6 +36,9 @@ def main():
         sys.exit(f'{RELEASE / "Scriptura.exe"} not found')
     if not (RELEASE / 'scripture_engine.dll').exists():
         sys.exit('scripture_engine.dll is not in the release folder; build the engine first')
+    dml = RELEASE / 'DirectML.dll'  # imported by the engine; a link into the build cache would not exist on another PC
+    if not dml.exists() or dml.is_symlink() or dml.stat().st_size < 1_000_000:
+        sys.exit('DirectML.dll is missing or a link in the release folder; rebuild with flutter build windows --release')
     out = ROOT / 'generated-artifacts' / 'dist'
     out.mkdir(parents=True, exist_ok=True)
     run([ISCC, f'/DSourceDir={RELEASE}', f'/DAppVersion={version}', f'/DSourceRoot={ROOT}', f'/DOutputDir={out}',
