@@ -27,13 +27,13 @@ class SetupProgress extends StatelessWidget {
       case SetupPhase.paused:
         return Row(children: [
           const Expanded(child: Text('Paused. Finished parts are kept.')),
-          FilledButton(onPressed: () => app.ensureData(includeOptional: app.missingData.contains('colbert') && app.lastRunIncludedOptional), child: const Text('Resume')),
+          FilledButton(onPressed: () => app.ensureData(includeOptional: app.missingData.contains('colbert') && app.lastRunIncludedOptional, includeFocus: app.lastRunIncludedFocus), child: const Text('Resume')),
         ]);
       case SetupPhase.failed:
         return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(app.setupError ?? 'Setup did not finish.', style: TextStyle(color: error)),
           const SizedBox(height: 8),
-          FilledButton(onPressed: () => app.ensureData(includeOptional: app.lastRunIncludedOptional), child: const Text('Try again')),
+          FilledButton(onPressed: () => app.ensureData(includeOptional: app.lastRunIncludedOptional, includeFocus: app.lastRunIncludedFocus), child: const Text('Try again')),
         ]);
       case SetupPhase.idle:
         if (app.missingData.isEmpty) return const SizedBox.shrink();

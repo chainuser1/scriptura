@@ -223,7 +223,7 @@ impl Engine {
         for _ in 0..10 {
             enc.encode(&ids).map_err(|e| ("trial_failed", e))?;
         }
-        Ok(json!({"cpu_ms": started.elapsed().as_secs_f64() * 1000.0, "gpu": crate::focus::gpu_available()}))
+        Ok(json!({"mode": "device_trial", "cpu_ms": started.elapsed().as_secs_f64() * 1000.0, "gpu": crate::focus::gpu_available()}))
     }
 
     pub fn info(&self) -> Value {

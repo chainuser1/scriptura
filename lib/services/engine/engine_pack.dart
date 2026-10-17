@@ -36,7 +36,9 @@ enum PackKind {
   colbert('colbert-pack-v1', 'colbert-pack'),
   entities('entities-pack-v1', 'entities-pack'),
   answers('answers-pack-v1', 'answers-pack'),
-  topics('topics-pack-v1', 'topics-pack');
+  topics('topics-pack-v1', 'topics-pack'),
+  focusInt8('answer-focus-int8-v1', 'answer-focus-int8'),
+  focusFp16('answer-focus-fp16-v1', 'answer-focus-fp16');
 
   const PackKind(this.format, this.dirName);
   final String format, dirName;
@@ -149,7 +151,7 @@ class PackStore {
 /// Everything needed to open the engine, resolved from installed packs. Environment overrides are for development
 /// and tests only (they point at already-built directories and skip installation).
 class EnginePaths {
-  EnginePaths({required this.libraryPath, required this.engine, this.colbert, this.phraseDb, this.catalogDb, this.entitiesDb, this.topicsDb});
+  EnginePaths({required this.libraryPath, required this.engine, this.colbert, this.phraseDb, this.catalogDb, this.entitiesDb, this.topicsDb, this.focus, this.focusGpu = false});
   final String libraryPath;
   final InstalledPack engine;
   final InstalledPack? colbert;
@@ -160,6 +162,10 @@ class EnginePaths {
 
   /// Optional topics pack database: adds the topic lane to similar verses.
   final String? topicsDb;
+
+  /// Answer focus pack (model.onnx, tokenizer.json), run on the graphics chip when [focusGpu].
+  final InstalledPack? focus;
+  final bool focusGpu;
 
   /// Engine configuration JSON (see engine/src/engine.rs `Config`).
   Map<String, dynamic> config() {
@@ -172,6 +178,7 @@ class EnginePaths {
       if (colbert != null && colbert!.has('shard-0000.vec.npy')) 'pack_dir': colbert!.dir.path,
       if (phraseDb != null) 'phrase_db': phraseDb,
       if (topicsDb != null) 'topics_db': topicsDb,
+      if (focus != null) ...{'focus_model': focus!.path('model.onnx'), 'focus_tokenizer': focus!.path('tokenizer.json'), 'focus_device': focusGpu ? 'gpu' : 'cpu'},
       // no volume wins only for being itself (engine/src/balance.rs); strength chosen in tool/volume_balance.py
       'volume_balance': 0.75,
       if (catalogDb != null) 'catalog_db': catalogDb,

@@ -13,6 +13,7 @@ import 'data/user/user_store.dart';
 import 'app/hosting.dart';
 import 'app/nav_state.dart';
 import 'services/artifacts/release_store.dart';
+import 'services/engine/answer_focus.dart';
 import 'services/engine/downloader.dart';
 import 'services/engine/engine_bindings.dart';
 import 'services/engine/engine_pack.dart';
@@ -85,6 +86,59 @@ class AppController extends ChangeNotifier {
   PackStore get entityPacks => PackStore(Directory('${_root!.path}/scriptura'), PackKind.entities);
   PackStore get topicPacks => PackStore(Directory('${_root!.path}/scriptura'), PackKind.topics);
   PackStore get answerPacks => PackStore(Directory('${_root!.path}/scriptura'), PackKind.answers);
+  PackStore get focusInt8Packs => PackStore(Directory('${_root!.path}/scriptura'), PackKind.focusInt8);
+  PackStore get focusFp16Packs => PackStore(Directory('${_root!.path}/scriptura'), PackKind.focusFp16);
+
+  /// Answer focus setting (Settings › Advanced): Automatic, On or Off.
+  FocusMode get focusMode => FocusMode.parse(user.pref('answer_focus'));
+
+  /// What the device trial chose (and later measurements adjusted); null until the trial has run.
+  FocusChoice? get focusChoice => FocusChoice.fromJson(user.pref('answer_focus_choice'));
+
+  String? get _focusKind => switch (focusChoice?.variant) {
+        FocusVariant.int8 => 'answer-focus-int8',
+        FocusVariant.fp16 => 'answer-focus-fp16',
+        _ => null,
+      };
+
+  /// The installed pack for the current choice, unless Answer focus is off.
+  InstalledPack? _focusPack() {
+    if (_root == null || focusMode == FocusMode.off) return null;
+    return switch (focusChoice?.variant) {
+      FocusVariant.int8 => focusInt8Packs.active(),
+      FocusVariant.fp16 => focusFp16Packs.active(),
+      _ => null,
+    };
+  }
+
+  bool get focusInstalled => _focusPack() != null;
+
+  /// Offered once everything required is installed, the trial chose a model and the reader has not said "not now".
+  bool get offerAnswerFocus =>
+      _root != null &&
+      _focusKind != null &&
+      !focusInstalled &&
+      focusMode != FocusMode.off &&
+      user.pref('focus_declined') != '1' &&
+      missingData.difference({'colbert'}).isEmpty &&
+      _state == EngineState.ready;
+
+  void declineAnswerFocus() {
+    user.setPref('focus_declined', '1');
+    notifyListeners();
+  }
+
+  /// Times this device with the installed search model and decides Answer focus (see answer_focus.dart). Quiet on failure.
+  Future<void> measureDevice() async {
+    try {
+      final r = await _search.search(SearchRequest.raw('device_trial', const {}));
+      final c = choose(cpuMs: (r.raw['cpu_ms'] as num).toDouble(), gpu: r.raw['gpu'] == true, mode: focusMode);
+      user.setPref('answer_focus_choice', c.toJson());
+      notifyListeners();
+    } on Object {
+      // no choice yet; the trial runs again on the next start
+    }
+  }
 
   AnswersStore? _answers;
 
@@ -209,6 +263,8 @@ class AppController extends ChangeNotifier {
           catalogDb: release.path('catalog.db'),
           entitiesDb: _entityPack()?.path('entities.db'),
           topicsDb: _topicsPack()?.path('topics.db'),
+          focus: _focusPack(),
+          focusGpu: focusChoice?.variant == FocusVariant.fp16,
         );
         service = await NativeSearchService.open(libraryPath: lib, config: paths.config());
       }
@@ -220,6 +276,7 @@ class AppController extends ChangeNotifier {
     if (service != null) {
       _search = service;
       _state = EngineState.ready;
+      if (focusChoice == null && focusMode != FocusMode.off && _root != null) await measureDevice();
     } else {
       _search = UnavailableSearchService(problem ?? 'Search is unavailable');
       _state = EngineState.unavailable;
@@ -324,7 +381,7 @@ class AppController extends ChangeNotifier {
       final grand = packs.fold<int>(0, (a, p) => a + p.bytes);
       var done = 0;
       // content first (reading needs it), then search data, then the optional index
-      const order = {'release': 0, 'engine': 1, 'entities': 2, 'answers': 3, 'topics': 4, 'colbert': 5};
+      const order = {'release': 0, 'engine': 1, 'entities': 2, 'answers': 3, 'topics': 4, 'colbert': 5, 'answer-focus-int8': 6, 'answer-focus-fp16': 6};
       final sorted = [...packs]..sort((a, b) => (order[a.kind] ?? 9).compareTo(order[b.kind] ?? 9));
       for (final p in sorted) {
         onPack?.call(p);
@@ -363,6 +420,12 @@ class AppController extends ChangeNotifier {
           case 'colbert':
             await colbertPacks.adoptVerified(dir);
             await _startEngine();
+          case 'answer-focus-int8':
+            await focusInt8Packs.adoptVerified(dir);
+            await _startEngine();
+          case 'answer-focus-fp16':
+            await focusFp16Packs.adoptVerified(dir);
+            await _startEngine();
           default:
             throw PackException('unknown_kind', 'This host offers a pack this version cannot install (${p.kind}).');
         }
@@ -385,6 +448,7 @@ class AppController extends ChangeNotifier {
   SetupPhase _setup = SetupPhase.idle;
   bool _setupCancel = false;
   bool lastRunIncludedOptional = false;
+  bool lastRunIncludedFocus = false;
   double? setupFraction;
   String setupLabel = '';
   String? setupError;
@@ -421,11 +485,16 @@ class AppController extends ChangeNotifier {
   ///
   /// The optional word-level index (about 3 GB) is only fetched with [includeOptional], which the user asks for: the
   /// app never starts a multi-gigabyte download they did not choose.
-  Future<void> ensureData({String? address, bool includeOptional = false}) async {
+  /// Answer focus is fetched only with [includeFocus] (the reader asked), and only the variant this device chose.
+  Future<void> ensureData({String? address, bool includeOptional = false, bool includeFocus = false}) async {
     final base = address ?? kDefaultDataAddress;
     if (setupBusy || base.isEmpty) return;
     lastRunIncludedOptional = includeOptional;
-    final missing = includeOptional ? missingData : (missingData..remove('colbert'));
+    lastRunIncludedFocus = includeFocus;
+    final missing = {
+      ...(includeOptional ? missingData : (missingData..remove('colbert'))),
+      if (includeFocus && _focusKind != null && !focusInstalled) _focusKind!,
+    };
     // The topics pack is offered only when the host lists it; with everything else installed, look at most once a day.
     final topicsDue = _root != null && topicPacks.active() == null && user.pref('topics_checked_on') != _today();
     if (missing.isEmpty && !topicsDue) return;
@@ -456,6 +525,7 @@ class AppController extends ChangeNotifier {
             'entities' => 'names of people and places',
             'answers' => 'study questions',
             'topics' => 'topic index',
+            'answer-focus-int8' || 'answer-focus-fp16' => 'Answer focus',
             _ => 'word-level index',
           };
       var current = wanted.first;
