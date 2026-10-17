@@ -53,8 +53,36 @@ class _AppShellState extends State<AppShell> {
     }
   }
 
+  // Ctrl+K is heard app-wide, not only while focus is inside the shell (a click on plain text drops focus).
+  bool _barOpen = false;
+
+  @override
+  void initState() {
+    super.initState();
+    HardwareKeyboard.instance.addHandler(_onKey);
+  }
+
+  @override
+  void dispose() {
+    HardwareKeyboard.instance.removeHandler(_onKey);
+    super.dispose();
+  }
+
+  bool _onKey(KeyEvent e) {
+    if (e is! KeyDownEvent || e.logicalKey != LogicalKeyboardKey.keyK || !HardwareKeyboard.instance.isControlPressed) return false;
+    if (!_barOpen) _commandBar();
+    return true;
+  }
+
   Future<void> _commandBar() async {
-    final text = await showDialog<String>(context: context, builder: (_) => const _CommandBar());
+    if (_barOpen) return;
+    _barOpen = true;
+    final String? text;
+    try {
+      text = await showDialog<String>(context: context, builder: (_) => const _CommandBar());
+    } finally {
+      _barOpen = false;
+    }
     if (text == null || text.trim().isEmpty || !mounted) return;
     await runCommand(app, text.trim());
   }
@@ -75,7 +103,6 @@ class _AppShellState extends State<AppShell> {
         // The return bar sits above the bottom navigation on narrow and at the foot of the content on wide.
         final content = Column(children: [Expanded(child: body), ReturnBar(app: app)]);
         final shortcuts = <ShortcutActivator, VoidCallback>{
-          const SingleActivator(LogicalKeyboardKey.keyK, control: true): _commandBar,
           for (var i = 0; i < _destinations.length; i++)
             SingleActivator(LogicalKeyboardKey(LogicalKeyboardKey.digit1.keyId + i), control: true): () => app.nav.go(_destinations[i].$1),
         };

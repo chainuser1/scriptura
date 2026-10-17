@@ -163,6 +163,23 @@ void main() {
       expect(svc.requests.single.op, 'reference');
     });
 
+    test('a reference lookup sends the text where the engine reads it', () {
+      expect(SearchRequest.reference('Alma 31:1').toJson(1)['text'], 'Alma 31:1'); // engine.rs "reference" reads `text`
+    });
+
+    testWidgets('Ctrl+K opens the command bar from anywhere, even with nothing focused, and only once', (tester) async {
+      await boot(tester, search: FakeSearchService((r, i) async => semantic([1])));
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      for (var i = 0; i < 2; i++) {
+        await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+        await tester.sendKeyEvent(LogicalKeyboardKey.keyK);
+        await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+        await tester.pumpAndSettle();
+      }
+      expect(find.text('Enter to go · Esc to close'), findsOneWidget);
+    });
+
     testWidgets('anything else becomes a question', (tester) async {
       final svc = FakeSearchService((r, i) async {
         if (r.op == 'reference') return SearchResponse(mode: 'reference', reference: ReferenceResult(status: 'not_a_reference'));

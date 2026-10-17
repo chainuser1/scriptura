@@ -67,6 +67,7 @@ class SearchRequest {
           'op': op,
           'request_id': requestId,
           if (query != null) 'query': query,
+          if (op == 'reference' && query != null) 'text': query, // the engine's reference lookup reads `text`
           if (phrase != null) 'phrase': phrase,
           if (verseId != null) 'verse_id': verseId,
           'language': language,
