@@ -1,0 +1,2489 @@
+{
+ "provenance": "Graded blind by the engineering assistant (Claude), 2026-10-17, without method, score or rank. Development-question grades extend tool/search_anchors_v2.json (ChatGPT) and only cover passages it never graded. Evaluation data only; never a runtime list.",
+ "rubric": "2 direct, 1 related or context-dependent, 0 not an answer",
+ "questions": {
+  "f-couple-conflict": [
+   {
+    "reference": "Proverbs 15:1",
+    "grade": 2,
+    "reason": "A soft answer turns away wrath"
+   },
+   {
+    "reference": "Doctrine and Covenants 31:9",
+    "grade": 2,
+    "reason": "Revile not; govern your house in meekness; be patient"
+   },
+   {
+    "reference": "Doctrine and Covenants 25:14",
+    "grade": 1,
+    "reason": "Meekness and delight in one's spouse; not about arguments"
+   },
+   {
+    "reference": "Doctrine and Covenants 6:19",
+    "grade": 1,
+    "reason": "Admonish and receive admonition; be patient"
+   },
+   {
+    "reference": "Mosiah 4:13",
+    "grade": 1,
+    "reason": "Live peaceably; general"
+   },
+   {
+    "reference": "Ephesians 4:2",
+    "grade": 2,
+    "reason": "Lowliness, meekness, longsuffering, forbearing one another in love"
+   },
+   {
+    "reference": "Romans 12:16",
+    "grade": 1,
+    "reason": "Be of the same mind; general unity"
+   },
+   {
+    "reference": "Proverbs 25:15",
+    "grade": 1,
+    "reason": "Long forbearing persuades; general"
+   },
+   {
+    "reference": "Colossians 3:19",
+    "grade": 2,
+    "reason": "Husbands, love your wives, be not bitter against them"
+   },
+   {
+    "reference": "Alma 34:40",
+    "grade": 0,
+    "reason": "Patience under persecution"
+   },
+   {
+    "reference": "2 Timothy 2:24",
+    "grade": 2,
+    "reason": "Must not strive; be gentle and patient"
+   }
+  ],
+  "f-pray-no-words": [
+   {
+    "reference": "John 12:27",
+    "grade": 2,
+    "reason": "Soul troubled, what shall I say? Father, save me"
+   },
+   {
+    "reference": "Psalms 25:16",
+    "grade": 1,
+    "reason": "A short plea from desolation; example"
+   },
+   {
+    "reference": "Psalms 55:2",
+    "grade": 1,
+    "reason": "Mourning complaint as prayer"
+   },
+   {
+    "reference": "2 Nephi 32:8",
+    "grade": 1,
+    "reason": "The Spirit teaches a man to pray"
+   },
+   {
+    "reference": "Psalms 42:5",
+    "grade": 1,
+    "reason": "Speaks to his own downcast soul"
+   },
+   {
+    "reference": "Romans 8:26",
+    "grade": 2,
+    "reason": "We know not what to pray for; the Spirit intercedes with groanings"
+   },
+   {
+    "reference": "Psalms 39:4",
+    "grade": 0,
+    "reason": "Asks to know his end"
+   },
+   {
+    "reference": "Psalms 119:82",
+    "grade": 1,
+    "reason": "When wilt thou comfort me; no counsel"
+   },
+   {
+    "reference": "Alma 31:31",
+    "grade": 1,
+    "reason": "A sorrowful prayer for comfort; example"
+   },
+   {
+    "reference": "Psalms 69:3",
+    "grade": 1,
+    "reason": "Weary of crying; no counsel"
+   }
+  ],
+  "f-jealous": [
+   {
+    "reference": "Deuteronomy 5:9",
+    "grade": 0,
+    "reason": "Jealous God: different sense"
+   },
+   {
+    "reference": "Proverbs 24:19",
+    "grade": 1,
+    "reason": "Be not envious of the wicked; partial"
+   },
+   {
+    "reference": "Exodus 20:5",
+    "grade": 0,
+    "reason": "Jealous God: different sense"
+   },
+   {
+    "reference": "Exodus 34:14",
+    "grade": 0,
+    "reason": "Jealous God: different sense"
+   },
+   {
+    "reference": "Psalms 37:1",
+    "grade": 1,
+    "reason": "Be not envious of evildoers; partial"
+   },
+   {
+    "reference": "Proverbs 23:17",
+    "grade": 1,
+    "reason": "Let not thine heart envy sinners; partial"
+   },
+   {
+    "reference": "James 3:14",
+    "grade": 1,
+    "reason": "Bitter envying is not from above"
+   },
+   {
+    "reference": "Psalms 37:8",
+    "grade": 1,
+    "reason": "Fret not; partial"
+   },
+   {
+    "reference": "Proverbs 24:1",
+    "grade": 1,
+    "reason": "Be not envious of evil men; partial"
+   },
+   {
+    "reference": "Galatians 5:26",
+    "grade": 2,
+    "reason": "Let us not be envying one another"
+   },
+   {
+    "reference": "Deuteronomy 32:21",
+    "grade": 0,
+    "reason": "God moved to jealousy: different sense"
+   }
+  ],
+  "challenge-lament": [
+   {
+    "reference": "3 Nephi 1:11",
+    "grade": 1,
+    "reason": "Sorrowful prophet crying to God; no question of why"
+   },
+   {
+    "reference": "Enos 1:15",
+    "grade": 0,
+    "reason": "Crying for the records; not sorrow or asking why"
+   },
+   {
+    "reference": "Alma 31:30",
+    "grade": 2,
+    "reason": "Lament: how long wilt thou suffer, my soul is pained"
+   }
+  ],
+  "challenge-secret-service": [
+   {
+    "reference": "Doctrine and Covenants 12:8",
+    "grade": 1,
+    "reason": "Humble and loving service; not about praise"
+   },
+   {
+    "reference": "Mosiah 4:26",
+    "grade": 1,
+    "reason": "Giving to the poor; not about avoiding praise"
+   },
+   {
+    "reference": "Philippians 2:14",
+    "grade": 0,
+    "reason": "Without murmuring; not about praise"
+   }
+  ],
+  "f-es-temptation": [
+   {
+    "reference": "Alma 34:39",
+    "grade": 2,
+    "reason": "Pray continually not to be led away by temptation"
+   },
+   {
+    "reference": "3 Nephi 18:18",
+    "grade": 2,
+    "reason": "Watch and pray always lest ye enter into temptation"
+   },
+   {
+    "reference": "Ephesians 4:22",
+    "grade": 1,
+    "reason": "Put off the old man; general"
+   },
+   {
+    "reference": "Proverbs 1:10",
+    "grade": 2,
+    "reason": "If sinners entice thee, consent not"
+   },
+   {
+    "reference": "Mormon 9:28",
+    "grade": 2,
+    "reason": "Ask with unshaken firmness to yield to no temptation"
+   },
+   {
+    "reference": "Doctrine and Covenants 66:10",
+    "grade": 1,
+    "reason": "Forsake iniquity; a specific temptation"
+   },
+   {
+    "reference": "Alma 13:28",
+    "grade": 2,
+    "reason": "Watch and pray continually that ye be not tempted above what ye can bear"
+   },
+   {
+    "reference": "James 4:7",
+    "grade": 2,
+    "reason": "Submit to God, resist the devil and he will flee"
+   },
+   {
+    "reference": "Doctrine and Covenants 9:13",
+    "grade": 1,
+    "reason": "Yield to no temptation; command without how"
+   },
+   {
+    "reference": "Doctrine and Covenants 31:12",
+    "grade": 2,
+    "reason": "Pray always lest you enter into temptation"
+   }
+  ],
+  "f-insult": [
+   {
+    "reference": "Lamentations 3:30",
+    "grade": 1,
+    "reason": "Gives his cheek to the smiter, bears reproach"
+   },
+   {
+    "reference": "1 Samuel 26:19",
+    "grade": 0,
+    "reason": "David's plea to Saul"
+   },
+   {
+    "reference": "Psalms 71:13",
+    "grade": 1,
+    "reason": "Prayer that adversaries be put to shame"
+   },
+   {
+    "reference": "Doctrine and Covenants 95:2",
+    "grade": 0,
+    "reason": "Chastening by the Lord"
+   },
+   {
+    "reference": "Proverbs 27:2",
+    "grade": 0,
+    "reason": "Self-praise"
+   },
+   {
+    "reference": "Psalms 140:9",
+    "grade": 0,
+    "reason": "Curse on enemies"
+   },
+   {
+    "reference": "Job 20:3",
+    "grade": 0,
+    "reason": "Zophar answering reproach"
+   },
+   {
+    "reference": "Psalms 69:9",
+    "grade": 0,
+    "reason": "Bearing reproach for God's sake; no counsel"
+   },
+   {
+    "reference": "Luke 11:45",
+    "grade": 0,
+    "reason": "Lawyer feels insulted by Jesus"
+   }
+  ],
+  "sabbath": [
+   {
+    "reference": "Exodus 31:15",
+    "grade": 1,
+    "reason": "The sabbath is holy; penalty"
+   },
+   {
+    "reference": "Exodus 31:13",
+    "grade": 2,
+    "reason": "The sabbath is a sign that the Lord sanctifies you"
+   },
+   {
+    "reference": "Exodus 31:16",
+    "grade": 1,
+    "reason": "Keep the sabbath as a perpetual covenant; reason follows"
+   }
+  ],
+  "challenge-work-rest": [
+   {
+    "reference": "Proverbs 20:18",
+    "grade": 0,
+    "reason": "Counsel and war"
+   },
+   {
+    "reference": "Doctrine and Covenants 90:24",
+    "grade": 0,
+    "reason": "Search diligently; not work and rest"
+   },
+   {
+    "reference": "Titus 3:14",
+    "grade": 0,
+    "reason": "Maintain good works; nothing on rest"
+   },
+   {
+    "reference": "Proverbs 11:27",
+    "grade": 0,
+    "reason": "Seeking good; not work and rest"
+   }
+  ],
+  "f-meek": [
+   {
+    "reference": "Doctrine and Covenants 52:16",
+    "grade": 1,
+    "reason": "Meek language edifies"
+   },
+   {
+    "reference": "3 Nephi 12:5",
+    "grade": 1,
+    "reason": "Blessed are the meek; no meaning"
+   },
+   {
+    "reference": "Psalms 147:6",
+    "grade": 1,
+    "reason": "The Lord lifts up the meek; no meaning"
+   },
+   {
+    "reference": "Doctrine and Covenants 25:14",
+    "grade": 1,
+    "reason": "Spirit of meekness, beware of pride"
+   },
+   {
+    "reference": "Moroni 7:39",
+    "grade": 1,
+    "reason": "Faith because of meekness"
+   },
+   {
+    "reference": "2 Nephi 9:30",
+    "grade": 0,
+    "reason": "Rich persecute the meek"
+   },
+   {
+    "reference": "Doctrine and Covenants 19:41",
+    "grade": 1,
+    "reason": "Humble and meek, conduct yourself wisely"
+   },
+   {
+    "reference": "Matthew 5:5",
+    "grade": 1,
+    "reason": "Blessed are the meek; no meaning"
+   },
+   {
+    "reference": "Moroni 7:44",
+    "grade": 1,
+    "reason": "Meek and lowly of heart; linked to charity"
+   }
+  ],
+  "f-debt": [
+   {
+    "reference": "2 Nephi 9:51",
+    "grade": 1,
+    "reason": "Do not spend money on what has no worth"
+   },
+   {
+    "reference": "Luke 6:35",
+    "grade": 1,
+    "reason": "Lend hoping for nothing; lender's side, not debt counsel"
+   },
+   {
+    "reference": "Doctrine and Covenants 111:5",
+    "grade": 2,
+    "reason": "Concern not yourselves about your debts; power to pay them"
+   },
+   {
+    "reference": "2 Nephi 28:30",
+    "grade": 0,
+    "reason": "Line upon line"
+   },
+   {
+    "reference": "Ezekiel 18:30",
+    "grade": 0,
+    "reason": "Judgment and repentance"
+   },
+   {
+    "reference": "Jacob 4:10",
+    "grade": 0,
+    "reason": "Take counsel from the Lord"
+   },
+   {
+    "reference": "Malachi 2:16",
+    "grade": 0,
+    "reason": "Divorce"
+   },
+   {
+    "reference": "Deuteronomy 1:17",
+    "grade": 0,
+    "reason": "Judging fairly"
+   },
+   {
+    "reference": "Exodus 18:19",
+    "grade": 0,
+    "reason": "Jethro's counsel on judging"
+   },
+   {
+    "reference": "Moses 5:23",
+    "grade": 0,
+    "reason": "Cain"
+   }
+  ],
+  "f-premise-poor": [
+   {
+    "reference": "Psalms 69:33",
+    "grade": 2,
+    "reason": "The Lord hears the poor and despises not"
+   },
+   {
+    "reference": "Job 34:28",
+    "grade": 2,
+    "reason": "He hears the cry of the poor"
+   },
+   {
+    "reference": "Psalms 72:13",
+    "grade": 1,
+    "reason": "Spares the poor and needy"
+   },
+   {
+    "reference": "2 Nephi 9:30",
+    "grade": 1,
+    "reason": "The rich despise the poor; woe to them"
+   },
+   {
+    "reference": "Psalms 72:12",
+    "grade": 1,
+    "reason": "The king delivers the needy"
+   },
+   {
+    "reference": "Job 36:6",
+    "grade": 2,
+    "reason": "God despises not any; gives right to the poor"
+   },
+   {
+    "reference": "Psalms 53:2",
+    "grade": 0,
+    "reason": "God looks down for the wise: different sense"
+   },
+   {
+    "reference": "James 2:5",
+    "grade": 2,
+    "reason": "God has chosen the poor rich in faith"
+   },
+   {
+    "reference": "Psalms 68:5",
+    "grade": 1,
+    "reason": "Father of the fatherless; related"
+   },
+   {
+    "reference": "Job 34:19",
+    "grade": 2,
+    "reason": "God regards not the rich more than the poor"
+   },
+   {
+    "reference": "Psalms 72:2",
+    "grade": 1,
+    "reason": "The king judges the poor rightly"
+   }
+  ],
+  "challenge-enemies": [
+   {
+    "reference": "Luke 11:23",
+    "grade": 0,
+    "reason": "Not about treating opponents"
+   },
+   {
+    "reference": "Leviticus 26:21",
+    "grade": 0,
+    "reason": "Plagues on the disobedient"
+   },
+   {
+    "reference": "Psalms 71:13",
+    "grade": 1,
+    "reason": "Prayer for hostile adversaries to be confounded"
+   },
+   {
+    "reference": "3 Nephi 12:44",
+    "grade": 2,
+    "reason": "Love your enemies, do good to them that hate you"
+   }
+  ],
+  "peace": [
+   {
+    "reference": "Nahum 1:7",
+    "grade": 2,
+    "reason": "The Lord is a strong hold in the day of trouble"
+   }
+  ],
+  "f-ordinary-work": [
+   {
+    "reference": "Proverbs 16:3",
+    "grade": 1,
+    "reason": "Commit thy works unto the Lord"
+   },
+   {
+    "reference": "Proverbs 8:34",
+    "grade": 0,
+    "reason": "Watching at wisdom's gates"
+   },
+   {
+    "reference": "2 Timothy 2:15",
+    "grade": 0,
+    "reason": "Workman: different sense"
+   },
+   {
+    "reference": "Psalms 119:27",
+    "grade": 0,
+    "reason": "Understand precepts"
+   },
+   {
+    "reference": "Ecclesiastes 2:24",
+    "grade": 2,
+    "reason": "Enjoy good in labour; it is from the hand of God"
+   },
+   {
+    "reference": "1 Chronicles 16:11",
+    "grade": 0,
+    "reason": "Seek the Lord"
+   },
+   {
+    "reference": "Ecclesiastes 7:14",
+    "grade": 0,
+    "reason": "Prosperity and adversity"
+   },
+   {
+    "reference": "John 9:4",
+    "grade": 1,
+    "reason": "Work the works of him that sent me"
+   },
+   {
+    "reference": "Ecclesiastes 3:22",
+    "grade": 2,
+    "reason": "Rejoice in his own works; that is his portion"
+   },
+   {
+    "reference": "Ecclesiastes 7:13",
+    "grade": 0,
+    "reason": "Consider God's work: different sense"
+   },
+   {
+    "reference": "Proverbs 3:4",
+    "grade": 0,
+    "reason": "Favour with God and man"
+   }
+  ],
+  "f-es-lied": [
+   {
+    "reference": "Exodus 20:16",
+    "grade": 1,
+    "reason": "Do not bear false witness; prohibition, not what to do after"
+   },
+   {
+    "reference": "Job 31:5",
+    "grade": 0,
+    "reason": "Job's oath of innocence"
+   },
+   {
+    "reference": "Job 31:28",
+    "grade": 0,
+    "reason": "Hidden idolatry"
+   },
+   {
+    "reference": "Leviticus 6:5",
+    "grade": 2,
+    "reason": "Restore in full and add a fifth"
+   },
+   {
+    "reference": "Leviticus 6:2",
+    "grade": 1,
+    "reason": "Case of a person who lied; continues into restitution"
+   },
+   {
+    "reference": "Alma 30:47",
+    "grade": 0,
+    "reason": "Korihor warned"
+   },
+   {
+    "reference": "Deuteronomy 19:18",
+    "grade": 0,
+    "reason": "Judging a false witness"
+   },
+   {
+    "reference": "Psalms 50:19",
+    "grade": 0,
+    "reason": "Accusation of deceit"
+   },
+   {
+    "reference": "Leviticus 6:3",
+    "grade": 1,
+    "reason": "Case continues; restitution follows"
+   },
+   {
+    "reference": "Deuteronomy 19:19",
+    "grade": 0,
+    "reason": "Punishment of a false witness"
+   },
+   {
+    "reference": "Ephesians 4:25",
+    "grade": 2,
+    "reason": "Put away lying; speak truth with your neighbour"
+   }
+  ],
+  "f-leaders-serve": [
+   {
+    "reference": "Psalms 2:11",
+    "grade": 0,
+    "reason": "Kings serve the Lord with fear"
+   },
+   {
+    "reference": "Luke 22:26",
+    "grade": 2,
+    "reason": "He that is chief, as he that doth serve"
+   },
+   {
+    "reference": "Mosiah 2:18",
+    "grade": 2,
+    "reason": "If the king labors to serve you"
+   },
+   {
+    "reference": "1 Kings 3:9",
+    "grade": 1,
+    "reason": "Asks for an understanding heart to judge"
+   },
+   {
+    "reference": "Mosiah 4:15",
+    "grade": 0,
+    "reason": "Teaching children"
+   },
+   {
+    "reference": "1 Samuel 12:20",
+    "grade": 0,
+    "reason": "Samuel's counsel to the people"
+   },
+   {
+    "reference": "Exodus 18:22",
+    "grade": 1,
+    "reason": "Delegating judgment; partial"
+   },
+   {
+    "reference": "1 Timothy 6:2",
+    "grade": 0,
+    "reason": "Servants and masters"
+   },
+   {
+    "reference": "Hebrews 13:17",
+    "grade": 1,
+    "reason": "Followers obey leaders who watch for their souls; mostly the other role"
+   },
+   {
+    "reference": "Mosiah 2:11",
+    "grade": 2,
+    "reason": "The king serves the people with all his might"
+   },
+   {
+    "reference": "1 Kings 12:7",
+    "grade": 2,
+    "reason": "Be a servant unto this people and serve them"
+   },
+   {
+    "reference": "Mosiah 2:17",
+    "grade": 1,
+    "reason": "Service to others is service to God; general"
+   }
+  ],
+  "f-premise-works": [
+   {
+    "reference": "Doctrine and Covenants 6:13",
+    "grade": 1,
+    "reason": "Do good and hold out faithful to be saved"
+   },
+   {
+    "reference": "James 2:17",
+    "grade": 2,
+    "reason": "Faith without works is dead"
+   },
+   {
+    "reference": "James 2:20",
+    "grade": 2,
+    "reason": "Faith without works is dead"
+   },
+   {
+    "reference": "James 2:14",
+    "grade": 2,
+    "reason": "Can faith without works save him?"
+   },
+   {
+    "reference": "Romans 3:28",
+    "grade": 1,
+    "reason": "Justified by faith without the deeds of the law; one side"
+   },
+   {
+    "reference": "John 14:12",
+    "grade": 0,
+    "reason": "Works meaning miracles"
+   },
+   {
+    "reference": "2 Nephi 31:19",
+    "grade": 2,
+    "reason": "Is all done? Nay; press forward"
+   },
+   {
+    "reference": "Ephesians 2:8",
+    "grade": 1,
+    "reason": "Saved by grace through faith; works follow in the next verse"
+   },
+   {
+    "reference": "James 2:24",
+    "grade": 2,
+    "reason": "By works a man is justified, and not by faith only"
+   }
+  ],
+  "challenge-listening": [
+   {
+    "reference": "Ecclesiastes 5:1",
+    "grade": 2,
+    "reason": "Be more ready to hear; next verse: be not rash with the mouth"
+   },
+   {
+    "reference": "Isaiah 32:9",
+    "grade": 0,
+    "reason": "Call to careless women"
+   }
+  ],
+  "f-animals": [
+   {
+    "reference": "Mormon 9:24",
+    "grade": 0,
+    "reason": "Signs following believers"
+   },
+   {
+    "reference": "Exodus 23:25",
+    "grade": 0,
+    "reason": "Blessing on bread and water"
+   },
+   {
+    "reference": "Isaiah 43:20",
+    "grade": 0,
+    "reason": "Beasts honour God; not treatment"
+   },
+   {
+    "reference": "2 Timothy 3:16",
+    "grade": 0,
+    "reason": "All scripture is inspired"
+   },
+   {
+    "reference": "2 Nephi 25:20",
+    "grade": 0,
+    "reason": "Name of Christ"
+   },
+   {
+    "reference": "Deuteronomy 7:22",
+    "grade": 0,
+    "reason": "Beasts multiplying"
+   },
+   {
+    "reference": "Ezekiel 34:25",
+    "grade": 0,
+    "reason": "Evil beasts removed"
+   },
+   {
+    "reference": "Ezekiel 36:11",
+    "grade": 0,
+    "reason": "Multiply man and beast"
+   },
+   {
+    "reference": "Genesis 7:2",
+    "grade": 1,
+    "reason": "Animals preserved in the ark"
+   },
+   {
+    "reference": "Exodus 12:46",
+    "grade": 0,
+    "reason": "Passover rule"
+   },
+   {
+    "reference": "Ezekiel 34:11",
+    "grade": 0,
+    "reason": "Sheep as a metaphor for people"
+   },
+   {
+    "reference": "Matthew 28:20",
+    "grade": 0,
+    "reason": "Great commission"
+   }
+  ],
+  "f-premise-suffering": [
+   {
+    "reference": "Alma 7:13",
+    "grade": 0,
+    "reason": "Christ's atonement"
+   },
+   {
+    "reference": "1 Peter 3:18",
+    "grade": 1,
+    "reason": "The just suffered for the unjust"
+   },
+   {
+    "reference": "Mormon 2:13",
+    "grade": 0,
+    "reason": "Sorrowing of the damned"
+   },
+   {
+    "reference": "Isaiah 53:5",
+    "grade": 1,
+    "reason": "The innocent servant suffers for others"
+   },
+   {
+    "reference": "Doctrine and Covenants 19:11",
+    "grade": 0,
+    "reason": "Eternal punishment defined"
+   },
+   {
+    "reference": "Mosiah 17:15",
+    "grade": 1,
+    "reason": "Believers will suffer for their belief"
+   },
+   {
+    "reference": "Doctrine and Covenants 138:7",
+    "grade": 1,
+    "reason": "Quotes the just suffering for the unjust"
+   },
+   {
+    "reference": "1 Peter 3:17",
+    "grade": 2,
+    "reason": "Better to suffer for well doing than for evil doing"
+   },
+   {
+    "reference": "Psalms 118:18",
+    "grade": 1,
+    "reason": "Chastened but not given over to death"
+   },
+   {
+    "reference": "Romans 6:10",
+    "grade": 0,
+    "reason": "Christ died unto sin"
+   },
+   {
+    "reference": "Doctrine and Covenants 19:18",
+    "grade": 0,
+    "reason": "Christ's suffering"
+   }
+  ],
+  "f-want-rich": [
+   {
+    "reference": "Proverbs 22:16",
+    "grade": 1,
+    "reason": "Oppressing the poor to grow rich; one wrong way"
+   },
+   {
+    "reference": "1 Timothy 6:10",
+    "grade": 2,
+    "reason": "The love of money is the root of all evil"
+   },
+   {
+    "reference": "Proverbs 28:6",
+    "grade": 1,
+    "reason": "Better poor and upright than rich and perverse"
+   },
+   {
+    "reference": "Proverbs 28:20",
+    "grade": 2,
+    "reason": "He that maketh haste to be rich shall not be innocent"
+   },
+   {
+    "reference": "1 Timothy 6:9",
+    "grade": 2,
+    "reason": "They that will be rich fall into temptation and a snare"
+   },
+   {
+    "reference": "Proverbs 21:17",
+    "grade": 0,
+    "reason": "Love of pleasure makes poor"
+   },
+   {
+    "reference": "Alma 39:14",
+    "grade": 2,
+    "reason": "Seek not after riches"
+   },
+   {
+    "reference": "Proverbs 28:22",
+    "grade": 2,
+    "reason": "He that hasteth to be rich hath an evil eye"
+   },
+   {
+    "reference": "Proverbs 23:4",
+    "grade": 2,
+    "reason": "Labour not to be rich"
+   }
+  ],
+  "f-adulteress": [
+   {
+    "reference": "Matthew 19:18",
+    "grade": 0,
+    "reason": "Commandments list"
+   },
+   {
+    "reference": "Mark 1:41",
+    "grade": 0,
+    "reason": "Leper healed"
+   },
+   {
+    "reference": "Matthew 15:28",
+    "grade": 0,
+    "reason": "Canaanite woman"
+   },
+   {
+    "reference": "John 8:10",
+    "grade": 2,
+    "reason": "Jesus asks where are thine accusers"
+   },
+   {
+    "reference": "John 8:4",
+    "grade": 1,
+    "reason": "The accusation itself; Jesus's words follow"
+   },
+   {
+    "reference": "John 8:11",
+    "grade": 2,
+    "reason": "Neither do I condemn thee: go, and sin no more"
+   },
+   {
+    "reference": "Luke 13:12",
+    "grade": 0,
+    "reason": "Woman healed of infirmity"
+   },
+   {
+    "reference": "Mark 10:11",
+    "grade": 0,
+    "reason": "Teaching on divorce"
+   },
+   {
+    "reference": "Hosea 3:1",
+    "grade": 0,
+    "reason": "Hosea and an adulteress; not Jesus"
+   },
+   {
+    "reference": "Matthew 9:22",
+    "grade": 0,
+    "reason": "Woman healed by touch"
+   }
+  ],
+  "f-unforgivable": [
+   {
+    "reference": "Mark 3:29",
+    "grade": 2,
+    "reason": "Blasphemy against the Holy Ghost hath never forgiveness"
+   },
+   {
+    "reference": "Alma 39:6",
+    "grade": 2,
+    "reason": "Denying the Holy Ghost is unpardonable"
+   },
+   {
+    "reference": "Matthew 12:31",
+    "grade": 2,
+    "reason": "Blasphemy against the Holy Ghost shall not be forgiven"
+   },
+   {
+    "reference": "Luke 12:10",
+    "grade": 2,
+    "reason": "Blasphemy against the Holy Ghost shall not be forgiven"
+   },
+   {
+    "reference": "Mark 3:28",
+    "grade": 1,
+    "reason": "All sins forgiven; the exception follows"
+   },
+   {
+    "reference": "Matthew 6:15",
+    "grade": 1,
+    "reason": "Not forgiving others means not being forgiven"
+   },
+   {
+    "reference": "Matthew 12:32",
+    "grade": 2,
+    "reason": "Speaking against the Holy Ghost shall not be forgiven"
+   },
+   {
+    "reference": "Isaiah 1:18",
+    "grade": 1,
+    "reason": "Even scarlet sins made white; the other side"
+   },
+   {
+    "reference": "Mosiah 16:13",
+    "grade": 0,
+    "reason": "Call to repent"
+   }
+  ],
+  "f-no-repent": [
+   {
+    "reference": "Luke 13:5",
+    "grade": 2,
+    "reason": "Except ye repent, ye shall all likewise perish"
+   },
+   {
+    "reference": "Helaman 14:19",
+    "grade": 2,
+    "reason": "Repent lest ye come under condemnation and the second death"
+   },
+   {
+    "reference": "2 Nephi 9:24",
+    "grade": 2,
+    "reason": "If they will not repent, they must be damned"
+   },
+   {
+    "reference": "Helaman 14:18",
+    "grade": 2,
+    "reason": "Whosoever repents not is hewn down; a second death"
+   },
+   {
+    "reference": "Mosiah 4:18",
+    "grade": 2,
+    "reason": "Except he repents he perishes forever"
+   },
+   {
+    "reference": "Moses 6:29",
+    "grade": 2,
+    "reason": "A hell prepared for them if they repent not"
+   },
+   {
+    "reference": "Doctrine and Covenants 19:17",
+    "grade": 2,
+    "reason": "If they would not repent they must suffer even as I"
+   },
+   {
+    "reference": "Doctrine and Covenants 29:44",
+    "grade": 2,
+    "reason": "They cannot be redeemed because they repent not"
+   },
+   {
+    "reference": "Isaiah 1:20",
+    "grade": 2,
+    "reason": "If ye refuse and rebel, ye shall be devoured"
+   },
+   {
+    "reference": "Luke 13:3",
+    "grade": 2,
+    "reason": "Except ye repent, ye shall all likewise perish"
+   }
+  ],
+  "f-records": [
+   {
+    "reference": "Omni 1:9",
+    "grade": 1,
+    "reason": "Records kept by commandment"
+   },
+   {
+    "reference": "Moses 6:5",
+    "grade": 1,
+    "reason": "A book of remembrance was kept"
+   },
+   {
+    "reference": "Mosiah 1:16",
+    "grade": 1,
+    "reason": "Charge over the records"
+   },
+   {
+    "reference": "1 Nephi 19:4",
+    "grade": 1,
+    "reason": "Records handed down; partial reason"
+   },
+   {
+    "reference": "Doctrine and Covenants 128:8",
+    "grade": 2,
+    "reason": "What is recorded on earth is recorded in heaven"
+   },
+   {
+    "reference": "Mosiah 1:6",
+    "grade": 1,
+    "reason": "Records are true; the reason is in the previous verse"
+   },
+   {
+    "reference": "Mosiah 28:20",
+    "grade": 1,
+    "reason": "Keep a record of the people"
+   },
+   {
+    "reference": "Mosiah 28:11",
+    "grade": 0,
+    "reason": "Mosiah gathers records"
+   },
+   {
+    "reference": "Helaman 5:6",
+    "grade": 2,
+    "reason": "Names written so that their works are remembered"
+   },
+   {
+    "reference": "Doctrine and Covenants 128:9",
+    "grade": 1,
+    "reason": "Faithful records made acts binding; ordinance context"
+   },
+   {
+    "reference": "1 Nephi 19:3",
+    "grade": 2,
+    "reason": "Records kept for the instruction of the people"
+   },
+   {
+    "reference": "1 Nephi 3:19",
+    "grade": 2,
+    "reason": "Records preserve the language and words of the prophets for our children"
+   },
+   {
+    "reference": "Doctrine and Covenants 3:19",
+    "grade": 2,
+    "reason": "Plates preserved that the Lord's promises be fulfilled"
+   }
+  ],
+  "f-know-forgiven": [
+   {
+    "reference": "Isaiah 44:22",
+    "grade": 1,
+    "reason": "Sins blotted out like a cloud; assurance to Israel"
+   },
+   {
+    "reference": "Luke 5:20",
+    "grade": 1,
+    "reason": "Jesus forgives a man; specific"
+   },
+   {
+    "reference": "1 John 1:9",
+    "grade": 2,
+    "reason": "If we confess, he is faithful to forgive"
+   },
+   {
+    "reference": "Psalms 103:3",
+    "grade": 1,
+    "reason": "God forgives all iniquities; general"
+   },
+   {
+    "reference": "Doctrine and Covenants 58:42",
+    "grade": 2,
+    "reason": "He who has repented is forgiven; by this ye may know"
+   },
+   {
+    "reference": "Psalms 25:11",
+    "grade": 1,
+    "reason": "Plea for pardon"
+   },
+   {
+    "reference": "Doctrine and Covenants 110:5",
+    "grade": 1,
+    "reason": "Forgiveness spoken to specific people"
+   },
+   {
+    "reference": "James 5:15",
+    "grade": 1,
+    "reason": "The sick man's sins forgiven; narrow"
+   },
+   {
+    "reference": "Doctrine and Covenants 82:1",
+    "grade": 1,
+    "reason": "Forgiveness tied to forgiving others"
+   },
+   {
+    "reference": "Ephesians 4:32",
+    "grade": 1,
+    "reason": "Mainly about forgiving others; notes God has forgiven you"
+   }
+  ],
+  "f-give-poor-promise": [
+   {
+    "reference": "Psalms 112:9",
+    "grade": 2,
+    "reason": "He that gives to the poor: righteousness endures, exalted with honour"
+   },
+   {
+    "reference": "Deuteronomy 10:18",
+    "grade": 0,
+    "reason": "God's love for the stranger; no promise to givers"
+   },
+   {
+    "reference": "James 2:5",
+    "grade": 0,
+    "reason": "About the poor, not givers"
+   },
+   {
+    "reference": "Proverbs 22:9",
+    "grade": 2,
+    "reason": "A bountiful eye shall be blessed"
+   },
+   {
+    "reference": "Deuteronomy 15:11",
+    "grade": 1,
+    "reason": "Command to give; the promise is in the previous verse"
+   },
+   {
+    "reference": "Proverbs 19:17",
+    "grade": 2,
+    "reason": "He that pities the poor lends to the Lord, who will repay"
+   },
+   {
+    "reference": "Mosiah 4:26",
+    "grade": 2,
+    "reason": "Giving retains a remission of sins"
+   },
+   {
+    "reference": "Psalms 41:1",
+    "grade": 2,
+    "reason": "Blessed is he that considereth the poor; delivered in trouble"
+   },
+   {
+    "reference": "Psalms 68:10",
+    "grade": 0,
+    "reason": "God provides for the poor"
+   }
+  ],
+  "f-not-answer": [
+   {
+    "reference": "Ecclesiastes 7:16",
+    "grade": 0,
+    "reason": "Over-righteousness"
+   },
+   {
+    "reference": "Ecclesiastes 7:10",
+    "grade": 0,
+    "reason": "Former days"
+   },
+   {
+    "reference": "Ecclesiastes 5:5",
+    "grade": 0,
+    "reason": "Vows"
+   },
+   {
+    "reference": "Proverbs 8:33",
+    "grade": 0,
+    "reason": "Hear instruction"
+   },
+   {
+    "reference": "Alma 14:19",
+    "grade": 1,
+    "reason": "They answered nothing; example without reason"
+   },
+   {
+    "reference": "Proverbs 26:4",
+    "grade": 2,
+    "reason": "Answer not a fool according to his folly"
+   },
+   {
+    "reference": "Job 32:13",
+    "grade": 0,
+    "reason": "Elihu's speech"
+   },
+   {
+    "reference": "Amos 5:13",
+    "grade": 2,
+    "reason": "The prudent keep silence in an evil time"
+   },
+   {
+    "reference": "Proverbs 3:30",
+    "grade": 1,
+    "reason": "Strive not without cause; partial"
+   },
+   {
+    "reference": "Luke 22:68",
+    "grade": 1,
+    "reason": "Jesus declines to argue with those who will not believe"
+   },
+   {
+    "reference": "Ecclesiastes 7:9",
+    "grade": 0,
+    "reason": "Anger"
+   }
+  ],
+  "faith": [
+   {
+    "reference": "Ether 12:18",
+    "grade": 1,
+    "reason": "Miracles follow faith; not a definition"
+   },
+   {
+    "reference": "Ether 12:11",
+    "grade": 1,
+    "reason": "By faith the law was given; not a definition"
+   }
+  ],
+  "doubt": [
+   {
+    "reference": "Alma 32:21",
+    "grade": 2,
+    "reason": "Faith is not a perfect knowledge; hope for things not seen"
+   },
+   {
+    "reference": "Job 23:15",
+    "grade": 0,
+    "reason": "Fear of God; not doubt"
+   },
+   {
+    "reference": "Joseph Smith--History 1:13",
+    "grade": 2,
+    "reason": "From confusion he resolved to ask of God"
+   },
+   {
+    "reference": "Ether 12:6",
+    "grade": 2,
+    "reason": "Dispute not because ye see not; witness after the trial of faith"
+   }
+  ],
+  "f-husbands": [
+   {
+    "reference": "1 Corinthians 7:33",
+    "grade": 1,
+    "reason": "The married man cares how to please his wife; descriptive"
+   },
+   {
+    "reference": "Ephesians 5:33",
+    "grade": 2,
+    "reason": "Love his wife even as himself"
+   },
+   {
+    "reference": "Ephesians 5:22",
+    "grade": 0,
+    "reason": "Wrong direction: wives' duty"
+   },
+   {
+    "reference": "1 Corinthians 7:11",
+    "grade": 1,
+    "reason": "Husband not to put away his wife"
+   },
+   {
+    "reference": "Ephesians 5:28",
+    "grade": 2,
+    "reason": "Love wives as their own bodies"
+   },
+   {
+    "reference": "Colossians 3:19",
+    "grade": 2,
+    "reason": "Husbands, love your wives and be not bitter"
+   },
+   {
+    "reference": "1 Corinthians 7:4",
+    "grade": 1,
+    "reason": "Mutual belonging; partial"
+   },
+   {
+    "reference": "1 Corinthians 7:3",
+    "grade": 2,
+    "reason": "Husband render unto the wife due benevolence"
+   },
+   {
+    "reference": "1 Corinthians 7:2",
+    "grade": 0,
+    "reason": "Marry to avoid fornication; not treatment"
+   }
+  ],
+  "f-nephi-ship": [
+   {
+    "reference": "3 Nephi 19:11",
+    "grade": 0,
+    "reason": "A later Nephi"
+   },
+   {
+    "reference": "Mark 1:20",
+    "grade": 0,
+    "reason": "Disciples leave a ship"
+   },
+   {
+    "reference": "1 Nephi 18:22",
+    "grade": 1,
+    "reason": "After being loosed, Nephi guides the ship; aftermath only"
+   },
+   {
+    "reference": "1 Nephi 7:16",
+    "grade": 0,
+    "reason": "Nephi bound in a different episode"
+   },
+   {
+    "reference": "Helaman 7:12",
+    "grade": 0,
+    "reason": "A later Nephi"
+   },
+   {
+    "reference": "1 Nephi 17:52",
+    "grade": 0,
+    "reason": "Brothers dare not touch Nephi"
+   },
+   {
+    "reference": "Helaman 5:4",
+    "grade": 0,
+    "reason": "A later Nephi"
+   },
+   {
+    "reference": "3 Nephi 11:18",
+    "grade": 0,
+    "reason": "A later Nephi"
+   },
+   {
+    "reference": "Mosiah 10:13",
+    "grade": 1,
+    "reason": "Brothers wroth with Nephi upon the waters; summary"
+   },
+   {
+    "reference": "1 Nephi 4:31",
+    "grade": 0,
+    "reason": "Nephi seizes Zoram"
+   },
+   {
+    "reference": "3 Nephi 19:4",
+    "grade": 0,
+    "reason": "A later Nephi"
+   }
+  ],
+  "f-harsh-master": [
+   {
+    "reference": "Matthew 6:24",
+    "grade": 0,
+    "reason": "Serving two masters: different sense"
+   },
+   {
+    "reference": "Matthew 10:25",
+    "grade": 0,
+    "reason": "Disciple and master: different sense"
+   },
+   {
+    "reference": "Mosiah 5:13",
+    "grade": 0,
+    "reason": "Knowing the master one serves: different sense"
+   },
+   {
+    "reference": "Matthew 10:24",
+    "grade": 0,
+    "reason": "Disciple and master: different sense"
+   },
+   {
+    "reference": "Leviticus 25:43",
+    "grade": 0,
+    "reason": "Wrong direction: addressed to masters"
+   },
+   {
+    "reference": "Proverbs 28:16",
+    "grade": 0,
+    "reason": "Oppressive ruler"
+   },
+   {
+    "reference": "Luke 16:13",
+    "grade": 0,
+    "reason": "Serving two masters: different sense"
+   },
+   {
+    "reference": "Titus 2:9",
+    "grade": 1,
+    "reason": "Obedient, not answering again; nothing on unfairness"
+   },
+   {
+    "reference": "Ephesians 6:5",
+    "grade": 1,
+    "reason": "Servants obey masters in singleness of heart; nothing on harsh masters"
+   },
+   {
+    "reference": "Proverbs 14:31",
+    "grade": 0,
+    "reason": "Oppressing the poor"
+   },
+   {
+    "reference": "Ephesians 6:9",
+    "grade": 0,
+    "reason": "Wrong direction: addressed to masters"
+   },
+   {
+    "reference": "1 Timothy 6:2",
+    "grade": 1,
+    "reason": "Serve believing masters; not harsh ones"
+   }
+  ],
+  "f-es-no-money": [
+   {
+    "reference": "3 Nephi 12:42",
+    "grade": 1,
+    "reason": "Give to him that asks"
+   },
+   {
+    "reference": "Matthew 5:42",
+    "grade": 1,
+    "reason": "Give to him that asks"
+   },
+   {
+    "reference": "Exodus 22:25",
+    "grade": 0,
+    "reason": "Lending without usury; assumes money"
+   },
+   {
+    "reference": "Mosiah 4:24",
+    "grade": 2,
+    "reason": "I give not because I have not, but if I had I would give"
+   },
+   {
+    "reference": "Mosiah 4:26",
+    "grade": 1,
+    "reason": "Give according to what one has"
+   },
+   {
+    "reference": "3 Nephi 13:1",
+    "grade": 0,
+    "reason": "Do not give alms to be seen"
+   },
+   {
+    "reference": "Mosiah 4:17",
+    "grade": 1,
+    "reason": "Do not judge the beggar"
+   },
+   {
+    "reference": "Proverbs 3:27",
+    "grade": 1,
+    "reason": "Do good when it is in your power"
+   },
+   {
+    "reference": "Mosiah 4:16",
+    "grade": 1,
+    "reason": "Do not turn the beggar away"
+   },
+   {
+    "reference": "Deuteronomy 15:8",
+    "grade": 1,
+    "reason": "Lend what the needy lacks"
+   }
+  ],
+  "f-resurrected-body": [
+   {
+    "reference": "Alma 11:43",
+    "grade": 2,
+    "reason": "Reunited in perfect form, limb and joint restored"
+   },
+   {
+    "reference": "Alma 40:11",
+    "grade": 0,
+    "reason": "The state between death and resurrection"
+   },
+   {
+    "reference": "Romans 6:5",
+    "grade": 1,
+    "reason": "In the likeness of his resurrection"
+   },
+   {
+    "reference": "Alma 40:23",
+    "grade": 2,
+    "reason": "Soul restored to body, every limb and joint, perfect frame"
+   },
+   {
+    "reference": "Alma 11:44",
+    "grade": 2,
+    "reason": "Everything restored to its perfect frame"
+   },
+   {
+    "reference": "Doctrine and Covenants 88:27",
+    "grade": 2,
+    "reason": "They shall rise again, a spiritual body"
+   },
+   {
+    "reference": "Alma 40:16",
+    "grade": 0,
+    "reason": "Timing of the first resurrection"
+   },
+   {
+    "reference": "Doctrine and Covenants 88:16",
+    "grade": 1,
+    "reason": "Resurrection is the redemption of the soul; abstract"
+   },
+   {
+    "reference": "Alma 40:21",
+    "grade": 1,
+    "reason": "Soul and body reunited; mostly about timing"
+   },
+   {
+    "reference": "Alma 11:45",
+    "grade": 2,
+    "reason": "Mortal body raised to an immortal body"
+   },
+   {
+    "reference": "2 Nephi 9:13",
+    "grade": 2,
+    "reason": "Body and spirit restored, incorruptible and immortal"
+   }
+  ],
+  "f-fasting": [
+   {
+    "reference": "Omni 1:26",
+    "grade": 1,
+    "reason": "Continue in fasting and praying; no how or why"
+   },
+   {
+    "reference": "Isaiah 58:3",
+    "grade": 1,
+    "reason": "Wrong fasting described"
+   },
+   {
+    "reference": "3 Nephi 13:18",
+    "grade": 2,
+    "reason": "Fast unto thy Father in secret"
+   },
+   {
+    "reference": "Matthew 6:16",
+    "grade": 2,
+    "reason": "When ye fast, be not as the hypocrites"
+   },
+   {
+    "reference": "Matthew 17:21",
+    "grade": 1,
+    "reason": "Prayer and fasting for power; narrow"
+   },
+   {
+    "reference": "Isaiah 58:6",
+    "grade": 2,
+    "reason": "The fast I have chosen: loose bands of wickedness, free the oppressed"
+   },
+   {
+    "reference": "Joel 2:12",
+    "grade": 2,
+    "reason": "Turn to me with fasting and weeping"
+   },
+   {
+    "reference": "3 Nephi 13:16",
+    "grade": 2,
+    "reason": "When ye fast, be not as the hypocrites"
+   },
+   {
+    "reference": "1 Thessalonians 5:21",
+    "grade": 0,
+    "reason": "Hold fast: different sense of the word"
+   },
+   {
+    "reference": "Doctrine and Covenants 59:13",
+    "grade": 1,
+    "reason": "Fasting made perfect with singleness of heart; partial"
+   },
+   {
+    "reference": "Isaiah 58:5",
+    "grade": 1,
+    "reason": "Rejects a mere outward fast"
+   },
+   {
+    "reference": "Revelation 3:11",
+    "grade": 0,
+    "reason": "Hold fast: different sense of the word"
+   }
+  ],
+  "f-peer-pressure": [
+   {
+    "reference": "Jacob 2:9",
+    "grade": 0,
+    "reason": "Jacob's burden"
+   },
+   {
+    "reference": "Psalms 140:9",
+    "grade": 0,
+    "reason": "Curse on enemies"
+   },
+   {
+    "reference": "Psalms 35:12",
+    "grade": 0,
+    "reason": "Evil for good"
+   },
+   {
+    "reference": "1 Chronicles 12:17",
+    "grade": 0,
+    "reason": "David meets visitors"
+   },
+   {
+    "reference": "Psalms 49:5",
+    "grade": 0,
+    "reason": "Fear in evil days"
+   },
+   {
+    "reference": "2 Samuel 13:12",
+    "grade": 1,
+    "reason": "Tamar refuses: do not this folly; not about friends"
+   },
+   {
+    "reference": "Psalms 71:13",
+    "grade": 0,
+    "reason": "Curse on adversaries"
+   },
+   {
+    "reference": "John 15:14",
+    "grade": 0,
+    "reason": "Friends of Jesus: different sense"
+   },
+   {
+    "reference": "Matthew 18:15",
+    "grade": 0,
+    "reason": "Telling a brother his fault"
+   },
+   {
+    "reference": "1 Samuel 25:17",
+    "grade": 0,
+    "reason": "Abigail warned"
+   },
+   {
+    "reference": "Doctrine and Covenants 93:48",
+    "grade": 0,
+    "reason": "Rebuke to a family"
+   },
+   {
+    "reference": "Psalms 56:5",
+    "grade": 0,
+    "reason": "Enemies twist words"
+   }
+  ],
+  "f-elderly-parents": [
+   {
+    "reference": "Ephesians 6:2",
+    "grade": 2,
+    "reason": "Honour thy father and mother"
+   },
+   {
+    "reference": "Proverbs 23:22",
+    "grade": 2,
+    "reason": "Despise not thy mother when she is old"
+   },
+   {
+    "reference": "Ephesians 6:4",
+    "grade": 0,
+    "reason": "Wrong direction: fathers toward children"
+   },
+   {
+    "reference": "Colossians 3:21",
+    "grade": 0,
+    "reason": "Wrong direction: fathers toward children"
+   },
+   {
+    "reference": "Ephesians 6:1",
+    "grade": 1,
+    "reason": "Children obey parents; young children"
+   },
+   {
+    "reference": "Proverbs 17:6",
+    "grade": 1,
+    "reason": "Glory of children are their fathers; general"
+   },
+   {
+    "reference": "1 Timothy 5:4",
+    "grade": 2,
+    "reason": "Children learn to requite their parents"
+   },
+   {
+    "reference": "Doctrine and Covenants 83:4",
+    "grade": 0,
+    "reason": "Wrong direction: children's claim on parents"
+   },
+   {
+    "reference": "Colossians 3:20",
+    "grade": 1,
+    "reason": "Children obey parents; young children"
+   }
+  ],
+  "f-es-widows": [
+   {
+    "reference": "Deuteronomy 14:29",
+    "grade": 2,
+    "reason": "The fatherless and widow shall eat and be satisfied"
+   },
+   {
+    "reference": "Deuteronomy 10:18",
+    "grade": 2,
+    "reason": "God executes justice for the fatherless and widow"
+   },
+   {
+    "reference": "James 1:27",
+    "grade": 2,
+    "reason": "Pure religion: visit the fatherless and widows"
+   },
+   {
+    "reference": "Psalms 68:5",
+    "grade": 2,
+    "reason": "God is father of the fatherless and defender of widows"
+   },
+   {
+    "reference": "Zechariah 7:10",
+    "grade": 2,
+    "reason": "Oppress not the widow or the fatherless"
+   },
+   {
+    "reference": "Doctrine and Covenants 83:6",
+    "grade": 2,
+    "reason": "Provide for widows and orphans from the storehouse"
+   },
+   {
+    "reference": "Mosiah 4:16",
+    "grade": 1,
+    "reason": "Succor the needy; general"
+   },
+   {
+    "reference": "Isaiah 58:7",
+    "grade": 1,
+    "reason": "Feed the hungry, house the poor; not widows specifically"
+   },
+   {
+    "reference": "Psalms 146:9",
+    "grade": 2,
+    "reason": "The Lord relieves the fatherless and widow"
+   },
+   {
+    "reference": "Exodus 22:22",
+    "grade": 2,
+    "reason": "Afflict no widow or fatherless child"
+   }
+  ],
+  "lonely": [
+   {
+    "reference": "Job 10:20",
+    "grade": 0,
+    "reason": "Wishes to be left alone"
+   },
+   {
+    "reference": "Job 19:13",
+    "grade": 1,
+    "reason": "Estranged from friends; voices loneliness without comfort"
+   },
+   {
+    "reference": "Job 7:16",
+    "grade": 0,
+    "reason": "Wishes to be left alone"
+   }
+  ],
+  "forgive-others": [
+   {
+    "reference": "2 Chronicles 7:14",
+    "grade": 0,
+    "reason": "Wrong direction: God forgiving the people"
+   },
+   {
+    "reference": "Doctrine and Covenants 64:7",
+    "grade": 1,
+    "reason": "The Lord forgives; the counsel to forgive is in the next verse"
+   },
+   {
+    "reference": "Luke 17:4",
+    "grade": 2,
+    "reason": "Forgive him seven times in a day"
+   },
+   {
+    "reference": "Luke 17:3",
+    "grade": 2,
+    "reason": "If he repent, forgive him"
+   },
+   {
+    "reference": "Mark 11:25",
+    "grade": 2,
+    "reason": "When ye pray, forgive if ye have ought against any"
+   }
+  ],
+  "f-nathan": [
+   {
+    "reference": "1 Kings 14:2",
+    "grade": 0,
+    "reason": "Jeroboam's wife"
+   },
+   {
+    "reference": "1 Kings 1:22",
+    "grade": 0,
+    "reason": "Nathan in a different episode"
+   },
+   {
+    "reference": "1 Samuel 17:56",
+    "grade": 0,
+    "reason": "Saul asks about David"
+   },
+   {
+    "reference": "2 Samuel 9:2",
+    "grade": 0,
+    "reason": "Ziba"
+   },
+   {
+    "reference": "1 Kings 3:24",
+    "grade": 0,
+    "reason": "Solomon's judgment"
+   },
+   {
+    "reference": "1 Kings 1:23",
+    "grade": 0,
+    "reason": "Nathan in a different episode"
+   },
+   {
+    "reference": "Genesis 20:2",
+    "grade": 0,
+    "reason": "Abimelech and Sarah"
+   },
+   {
+    "reference": "1 Kings 1:28",
+    "grade": 0,
+    "reason": "Bath-sheba called; different episode"
+   },
+   {
+    "reference": "Alma 47:35",
+    "grade": 0,
+    "reason": "Amalickiah takes the queen"
+   },
+   {
+    "reference": "1 Kings 3:16",
+    "grade": 0,
+    "reason": "Solomon and two women"
+   }
+  ],
+  "challenge-outsider": [
+   {
+    "reference": "2 Chronicles 6:32",
+    "grade": 1,
+    "reason": "Foreigner praying at the temple; sentence continues"
+   },
+   {
+    "reference": "Exodus 12:49",
+    "grade": 2,
+    "reason": "One law for the homeborn and the stranger"
+   },
+   {
+    "reference": "Deuteronomy 14:29",
+    "grade": 2,
+    "reason": "The stranger shall come, eat and be satisfied"
+   },
+   {
+    "reference": "Doctrine and Covenants 124:23",
+    "grade": 1,
+    "reason": "A house for strangers to lodge; specific instruction"
+   }
+  ],
+  "neighbor": [
+   {
+    "reference": "Ephesians 4:32",
+    "grade": 2,
+    "reason": "Be kind, tenderhearted, forgiving one another"
+   },
+   {
+    "reference": "Leviticus 19:17",
+    "grade": 2,
+    "reason": "Do not hate thy brother; rebuke rather than suffer sin"
+   }
+  ],
+  "f-sacrament-worthy": [
+   {
+    "reference": "Doctrine and Covenants 78:11",
+    "grade": 0,
+    "reason": "Organize by covenant"
+   },
+   {
+    "reference": "Doctrine and Covenants 88:74",
+    "grade": 1,
+    "reason": "Sanctify yourselves, purify your hearts; not the sacrament"
+   },
+   {
+    "reference": "Doctrine and Covenants 27:2",
+    "grade": 2,
+    "reason": "Partake with an eye single to my glory, remembering my body and blood"
+   },
+   {
+    "reference": "Exodus 20:8",
+    "grade": 0,
+    "reason": "Sabbath commandment"
+   },
+   {
+    "reference": "Doctrine and Covenants 78:7",
+    "grade": 0,
+    "reason": "Prepare for the celestial world generally"
+   },
+   {
+    "reference": "1 Thessalonians 4:4",
+    "grade": 0,
+    "reason": "Sanctification in chastity"
+   },
+   {
+    "reference": "Leviticus 20:8",
+    "grade": 0,
+    "reason": "Keep statutes"
+   },
+   {
+    "reference": "Mormon 9:29",
+    "grade": 1,
+    "reason": "Partake not unworthily; no how"
+   }
+  ],
+  "challenge-uncertainty": [
+   {
+    "reference": "Doctrine and Covenants 8:11",
+    "grade": 0,
+    "reason": "Ask to know mysteries"
+   },
+   {
+    "reference": "Psalms 37:23",
+    "grade": 1,
+    "reason": "Steps ordered by the Lord; general"
+   },
+   {
+    "reference": "Words of Mormon 1:7",
+    "grade": 2,
+    "reason": "I do not know all things, yet act as the Spirit whispers"
+   },
+   {
+    "reference": "Moroni 10:23",
+    "grade": 1,
+    "reason": "Faith can do all things; general"
+   },
+   {
+    "reference": "Psalms 139:4",
+    "grade": 0,
+    "reason": "God knows every word"
+   },
+   {
+    "reference": "Alma 32:29",
+    "grade": 1,
+    "reason": "Faith grows before perfect knowledge; needs the seed context"
+   },
+   {
+    "reference": "Mosiah 4:6",
+    "grade": 0,
+    "reason": "Trust and salvation generally"
+   }
+  ],
+  "baptism": [
+   {
+    "reference": "Doctrine and Covenants 20:37",
+    "grade": 1,
+    "reason": "Conditions for baptism, not why it is needed"
+   },
+   {
+    "reference": "Moroni 8:10",
+    "grade": 2,
+    "reason": "Accountable people must repent and be baptized to be saved"
+   },
+   {
+    "reference": "Moroni 8:22",
+    "grade": 1,
+    "reason": "Who does not need baptism; inverse side"
+   }
+  ],
+  "challenge-correction": [
+   {
+    "reference": "Mosiah 4:15",
+    "grade": 1,
+    "reason": "Teaching children to love; loosely about correction"
+   },
+   {
+    "reference": "Leviticus 19:18",
+    "grade": 1,
+    "reason": "Love without grudge; the rebuke is in the previous verse"
+   },
+   {
+    "reference": "Proverbs 3:12",
+    "grade": 1,
+    "reason": "God corrects whom he loves; analogy, not how to correct"
+   }
+  ],
+  "afterlife": [
+   {
+    "reference": "1 Thessalonians 4:17",
+    "grade": 1,
+    "reason": "Fate of the living and dead at Christ's coming; partial"
+   },
+   {
+    "reference": "Doctrine and Covenants 59:2",
+    "grade": 2,
+    "reason": "Those who die rest from labors and receive a crown in the Father's mansions"
+   },
+   {
+    "reference": "Romans 14:8",
+    "grade": 1,
+    "reason": "Belonging to the Lord in death; not what happens after death"
+   }
+  ],
+  "f-anger-justified": [
+   {
+    "reference": "Jonah 4:9",
+    "grade": 2,
+    "reason": "God asks Jonah: doest thou well to be angry"
+   },
+   {
+    "reference": "Psalms 37:8",
+    "grade": 2,
+    "reason": "Cease from anger and forsake wrath"
+   },
+   {
+    "reference": "Proverbs 15:18",
+    "grade": 1,
+    "reason": "Slow to anger appeases strife"
+   },
+   {
+    "reference": "2 Nephi 1:26",
+    "grade": 2,
+    "reason": "What was called anger was the truth of the word of God"
+   },
+   {
+    "reference": "Ecclesiastes 7:9",
+    "grade": 2,
+    "reason": "Be not hasty to be angry; anger rests in fools"
+   },
+   {
+    "reference": "Matthew 5:22",
+    "grade": 2,
+    "reason": "Angry with his brother without a cause is in danger"
+   },
+   {
+    "reference": "Proverbs 15:1",
+    "grade": 1,
+    "reason": "A soft answer turns away wrath; not whether anger is right"
+   },
+   {
+    "reference": "Proverbs 16:32",
+    "grade": 1,
+    "reason": "Slow to anger is better than the mighty"
+   },
+   {
+    "reference": "Ephesians 4:26",
+    "grade": 2,
+    "reason": "Be ye angry, and sin not"
+   }
+  ],
+  "f-god-far": [
+   {
+    "reference": "Doctrine and Covenants 67:13",
+    "grade": 1,
+    "reason": "Continue in patience; partial"
+   },
+   {
+    "reference": "Psalms 27:9",
+    "grade": 1,
+    "reason": "Plea; no counsel"
+   },
+   {
+    "reference": "Psalms 22:11",
+    "grade": 1,
+    "reason": "Plea; no counsel"
+   },
+   {
+    "reference": "Psalms 35:22",
+    "grade": 1,
+    "reason": "Plea; no counsel"
+   },
+   {
+    "reference": "Psalms 71:12",
+    "grade": 1,
+    "reason": "Plea; no counsel"
+   },
+   {
+    "reference": "Psalms 42:5",
+    "grade": 2,
+    "reason": "Why art thou cast down? Hope thou in God"
+   },
+   {
+    "reference": "Psalms 22:1",
+    "grade": 1,
+    "reason": "Expresses forsakenness; no counsel"
+   },
+   {
+    "reference": "Micah 7:7",
+    "grade": 2,
+    "reason": "I will look unto the Lord and wait; he will hear me"
+   },
+   {
+    "reference": "Psalms 25:16",
+    "grade": 1,
+    "reason": "Plea; no counsel"
+   }
+  ],
+  "grief": [
+   {
+    "reference": "Psalms 38:17",
+    "grade": 0,
+    "reason": "Sorrow for sin"
+   },
+   {
+    "reference": "Job 30:31",
+    "grade": 0,
+    "reason": "Mourning music; no comfort"
+   },
+   {
+    "reference": "Job 16:16",
+    "grade": 0,
+    "reason": "Job's weeping; not bereavement"
+   },
+   {
+    "reference": "Moroni 9:1",
+    "grade": 0,
+    "reason": "Mormon's grievous news"
+   }
+  ],
+  "purpose": [
+   {
+    "reference": "John 1:4",
+    "grade": 0,
+    "reason": "In him was life: different sense"
+   },
+   {
+    "reference": "John 6:63",
+    "grade": 0,
+    "reason": "Words are spirit and life: different sense"
+   },
+   {
+    "reference": "Mosiah 16:9",
+    "grade": 0,
+    "reason": "Light and life of the world: different sense"
+   },
+   {
+    "reference": "Alma 42:26",
+    "grade": 1,
+    "reason": "God's eternal purposes: salvation and redemption"
+   },
+   {
+    "reference": "Proverbs 14:27",
+    "grade": 0,
+    "reason": "Fear of the Lord is a fountain of life: different sense"
+   }
+  ],
+  "pray": [
+   {
+    "reference": "Doctrine and Covenants 61:39",
+    "grade": 1,
+    "reason": "Pray always; partial"
+   },
+   {
+    "reference": "Luke 11:2",
+    "grade": 2,
+    "reason": "When ye pray, say, Our Father"
+   },
+   {
+    "reference": "James 5:16",
+    "grade": 1,
+    "reason": "Pray one for another; partial"
+   },
+   {
+    "reference": "Doctrine and Covenants 19:28",
+    "grade": 2,
+    "reason": "Pray vocally and in your heart, in public and private"
+   },
+   {
+    "reference": "Matthew 6:6",
+    "grade": 2,
+    "reason": "Pray to thy Father in secret"
+   }
+  ],
+  "challenge-repair": [
+   {
+    "reference": "Matthew 25:27",
+    "grade": 0,
+    "reason": "Parable rebuke about money; not restitution"
+   },
+   {
+    "reference": "Doctrine and Covenants 132:10",
+    "grade": 0,
+    "reason": "Not about restitution"
+   },
+   {
+    "reference": "1 Samuel 12:3",
+    "grade": 2,
+    "reason": "Whose ox have I taken; I will restore it"
+   },
+   {
+    "reference": "Philemon 1:19",
+    "grade": 1,
+    "reason": "Paul offers to repay another's debt"
+   }
+  ],
+  "answers": [
+   {
+    "reference": "Mosiah 27:14",
+    "grade": 1,
+    "reason": "An example of prayers being answered; not how to know"
+   }
+  ],
+  "parenting": [
+   {
+    "reference": "Moses 6:58",
+    "grade": 2,
+    "reason": "Teach these things freely unto your children"
+   },
+   {
+    "reference": "Deuteronomy 11:19",
+    "grade": 2,
+    "reason": "Teach them your children at home and by the way"
+   }
+  ],
+  "f-title-liberty": [
+   {
+    "reference": "Alma 46:36",
+    "grade": 1,
+    "reason": "The title hoisted on every tower; what, not why"
+   },
+   {
+    "reference": "Alma 51:21",
+    "grade": 0,
+    "reason": "End of the king-men"
+   },
+   {
+    "reference": "Alma 43:48",
+    "grade": 1,
+    "reason": "Moroni inspires the army with thoughts of liberty; an earlier event"
+   },
+   {
+    "reference": "Alma 46:13",
+    "grade": 2,
+    "reason": "He called it the title of liberty and prayed for liberty to rest on his brethren"
+   },
+   {
+    "reference": "Alma 48:16",
+    "grade": 0,
+    "reason": "Moroni's faith"
+   },
+   {
+    "reference": "Alma 48:11",
+    "grade": 1,
+    "reason": "Moroni's love of liberty; character"
+   },
+   {
+    "reference": "Alma 46:16",
+    "grade": 1,
+    "reason": "Moroni prayed for the cause of freedom; partial"
+   },
+   {
+    "reference": "Alma 61:21",
+    "grade": 0,
+    "reason": "Letter to Moroni"
+   }
+  ],
+  "grace": [
+   {
+    "reference": "1 Peter 5:10",
+    "grade": 1,
+    "reason": "The God of all grace strengthens you"
+   },
+   {
+    "reference": "Romans 5:20",
+    "grade": 1,
+    "reason": "Grace abounds over sin"
+   },
+   {
+    "reference": "John 1:17",
+    "grade": 1,
+    "reason": "Grace came by Jesus Christ; not a definition"
+   }
+  ],
+  "serious-sin": [
+   {
+    "reference": "Doctrine and Covenants 95:1",
+    "grade": 1,
+    "reason": "Chastened that sins may be forgiven"
+   },
+   {
+    "reference": "Ether 2:15",
+    "grade": 1,
+    "reason": "The brother of Jared repented and was forgiven; example"
+   }
+  ],
+  "humility": [
+   {
+    "reference": "Alma 42:30",
+    "grade": 1,
+    "reason": "Brought down to the dust in humility; not a definition"
+   },
+   {
+    "reference": "3 Nephi 12:2",
+    "grade": 1,
+    "reason": "Come down into the depths of humility; not a definition"
+   },
+   {
+    "reference": "Helaman 6:5",
+    "grade": 1,
+    "reason": "Brought into the depths of humility; not a definition"
+   }
+  ],
+  "holyghost": [
+   {
+    "reference": "2 Nephi 31:18",
+    "grade": 2,
+    "reason": "The Holy Ghost witnesses of the Father and the Son"
+   },
+   {
+    "reference": "1 Nephi 10:17",
+    "grade": 1,
+    "reason": "The Holy Ghost as the gift to all who seek; partial"
+   },
+   {
+    "reference": "2 Nephi 31:17",
+    "grade": 1,
+    "reason": "Remission of sins by fire and the Holy Ghost"
+   }
+  ],
+  "challenge-comparison": [
+   {
+    "reference": "Ether 12:10",
+    "grade": 1,
+    "reason": "About faith only; hope link is in the previous verse"
+   },
+   {
+    "reference": "Doctrine and Covenants 4:5",
+    "grade": 1,
+    "reason": "Lists faith and hope together without relating them"
+   }
+  ],
+  "tithing": [
+   {
+    "reference": "Colossians 1:18",
+    "grade": 0,
+    "reason": "Christ head of the church"
+   }
+  ],
+  "anxiety": [
+   {
+    "reference": "Job 21:6",
+    "grade": 0,
+    "reason": "Describes fear only"
+   },
+   {
+    "reference": "Isaiah 21:4",
+    "grade": 0,
+    "reason": "Prophetic dread; no help"
+   },
+   {
+    "reference": "Job 23:15",
+    "grade": 0,
+    "reason": "Fear of God's presence; no help with anxiety"
+   }
+  ],
+  "repentance": [
+   {
+    "reference": "Doctrine and Covenants 33:10",
+    "grade": 1,
+    "reason": "Call to repent"
+   },
+   {
+    "reference": "Doctrine and Covenants 49:13",
+    "grade": 1,
+    "reason": "Repent and be baptized; no how"
+   },
+   {
+    "reference": "Moroni 8:10",
+    "grade": 1,
+    "reason": "Teach repentance and baptism"
+   },
+   {
+    "reference": "Mormon 7:8",
+    "grade": 1,
+    "reason": "Repent and be baptized; no how"
+   }
+  ],
+  "challenge-person": [
+   {
+    "reference": "Genesis 47:7",
+    "grade": 1,
+    "reason": "Joseph presents his father Jacob to Pharaoh; identifies him indirectly"
+   }
+  ],
+  "trials": [
+   {
+    "reference": "2 Samuel 16:12",
+    "grade": 1,
+    "reason": "Perhaps the Lord will look on mine affliction"
+   },
+   {
+    "reference": "Psalms 69:3",
+    "grade": 1,
+    "reason": "Weary of crying; no answer"
+   }
+  ]
+ }
+}
