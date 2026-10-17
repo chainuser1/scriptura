@@ -61,6 +61,12 @@ fn one() -> usize {
     1
 }
 
+enum FocusSlot {
+    NotLoaded { model: PathBuf, tokenizer: PathBuf, threads: usize, gpu: bool },
+    Ready(Focus),
+    Failed(String),
+}
+
 pub struct Engine {
     tok: QueryTokenizer,
     enc: Mutex<Encoder>,
@@ -72,8 +78,8 @@ pub struct Engine {
     catalog: Option<Catalog>,
     people: Option<PeopleIndex>,
     topics: Option<TopicIndex>,
-    /// None: not configured; Err: configured but could not open (the reason is returned by the focus request).
-    focus: Option<Result<Mutex<Focus>, String>>,
+    /// None: not configured. Opened on the first focus request, so the model only takes memory once it is used.
+    focus: Option<Mutex<FocusSlot>>,
     profiles: BTreeMap<String, Weights>,
     default_profile: String,
     fallback: String,
@@ -133,7 +139,12 @@ impl Engine {
             fallback: cfg.fallback_without_thread,
             identity: cfg.identity,
             focus: match (&cfg.focus_model, &cfg.focus_tokenizer) {
-                (Some(m), Some(t)) => Some(Focus::open(m, t, cfg.threads.max(1), cfg.focus_device.as_deref() == Some("gpu")).map(Mutex::new)),
+                (Some(m), Some(t)) => Some(Mutex::new(FocusSlot::NotLoaded {
+                    model: m.clone(),
+                    tokenizer: t.clone(),
+                    threads: cfg.threads.max(1),
+                    gpu: cfg.focus_device.as_deref() == Some("gpu"),
+                })),
                 _ => None,
             },
             active: Mutex::new(HashMap::new()),
@@ -184,17 +195,15 @@ impl Engine {
             "trail_next" => self.trail_op(req),
             "explain" => self.explain_op(req),
             "focus" => self.focus_op(req, cancel),
-            "device_trial" => self.device_trial(),
+            "device_trial" => self.device_trial(req),
             "taste" => crate::trails::taste(&self.index, &self.trails, req).map_err(|m| ("invalid_input", m)),
             other => fail("invalid_input", format!("unknown op {other:?}")),
         }
     }
 
     fn focus_op(&self, req: &Value, cancel: &Arc<AtomicBool>) -> Result<Value, Fail> {
-        let focus = match &self.focus {
-            None => return fail("focus_unavailable", "Answer focus is not installed".to_string()),
-            Some(Err(e)) => return fail("focus_unavailable", format!("Answer focus could not start: {e}")),
-            Some(Ok(f)) => f,
+        let Some(slot) = &self.focus else {
+            return fail("focus_unavailable", "Answer focus is not installed".to_string());
         };
         let query = req.get("query").and_then(Value::as_str).ok_or(("invalid_input", "query is required".to_string()))?;
         let texts: Vec<&str> = req
@@ -205,14 +214,25 @@ impl Engine {
             .map(|t| t.as_str().ok_or(("invalid_input", "texts must be strings".to_string())))
             .collect::<Result<_, _>>()?;
         let started = Instant::now();
-        let mut f = focus.lock().unwrap();
+        let mut slot = slot.lock().unwrap();
+        if let FocusSlot::NotLoaded { model, tokenizer, threads, gpu } = &*slot {
+            *slot = match Focus::open(model, tokenizer, *threads, *gpu) {
+                Ok(f) => FocusSlot::Ready(f),
+                Err(e) => FocusSlot::Failed(e),
+            };
+        }
+        let f = match &mut *slot {
+            FocusSlot::Ready(f) => f,
+            FocusSlot::Failed(e) => return fail("focus_unavailable", format!("Answer focus could not start: {e}")),
+            FocusSlot::NotLoaded { .. } => unreachable!(),
+        };
         let scores = f.score(query, &texts, cancel).map_err(|e| if e == "cancelled" { ("cancelled", e) } else { ("focus_failed", e) })?;
         Ok(json!({"mode": "focus", "scores": scores, "device": f.device(), "ms": started.elapsed().as_secs_f64() * 1000.0}))
     }
 
     /// How fast this machine runs the installed encoder (same size as the Answer focus model) and whether a graphics
     /// chip works through DirectML. The app turns this into its Answer focus choice before downloading anything.
-    fn device_trial(&self) -> Result<Value, Fail> {
+    fn device_trial(&self, req: &Value) -> Result<Value, Fail> {
         let text = "And it came to pass that the people did hearken unto the words of the prophet and they did repent of their sins. ".repeat(4);
         let mut ids = self.tok.encode(&text).map_err(|e| ("trial_failed", e))?;
         ids.truncate(63);
@@ -223,7 +243,9 @@ impl Engine {
         for _ in 0..10 {
             enc.encode(&ids).map_err(|e| ("trial_failed", e))?;
         }
-        Ok(json!({"mode": "device_trial", "cpu_ms": started.elapsed().as_secs_f64() * 1000.0, "gpu": crate::focus::gpu_available()}))
+        // probe_gpu: false after an earlier trial never finished (a graphics driver that crashes must not crash every start)
+        let probe = req.get("probe_gpu").and_then(Value::as_bool).unwrap_or(true);
+        Ok(json!({"mode": "device_trial", "cpu_ms": started.elapsed().as_secs_f64() * 1000.0, "gpu": probe && crate::focus::gpu_available()}))
     }
 
     pub fn info(&self) -> Value {
@@ -238,6 +260,15 @@ impl Engine {
             "phrase_languages": self.phrase.as_ref().map(|p| p.languages()).unwrap_or_default(),
             "catalog_languages": self.catalog.as_ref().map(|c| c.languages.clone()).unwrap_or_default(),
             "entities": self.people.is_some(), "topics": self.topics.is_some(), "volume_balance": self.volumes.is_some(), "profiles": profiles, "default_profile": self.default_profile,
+            "focus": match self.focus.as_ref().map(|m| m.try_lock()) {
+                None => "not installed",
+                Some(Err(_)) => "busy",
+                Some(Ok(slot)) => match &*slot {
+                    FocusSlot::NotLoaded { .. } => "not loaded",
+                    FocusSlot::Ready(f) => f.device(),
+                    FocusSlot::Failed(_) => "failed",
+                },
+            },
         })
     }
 

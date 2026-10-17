@@ -5,7 +5,7 @@
 use crate::encoder::environment;
 use ort::session::{builder::GraphOptimizationLevel, Session};
 use ort::value::Tensor;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::OnceLock;
 use tokenizers::{Tokenizer, TruncationParams};
@@ -22,6 +22,8 @@ pub struct Focus {
     session: Session,
     tok: Tokenizer,
     gpu: bool,
+    model: PathBuf,
+    threads: usize,
 }
 
 fn err<E: std::fmt::Display>(e: E) -> String {
@@ -73,20 +75,21 @@ impl Focus {
         let mut tok = Tokenizer::from_file(tokenizer).map_err(err)?;
         tok.with_truncation(Some(TruncationParams { max_length: MAX_TOKENS, ..Default::default() })).map_err(err)?;
         tok.with_padding(None);
+        let (model, threads) = (model.to_path_buf(), threads.max(1));
         if want_gpu && gpu_available() {
-            if let Ok(session) = dml_session_builder().and_then(|b| b.with_optimization_level(GraphOptimizationLevel::Level3).map_err(err)).and_then(|mut b| b.commit_from_file(model).map_err(err)) {
-                return Ok(Self { session, tok, gpu: true });
+            if let Ok(session) = dml_session_builder().and_then(|b| b.with_optimization_level(GraphOptimizationLevel::Level3).map_err(err)).and_then(|mut b| b.commit_from_file(&model).map_err(err)) {
+                return Ok(Self { session, tok, gpu: true, model, threads });
             }
         }
-        let session = Session::builder(environment()?)
-            .map_err(err)?
-            .with_optimization_level(GraphOptimizationLevel::Level3)
-            .map_err(err)?
-            .with_intra_threads(threads)
-            .map_err(err)?
-            .commit_from_file(model)
-            .map_err(err)?;
-        Ok(Self { session, tok, gpu: false })
+        let session = cpu_session(&model, threads)?;
+        Ok(Self { session, tok, gpu: false, model, threads })
+    }
+
+    /// Moves the model to the CPU for good (a graphics failure at run time: driver reset, device removed).
+    pub fn fall_back_to_cpu(&mut self) -> Result<(), String> {
+        self.session = cpu_session(&self.model, self.threads)?;
+        self.gpu = false;
+        Ok(())
     }
 
     pub fn device(&self) -> &'static str {
@@ -98,8 +101,18 @@ impl Focus {
         Ok(self.tok.encode((query, text), true).map_err(err)?.get_ids().to_vec())
     }
 
-    /// One score per text, in order. Checks [cancel] between batches.
+    /// One score per text, in order. Checks [cancel] between batches. A graphics failure moves to the CPU and retries.
     pub fn score(&mut self, query: &str, texts: &[&str], cancel: &AtomicBool) -> Result<Vec<f32>, String> {
+        match self.score_on_device(query, texts, cancel) {
+            Err(e) if self.gpu && e != "cancelled" => {
+                self.fall_back_to_cpu()?;
+                self.score_on_device(query, texts, cancel)
+            }
+            r => r,
+        }
+    }
+
+    fn score_on_device(&mut self, query: &str, texts: &[&str], cancel: &AtomicBool) -> Result<Vec<f32>, String> {
         let mut out = Vec::with_capacity(texts.len());
         for chunk in texts.chunks(if self.gpu { GPU_BATCH } else { 1 }) {
             if cancel.load(Ordering::SeqCst) {
@@ -124,4 +137,15 @@ impl Focus {
         }
         Ok(out)
     }
+}
+
+fn cpu_session(model: &Path, threads: usize) -> Result<Session, String> {
+    Session::builder(environment()?)
+        .map_err(err)?
+        .with_optimization_level(GraphOptimizationLevel::Level3)
+        .map_err(err)?
+        .with_intra_threads(threads)
+        .map_err(err)?
+        .commit_from_file(model)
+        .map_err(err)
 }

@@ -101,6 +101,13 @@ fn fp16_on_the_graphics_chip_matches_the_reference_or_falls_back() {
     for (g, w) in got.iter().zip(&want) {
         assert!((g - w).abs() <= 0.1, "{got:?} vs {want:?}");
     }
+    // A graphics failure at run time (driver reset, device removed) moves the model to the CPU once, for good.
+    f.fall_back_to_cpu().unwrap();
+    assert_eq!(f.device(), "cpu");
+    let again = scores(&mut f);
+    for (g, w) in again.iter().zip(&want) {
+        assert!((g - w).abs() <= 0.1, "after fallback {again:?} vs {want:?}");
+    }
 }
 
 #[test]
@@ -170,4 +177,21 @@ fn the_device_trial_reports_cpu_time_and_graphics() {
     let r = e.handle(&json!({"op": "device_trial"}));
     assert!(r["cpu_ms"].as_f64().unwrap() > 0.0, "{r}");
     assert_eq!(r["gpu"].as_bool().unwrap(), gpu_available());
+}
+
+#[test]
+fn the_model_loads_on_first_use_not_when_the_engine_opens() {
+    let Some(d) = pack("int8") else { return };
+    let Some(e) = engine(Some((d, "cpu"))) else { return };
+    assert_eq!(e.handle(&json!({"op": "info"}))["focus"], "not loaded", "a phone must not hold the model until it is used");
+    e.handle(&json!({"op": "focus", "query": "Why?", "texts": ["Jesus wept."]}));
+    assert_eq!(e.handle(&json!({"op": "info"}))["focus"], "cpu");
+}
+
+#[test]
+fn the_device_trial_can_skip_the_graphics_probe() {
+    let Some(e) = engine(None) else { return };
+    let r = e.handle(&json!({"op": "device_trial", "probe_gpu": false}));
+    assert_eq!(r["gpu"], false, "{r}");
+    assert!(r["cpu_ms"].as_f64().unwrap() > 0.0);
 }
