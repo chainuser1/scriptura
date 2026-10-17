@@ -111,6 +111,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       action: 'See options',
                       onAction: () => app.nav.go(Dest.settings),
                     ),
+                  ] else if (app.offerAnswerFocus && !app.setupBusy) ...[
+                    const SizedBox(height: 12),
+                    _Notice(
+                      icon: Icons.center_focus_strong_outlined,
+                      text: 'Answer focus can put the passages that answer your question first. It is a download, best on Wi-Fi.',
+                      action: 'See options',
+                      onAction: () => app.nav.go(Dest.settings),
+                    ),
                   ] else if (app.engineState == EngineState.preparing) ...[
                     const SizedBox(height: 12),
                     const _Notice(icon: Icons.hourglass_top, text: 'Search is starting. You can read in the meantime.'),

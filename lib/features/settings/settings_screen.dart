@@ -6,6 +6,7 @@ import '../../app/desktop.dart';
 import '../../app/keyboard_hints.dart';
 import '../../app/search_styles.dart';
 import '../../app/version.dart';
+import '../../services/engine/answer_focus.dart';
 import '../../services/update_check.dart';
 import '../../app_controller.dart';
 import '../../services/engine/benchmark.dart';
@@ -173,6 +174,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                   ),
                 ),
+                _AnswerFocusTile(app: app),
                 if (showKeyboardHints(context)) ...[
                   header('Keyboard'),
                   const _Shortcuts(),
@@ -342,5 +344,67 @@ class _Shortcuts extends StatelessWidget {
           ]),
         ),
     ]);
+  }
+}
+
+/// Answer focus (Settings › Advanced): what this device uses, the Automatic / On / Off choice, the download when it is
+/// offered, and Measure again.
+class _AnswerFocusTile extends StatelessWidget {
+  const _AnswerFocusTile({required this.app});
+  final AppController app;
+
+  String _status() {
+    final c = app.focusChoice;
+    if (app.focusMode == FocusMode.off) return 'Off: search works as usual.';
+    if (app.search.hasFocus && c != null && c.variant != FocusVariant.none) {
+      final gpu = (app.focusDevice ?? (c.variant == FocusVariant.fp16 ? 'gpu' : 'cpu')) == 'gpu';
+      return 'Using the ${gpu ? 'graphics chip' : 'processor'}, on the top ${c.k} results.';
+    }
+    if (c == null) return 'Not measured yet.';
+    if (c.variant == FocusVariant.none) return 'This device is too slow for it; search works as usual. Choose On to use it anyway.';
+    final size = c.variant == FocusVariant.fp16 ? 'about 1 GB' : 'about 400 MB';
+    return 'This device will use the ${c.variant == FocusVariant.fp16 ? 'graphics chip' : 'processor'}. Not downloaded yet ($size, best on Wi-Fi).';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Icon(Icons.center_focus_strong_outlined),
+          const SizedBox(width: 16),
+          Expanded(child: Text('Answer focus', style: t.titleMedium)),
+        ]),
+        Padding(
+          padding: const EdgeInsets.only(left: 40, top: 4),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Puts the passages that answer your question first. Chosen for this device automatically.', style: t.bodySmall),
+            const SizedBox(height: 4),
+            Text(_status()),
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SegmentedButton<FocusMode>(
+                segments: const [
+                  ButtonSegment(value: FocusMode.automatic, label: Text('Automatic')),
+                  ButtonSegment(value: FocusMode.on, label: Text('On')),
+                  ButtonSegment(value: FocusMode.off, label: Text('Off')),
+                ],
+                selected: {app.focusMode},
+                onSelectionChanged: (s) => app.setFocusMode(s.first),
+              ),
+            ),
+            Wrap(spacing: 8, children: [
+              if (app.canInstall && !app.focusInstalled && app.focusMode != FocusMode.off && (app.focusChoice?.variant ?? FocusVariant.none) != FocusVariant.none)
+                FilledButton(onPressed: app.setupBusy ? null : () => app.ensureData(includeFocus: true), child: const Text('Download')),
+              if (app.offerAnswerFocus) TextButton(onPressed: app.declineAnswerFocus, child: const Text('Not now')),
+              TextButton(onPressed: app.engineState == EngineState.ready ? app.measureDevice : null, child: const Text('Measure again')),
+            ]),
+          ]),
+        ),
+      ]),
+    );
   }
 }

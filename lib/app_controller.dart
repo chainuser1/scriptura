@@ -125,8 +125,12 @@ class AppController extends ChangeNotifier {
 
   final _focusTimes = <double>[];
 
+  /// Where Answer focus last ran ('gpu' or 'cpu'); null until the first focused search.
+  String? focusDevice;
+
   /// A measured Answer focus time; after a few, Automatic adjusts how many results it reorders (or turns itself off).
-  void recordFocusTime(double ms) {
+  void recordFocusTime(double ms, {String? device}) {
+    focusDevice = device ?? focusDevice;
     final c = focusChoice;
     if (c == null) return;
     _focusTimes.add(ms);
@@ -135,6 +139,14 @@ class AppController extends ChangeNotifier {
       user.setPref('answer_focus_choice', next.toJson());
       _focusTimes.clear();
     }
+  }
+
+  /// Automatic, On or Off. Off unloads the model; On also re-checks a device Automatic had found too slow.
+  Future<void> setFocusMode(FocusMode m) async {
+    user.setPref('answer_focus', m.name);
+    notifyListeners();
+    if (m != FocusMode.off && (focusChoice == null || focusChoice!.variant == FocusVariant.none)) await measureDevice();
+    if (_root != null) await _startEngine();
   }
 
   void declineAnswerFocus() {

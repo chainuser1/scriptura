@@ -103,7 +103,7 @@ class AboutScreen extends StatelessWidget {
                   'church. Details are in Settings, Sources and licences.'),
               h('Credits'),
               p('Made by Scriptura Labs, scriptura.space (MIT licence). Founder and designer: Jayson Rael Ramos. Search uses BGE-M3 by BAAI '
-                  '(MIT licence). Typefaces: Inter, Source Serif 4, Literata and Atkinson Hyperlegible (SIL Open Font License).'),
+                  '(MIT licence); Answer focus uses bge-reranker-v2-m3 by BAAI (Apache License 2.0). Typefaces: Inter, Source Serif 4, Literata and Atkinson Hyperlegible (SIL Open Font License).'),
             ],
           ),
         ),

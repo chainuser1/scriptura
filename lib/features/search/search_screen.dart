@@ -138,7 +138,7 @@ class _SearchScreenState extends State<SearchScreen> {
           .timeout(Duration(milliseconds: (2 * kFocusBudgetMs).round()));
       final scores = [for (final s in r.raw['scores'] as List) (s as num).toDouble()];
       if (scores.length != top.length) return passages;
-      app.recordFocusTime((r.raw['ms'] as num).toDouble());
+      app.recordFocusTime((r.raw['ms'] as num).toDouble(), device: r.raw['device'] as String?);
       return focusOrder(passages, scores);
     } on TimeoutException {
       _service.cancel(id);
