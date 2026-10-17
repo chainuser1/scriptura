@@ -1,0 +1,35 @@
+{
+  "provenance": "Assistant semantic audit of existing benchmark wording; evaluation metadata only.",
+  "dataset": "tool/query_robustness_set.json",
+  "rules": {
+    "formal": "Canonical question: eligible for query-specific v2 pooled judgments.",
+    "single": "Underspecified topic probe: never score as a strict paraphrase or infer the longer question's missing constraints.",
+    "keyword": "Topic retrieval probe: not necessarily equivalent to a question about definition, reason, or method.",
+    "other": "Translation probe: assistant-authored, not independently validated by native-language readers.",
+    "remaining": "Related wording probe; shared anchors measure positive coverage, not complete query-specific relevance. Apply exceptions below."
+  },
+  "exceptions": [
+    {"intent":"atonement","kind":"casual","issue":"Narrows to Jesus's death on the cross; canonical question concerns the broader Atonement."},
+    {"intent":"faith","kind":"typo","issue":"Adds how to acquire faith to a definition question."},
+    {"intent":"repentance","kind":"casual","issue":"Everyday change after mistakes does not explicitly specify sin or religious repentance."},
+    {"intent":"repentance","kind":"narrative","issue":"Asks how to stop repeating mistakes; religious meaning is plausible but not explicit."},
+    {"intent":"grace","kind":"casual","issue":"Asks about divine help generally, broader than defining grace."},
+    {"intent":"grace","kind":"narrative","issue":"Asks for help with inadequacy, not explicitly a definition of grace."},
+    {"intent":"baptism","kind":"synonym","issue":"Describes baptism without asking why it is necessary."},
+    {"intent":"holyghost","kind":"narrative","issue":"Asks how to identify a prompting, not who the Holy Ghost is."},
+    {"intent":"afterlife","kind":"synonym","issue":"Specifically asks about the interval before resurrection; resurrection-only answers are insufficient."},
+    {"intent":"afterlife","kind":"narrative","issue":"Asks about a deceased parent's present state, adding personal grief context."},
+    {"intent":"doubt","kind":"narrative","issue":"Adds concern about whether doubt makes someone bad; condemnation is not an adequate answer."},
+    {"intent":"grief","kind":"narrative","issue":"Adds infant loss, numbness, and anger; generic resurrection doctrine may only partially help."},
+    {"intent":"trials","kind":"synonym","issue":"Asks both why suffering happens and whether anyone cares."},
+    {"intent":"answers","kind":"narrative","issue":"Adds prolonged perceived silence and decision uncertainty."},
+    {"intent":"neighbor","kind":"casual","issue":"Narrows to people in need rather than all interpersonal conduct."},
+    {"intent":"neighbor","kind":"narrative","issue":"Narrows to a difficult coworker, not necessarily poverty or charitable giving."},
+    {"intent":"sabbath","kind":"casual","issue":"Adds Sunday framing; do not impose a day-specific theological interpretation on the canonical query."},
+    {"intent":"tithing","kind":"casual","issue":"Asks why to tithe rather than only what tithing is."},
+    {"intent":"tithing","kind":"narrative","issue":"Adds financial hardship and justification for giving; a percentage definition alone is incomplete."},
+    {"intent":"parenting","kind":"narrative","issue":"Asks about teenagers leaving faith, distinct from basic instruction of children."},
+    {"intent":"born-again","kind":"narrative","issue":"Explicitly asks what the Bible means; answers exclusively from other volumes do not fully meet that source request."}
+  ],
+  "decision": "Preserve the historical 192 probes for comparability, but stop calling them 192 independent or semantically equivalent tests. Use query-specific v2 labels for its 36 canonical/challenge questions. Unjudged variants remain unjudged."
+}

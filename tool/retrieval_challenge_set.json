@@ -1,0 +1,17 @@
+{
+  "provenance": "Assistant-authored before v2 retrieval; not independent reader intents.",
+  "queries": [
+    {"id":"challenge-listening","query":"I interrupt people when I disagree. What can help me listen before I speak?"},
+    {"id":"challenge-enemies","query":"How should I treat someone who is actively hostile to me?"},
+    {"id":"challenge-work-rest","query":"Is resting compatible with working diligently? I need guidance about both."},
+    {"id":"challenge-wealth","query":"Does having more money mean someone is more righteous?"},
+    {"id":"challenge-secret-service","query":"How can I help people without doing it for praise or attention?"},
+    {"id":"challenge-correction","query":"How can I correct someone while still showing them love?"},
+    {"id":"challenge-uncertainty","query":"Can I take a faithful first step before I know everything?"},
+    {"id":"challenge-outsider","query":"What do the scriptures say about welcoming strangers and foreigners?"},
+    {"id":"challenge-repair","query":"I took something that was not mine. What should I do to put it right?"},
+    {"id":"challenge-lament","query":"Are there examples of faithful people expressing sorrow and asking God why?"},
+    {"id":"challenge-comparison","query":"How are faith and hope related, and how are they different?"},
+    {"id":"challenge-person","query":"Who was the Joseph who interpreted Pharaoh's dreams?"}
+  ]
+}

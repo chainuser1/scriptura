@@ -1,0 +1,17 @@
+{
+ "provenance":"Assistant-nominated positive candidates, after method-blinded pool review and before aggregate metrics. Verified against actual corpus text before grading. No retrieval ranking altered.",
+ "references":{
+  "challenge-listening":["James 1:19","Proverbs 17:27","Ecclesiastes 5:2"],
+  "challenge-enemies":["Romans 12:20","Romans 12:21","Proverbs 25:21","Exodus 23:4"],
+  "challenge-work-rest":["Exodus 20:9","Exodus 20:10","Mark 6:31"],
+  "challenge-wealth":["Luke 12:15","Luke 6:20","Luke 6:24","James 2:5","1 Timothy 6:5","1 Timothy 6:6","1 Timothy 6:9"],
+  "challenge-secret-service":["Matthew 6:1","Matthew 6:2","Matthew 6:3","Matthew 6:4"],
+  "challenge-correction":["Doctrine and Covenants 121:41","Doctrine and Covenants 121:42","Doctrine and Covenants 121:43","Doctrine and Covenants 121:44","Galatians 6:1","2 Timothy 2:24","2 Timothy 2:25"],
+  "challenge-uncertainty":["Alma 32:21","Alma 32:27","Ether 12:6","Hebrews 11:8","2 Corinthians 5:7"],
+  "challenge-outsider":["Leviticus 19:33","Leviticus 19:34","Deuteronomy 10:18","Deuteronomy 10:19","Hebrews 13:2","Matthew 25:35"],
+  "challenge-repair":["Exodus 22:1","Leviticus 6:4","Leviticus 6:5","Numbers 5:7","Luke 19:8","Ezekiel 33:15"],
+  "challenge-lament":["Psalms 13:1","Psalms 22:1","Habakkuk 1:2","Job 3:11","Matthew 27:46","Doctrine and Covenants 121:1"],
+  "challenge-comparison":["Hebrews 11:1","Ether 12:4","Moroni 7:40","Moroni 7:41","Moroni 7:42","1 Corinthians 13:13","Alma 32:21"],
+  "challenge-person":["Genesis 41:14","Genesis 41:15","Genesis 41:16","Genesis 41:25","Genesis 41:39","Genesis 41:40","Genesis 41:41","Genesis 41:42","Genesis 37:3"]
+ }
+}
