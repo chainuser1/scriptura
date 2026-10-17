@@ -446,6 +446,23 @@ class _SearchScreenState extends State<SearchScreen> {
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
       child: Semantics(header: true, child: Text(heading, style: t.textTheme.titleSmall)),
     );
+    if (r.mode != 'phrase' && r.mode != 'similar') {
+      // The trail keeps to what answered the question: the question itself plus the top three results.
+      yield Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 20, 4),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            icon: const Icon(Icons.alt_route),
+            label: const Text('Start a trail from this question'),
+            onPressed: () => startTrail(context, app,
+                seed: TrailSeed.question(_lastQuery),
+                name: _lastQuery,
+                extraSeeds: [for (final p in _passages.take(3)) TrailSeed.verse(p.verseId)]),
+          ),
+        ),
+      );
+    }
     final phrase = r.mode == 'phrase' ? _lastQuery : null;
     final wide = MediaQuery.sizeOf(context).width >= kSplitBreakpoint;
     for (final p in _passages) {

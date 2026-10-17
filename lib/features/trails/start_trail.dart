@@ -13,8 +13,12 @@ Future<void> startTrail(
   required TrailSeed seed,
   required String name,
   List<String> moods = const [],
+  List<TrailSeed> extraSeeds = const [],
 }) async {
   final trail = app.user.createTrail(name: _short(name), seed: seed, moods: moods);
+  for (final s in extraSeeds) {
+    app.user.addTrailSeed(trail.id, s);
+  }
   await openTrail(context, app, trail);
 }
 

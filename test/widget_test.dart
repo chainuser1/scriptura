@@ -8,6 +8,7 @@ import 'package:scriptures_reader_mobile/app_controller.dart';
 import 'package:scriptures_reader_mobile/data/content/catalog.dart';
 import 'package:scriptures_reader_mobile/data/content/content_database.dart';
 import 'package:scriptures_reader_mobile/data/content/content_repository.dart';
+import 'package:scriptures_reader_mobile/data/trails/trail_models.dart';
 import 'package:scriptures_reader_mobile/data/user/user_store.dart';
 import 'package:scriptures_reader_mobile/main.dart';
 import 'package:scriptures_reader_mobile/services/engine/search_models.dart';
@@ -244,6 +245,26 @@ void main() {
       await openSection(tester, 'Search');
       return app;
     }
+
+    testWidgets('a question starts a trail seeded with the question and its top answers', (tester) async {
+      final app = await inSearch(tester, FakeSearchService((r, id) async => semantic([2, 5, 6, 7])));
+      await typeAndSubmit(tester, find.byType(TextField).first, 'how can I find peace');
+      await tester.tap(find.text('Start a trail from this question'));
+      await tester.pumpAndSettle();
+      final id = app.user.pref('active_trail')!;
+      final trail = app.user.trail(id)!;
+      expect(trail.seed.kind, TrailSeedKind.question);
+      expect(trail.seed.text, 'how can I find peace');
+      expect(app.user.trailSeeds(id).map((s) => s.verseId), [2, 5, 6]); // the top three answers, in order
+    });
+
+    testWidgets('exact-phrase results do not offer a question trail', (tester) async {
+      await inSearch(tester, FakeSearchService((r, id) async => SearchResponse(mode: 'phrase', hits: [Hit(2, 0)], total: 1)));
+      await tester.tap(find.text('Exact phrase'));
+      await tester.pumpAndSettle();
+      await typeAndSubmit(tester, find.byType(TextField).first, 'in the beginning');
+      expect(find.text('Start a trail from this question'), findsNothing);
+    });
 
     testWidgets('results show reference and text with a live preview beside them', (tester) async {
       await inSearch(tester, FakeSearchService((r, id) async => semantic([2, 5])));
