@@ -77,6 +77,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
                 ReadingPreview(user: user),
+                const SizedBox(height: 20),
+                Text('App theme', style: t.titleSmall),
+                const SizedBox(height: 8),
+                AppThemeGallery(user: user),
                 header('Reading'),
                 ListTile(
                   title: const Text('Language'),

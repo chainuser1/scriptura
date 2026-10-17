@@ -78,15 +78,25 @@ class ScripturesReaderApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Scriptura',
-      debugShowCheckedModeBanner: false,
-      theme: appTheme(Brightness.light),
-      darkTheme: appTheme(Brightness.dark),
-      themeMode: ThemeMode.system,
-      home: ListenableBuilder(
-        listenable: app,
-        builder: (context, _) => app.repository == null ? WelcomeScreen(app: app) : AppShell(app: app),
+    // The app theme is a saved preference; until the library is ready the welcome screen uses the Scriptura look.
+    return ListenableBuilder(
+      listenable: app,
+      builder: (context, _) => ListenableBuilder(
+        listenable: app.repository == null ? app : app.user, // the store is replaced when the library loads
+        builder: (context, _) {
+          final style = app.repository == null ? AppStyle.scriptura : AppStyle.parse(app.user.pref('app_theme'));
+          return MaterialApp(
+            title: 'Scriptura',
+            debugShowCheckedModeBanner: false,
+            theme: appTheme(Brightness.light, style),
+            darkTheme: appTheme(Brightness.dark, style),
+            themeMode: style.mode,
+            home: ListenableBuilder(
+              listenable: app,
+              builder: (context, _) => app.repository == null ? WelcomeScreen(app: app) : AppShell(app: app),
+            ),
+          );
+        },
       ),
     );
   }

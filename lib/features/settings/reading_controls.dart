@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/brand.dart';
 import '../../app/looks.dart';
 import '../../app/theme.dart';
 import '../../data/user/user_store.dart';
@@ -85,6 +86,81 @@ class LookGallery extends StatelessWidget {
             current == null ? 'Custom: you have adjusted the controls below.' : current.blurb,
             style: t.bodySmall,
           ),
+        ]);
+      },
+    );
+  }
+}
+
+/// The app themes as small previews in each theme's own colours and type, with the Scriptura mark. One tap applies a
+/// theme to the whole app; the reading page keeps its own look.
+class AppThemeGallery extends StatelessWidget {
+  const AppThemeGallery({super.key, required this.user});
+  final UserStore user;
+
+  @override
+  Widget build(BuildContext context) {
+    final brightness = MediaQuery.platformBrightnessOf(context);
+    return ListenableBuilder(
+      listenable: user,
+      builder: (context, _) {
+        final current = AppStyle.parse(user.pref('app_theme'));
+        Widget card(AppStyle style) {
+          final theme = appTheme(brightness, style);
+          final s = theme.colorScheme;
+          final selected = style == current;
+          return Semantics(
+            button: true,
+            selected: selected,
+            label: '${style.label} theme. ${style.blurb}',
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => user.setPref('app_theme', style.name),
+              child: Container(
+                width: 156,
+                height: 112,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: s.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: selected ? Theme.of(context).colorScheme.primary : s.outline, width: selected ? 2.5 : 1),
+                ),
+                child: ExcludeSemantics(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: [
+                      ScripturesMark(size: 22, onDark: s.brightness == Brightness.dark),
+                      const Spacer(),
+                      if (selected) Icon(Icons.check_circle, size: 18, color: Theme.of(context).colorScheme.primary),
+                    ]),
+                    const Spacer(),
+                    Text(style.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.titleLarge?.copyWith(color: s.onSurface, fontSize: 18)),
+                    const SizedBox(height: 6),
+                    Row(children: [
+                      for (final c in [s.primary, s.secondary, s.primaryContainer])
+                        Container(width: 14, height: 14, margin: const EdgeInsets.only(right: 4), decoration: BoxDecoration(color: c, shape: BoxShape.circle, border: Border.all(color: s.outlineVariant))),
+                    ]),
+                  ]),
+                ),
+              ),
+            ),
+          );
+        }
+
+        return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          LayoutBuilder(builder: (context, box) {
+            if (box.maxWidth >= 600) return Wrap(spacing: 10, runSpacing: 10, children: [for (final a in AppStyle.values) card(a)]);
+            return SizedBox(
+              height: 112,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: AppStyle.values.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 10),
+                itemBuilder: (context, i) => card(AppStyle.values[i]),
+              ),
+            );
+          }),
+          const SizedBox(height: 8),
+          Text(current.blurb, style: Theme.of(context).textTheme.bodySmall),
         ]);
       },
     );

@@ -67,3 +67,54 @@ flutter:
           weight: 600
         - asset: assets/fonts/SourceSerif4-Bold.ttf
           weight: 700
+    # App theme faces (Classic, Modern, Elegant, Aesthetic; SIL Open Font License; licence files alongside)
+    - family: EBGaramond
+      fonts:
+        - asset: assets/fonts/EBGaramond-400-Italic.ttf
+          style: italic
+        - asset: assets/fonts/EBGaramond-400.ttf
+        - asset: assets/fonts/EBGaramond-600.ttf
+          weight: 600
+    - family: PlusJakartaSans
+      fonts:
+        - asset: assets/fonts/PlusJakartaSans-400.ttf
+        - asset: assets/fonts/PlusJakartaSans-600.ttf
+          weight: 600
+        - asset: assets/fonts/PlusJakartaSans-700.ttf
+          weight: 700
+        - asset: assets/fonts/PlusJakartaSans-800.ttf
+          weight: 800
+    - family: CormorantGaramond
+      fonts:
+        - asset: assets/fonts/CormorantGaramond-400-Italic.ttf
+          style: italic
+        - asset: assets/fonts/CormorantGaramond-400.ttf
+        - asset: assets/fonts/CormorantGaramond-500.ttf
+          weight: 500
+        - asset: assets/fonts/CormorantGaramond-600.ttf
+          weight: 600
+    - family: Jost
+      fonts:
+        - asset: assets/fonts/Jost-400.ttf
+        - asset: assets/fonts/Jost-500.ttf
+          weight: 500
+        - asset: assets/fonts/Jost-600.ttf
+          weight: 600
+    - family: Fraunces
+      fonts:
+        - asset: assets/fonts/Fraunces-400-Italic.ttf
+          style: italic
+        - asset: assets/fonts/Fraunces-400.ttf
+        - asset: assets/fonts/Fraunces-600.ttf
+          weight: 600
+        - asset: assets/fonts/Fraunces-700.ttf
+          weight: 700
+    - family: Nunito
+      fonts:
+        - asset: assets/fonts/Nunito-400.ttf
+        - asset: assets/fonts/Nunito-600.ttf
+          weight: 600
+        - asset: assets/fonts/Nunito-700.ttf
+          weight: 700
+        - asset: assets/fonts/Nunito-800.ttf
+          weight: 800
