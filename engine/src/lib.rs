@@ -5,6 +5,7 @@ pub mod capi;
 pub mod encoder;
 pub mod engine;
 pub mod entities;
+pub mod focus;
 pub mod identity;
 pub mod kernels;
 pub mod npy;

@@ -85,6 +85,11 @@ if(EXISTS "${SCRIPTURE_ENGINE_DLL}")
 else()
   message(WARNING "scripture_engine.dll not found; the app will start without search. Run: cargo build --release (engine/)")
 endif()
+# DirectML (copied there by the engine build): lets Answer focus use the graphics chip; without it, the CPU is used.
+set(DIRECTML_DLL "${CMAKE_CURRENT_SOURCE_DIR}/../engine/target/release/DirectML.dll")
+if(EXISTS "${DIRECTML_DLL}")
+  install(FILES "${DIRECTML_DLL}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}" COMPONENT Runtime)
+endif()
 
 install(FILES "${FLUTTER_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
   COMPONENT Runtime)

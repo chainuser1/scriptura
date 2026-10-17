@@ -29,7 +29,7 @@ fn err<E: std::fmt::Display>(e: E) -> String {
 }
 
 /// ONNX Runtime allows one environment per process.
-fn environment() -> Result<&'static Environment, String> {
+pub(crate) fn environment() -> Result<&'static Environment, String> {
     static ENV: OnceLock<Result<Environment, String>> = OnceLock::new();
     ENV.get_or_init(build_environment).as_ref().map_err(|e| e.clone())
 }

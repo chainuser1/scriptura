@@ -3,6 +3,7 @@
 
 use crate::encoder::Encoder;
 use crate::entities::PeopleIndex;
+use crate::focus::Focus;
 use crate::identity;
 use crate::phrase::PhraseIndex;
 use crate::reference::{Catalog, Reference};
@@ -37,6 +38,14 @@ pub struct Config {
     /// Volume balance strength (crate::balance; 0 = off). The app passes the value chosen in tool/volume_balance.py.
     #[serde(default)]
     pub volume_balance: f64,
+    /// Answer focus pack (model.onnx, tokenizer.json); optional. A model that fails to open leaves search untouched.
+    #[serde(default)]
+    pub focus_model: Option<PathBuf>,
+    #[serde(default)]
+    pub focus_tokenizer: Option<PathBuf>,
+    /// "gpu" (graphics chip when it works, else CPU) or "cpu".
+    #[serde(default)]
+    pub focus_device: Option<String>,
     /// profile id -> [echo, spark, thread, root]
     pub profiles: BTreeMap<String, [f64; 4]>,
     pub default_profile: String,
@@ -63,6 +72,8 @@ pub struct Engine {
     catalog: Option<Catalog>,
     people: Option<PeopleIndex>,
     topics: Option<TopicIndex>,
+    /// None: not configured; Err: configured but could not open (the reason is returned by the focus request).
+    focus: Option<Result<Mutex<Focus>, String>>,
     profiles: BTreeMap<String, Weights>,
     default_profile: String,
     fallback: String,
@@ -121,6 +132,10 @@ impl Engine {
             default_profile: cfg.default_profile,
             fallback: cfg.fallback_without_thread,
             identity: cfg.identity,
+            focus: match (&cfg.focus_model, &cfg.focus_tokenizer) {
+                (Some(m), Some(t)) => Some(Focus::open(m, t, cfg.threads.max(1), cfg.focus_device.as_deref() == Some("gpu")).map(Mutex::new)),
+                _ => None,
+            },
             active: Mutex::new(HashMap::new()),
         })
     }
@@ -168,9 +183,47 @@ impl Engine {
             }
             "trail_next" => self.trail_op(req),
             "explain" => self.explain_op(req),
+            "focus" => self.focus_op(req, cancel),
+            "device_trial" => self.device_trial(),
             "taste" => crate::trails::taste(&self.index, &self.trails, req).map_err(|m| ("invalid_input", m)),
             other => fail("invalid_input", format!("unknown op {other:?}")),
         }
+    }
+
+    fn focus_op(&self, req: &Value, cancel: &Arc<AtomicBool>) -> Result<Value, Fail> {
+        let focus = match &self.focus {
+            None => return fail("focus_unavailable", "Answer focus is not installed".to_string()),
+            Some(Err(e)) => return fail("focus_unavailable", format!("Answer focus could not start: {e}")),
+            Some(Ok(f)) => f,
+        };
+        let query = req.get("query").and_then(Value::as_str).ok_or(("invalid_input", "query is required".to_string()))?;
+        let texts: Vec<&str> = req
+            .get("texts")
+            .and_then(Value::as_array)
+            .ok_or(("invalid_input", "texts is required".to_string()))?
+            .iter()
+            .map(|t| t.as_str().ok_or(("invalid_input", "texts must be strings".to_string())))
+            .collect::<Result<_, _>>()?;
+        let started = Instant::now();
+        let mut f = focus.lock().unwrap();
+        let scores = f.score(query, &texts, cancel).map_err(|e| if e == "cancelled" { ("cancelled", e) } else { ("focus_failed", e) })?;
+        Ok(json!({"mode": "focus", "scores": scores, "device": f.device(), "ms": started.elapsed().as_secs_f64() * 1000.0}))
+    }
+
+    /// How fast this machine runs the installed encoder (same size as the Answer focus model) and whether a graphics
+    /// chip works through DirectML. The app turns this into its Answer focus choice before downloading anything.
+    fn device_trial(&self) -> Result<Value, Fail> {
+        let text = "And it came to pass that the people did hearken unto the words of the prophet and they did repent of their sins. ".repeat(4);
+        let mut ids = self.tok.encode(&text).map_err(|e| ("trial_failed", e))?;
+        ids.truncate(63);
+        ids.push(2); // </s>: a 64-token passage
+        let mut enc = self.enc.lock().unwrap();
+        enc.encode(&ids).map_err(|e| ("trial_failed", e))?; // warm
+        let started = Instant::now();
+        for _ in 0..10 {
+            enc.encode(&ids).map_err(|e| ("trial_failed", e))?;
+        }
+        Ok(json!({"cpu_ms": started.elapsed().as_secs_f64() * 1000.0, "gpu": crate::focus::gpu_available()}))
     }
 
     pub fn info(&self) -> Value {
