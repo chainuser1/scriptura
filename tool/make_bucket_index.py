@@ -73,6 +73,10 @@ def main():
               ('answers-pack-v1', 'answers', 'Study questions', 'Questions a passage speaks to, in your language.')]
     if a.include_topics:
         extras.append(('topics-pack-v1', 'topics', 'Topic index', 'Sharper similar verses.'))
+    # Answer focus (tool/build_answer_focus_pack.py): optional; a device downloads only the variant it chose
+    optional = {'answer-focus-int8-v1', 'answer-focus-fp16-v1'}
+    extras += [('answer-focus-int8-v1', 'answer-focus-int8', 'Answer focus', 'Puts the passages that answer your question first.'),
+               ('answer-focus-fp16-v1', 'answer-focus-fp16', 'Answer focus (graphics)', 'Puts the passages that answer your question first.')]
     for pid, kind, title, note in extras:
         src = ROOT / 'generated-artifacts' / pid
         manifest = json.loads((src / 'manifest.json').read_text('utf-8'))
@@ -83,7 +87,7 @@ def main():
         files = {n: {'bytes': m['bytes'], 'sha256': m['sha256']} for n, m in manifest['files'].items()}
         mf = src / 'manifest.json'
         files['manifest.json'] = {'bytes': mf.stat().st_size, 'sha256': sha256(mf)}
-        packs.append({'id': pid, 'kind': kind, 'title': title, 'version': '1', 'folder': pid, 'optional': False, 'requires': [],
+        packs.append({'id': pid, 'kind': kind, 'title': title, 'version': '1', 'folder': pid, 'optional': pid in optional, 'requires': [],
                       'note': note, 'bytes': sum(f['bytes'] for f in files.values()), 'files': files, 'archive': archive_entry(z)})
 
     (out / 'index.json').write_text(json.dumps({'format': 'scriptura-index-v1', 'generated': search['generated'], 'packs': packs}, indent=1), 'utf-8')
