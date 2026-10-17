@@ -26,6 +26,42 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 DIST = ROOT / 'generated-artifacts' / 'dist'
+EXE = DIST / 'Scriptura-Setup.exe'  # written by tool/build_installer.py
+APK = ROOT / 'build' / 'app' / 'outputs' / 'flutter-apk' / 'app-release.apk'  # written by flutter build apk
+
+
+def _aapt():
+    import os
+    for sdk in (os.environ.get('ANDROID_HOME'), os.environ.get('ANDROID_SDK_ROOT'), Path.home() / 'Android' / 'Sdk',
+                Path(os.environ.get('LOCALAPPDATA', '')) / 'Android' / 'Sdk'):
+        tools = sorted((Path(sdk) / 'build-tools').glob('*/aapt.exe')) if sdk else []
+        if tools:
+            return tools[-1]
+    sys.exit('aapt (Android SDK build-tools) not found; it is needed to read the APK version')
+
+
+def apk_version(apk):
+    """(versionName, versionCode) recorded in the APK."""
+    out = subprocess.run([str(_aapt()), 'dump', 'badging', str(apk)], capture_output=True, text=True).stdout
+    m = re.search(r"versionCode='(\d+)' versionName='([^']+)'", out)
+    if not m:
+        sys.exit(f'could not read the version of {apk}')
+    return m.group(2), m.group(1)
+
+
+def exe_version(exe):
+    """Product version recorded in the Windows installer."""
+    out = subprocess.run(['powershell', '-NoProfile', '-Command', f"(Get-Item '{exe}').VersionInfo.ProductVersion"],
+                         capture_output=True, text=True).stdout
+    return out.strip()
+
+
+def check_package_versions(version, apk, exe):
+    """Exits unless each given package was built for [version] (a stale copy once shipped as two releases)."""
+    if apk is not None and apk_version(apk)[0] != version:
+        sys.exit(f'{apk} is version {apk_version(apk)[0]}, not {version}: rebuild it (flutter build apk --release)')
+    if exe is not None and exe_version(exe) != version:
+        sys.exit(f'{exe} is version {exe_version(exe)}, not {version}: rebuild it (tool/build_installer.py)')
 
 
 def sha256(p):
@@ -45,10 +81,11 @@ def main():
     code = re.search(r"kAppVersion\s*=\s*'([^']+)'", (ROOT / 'lib' / 'app' / 'version.dart').read_text('utf-8')).group(1)
     if version != code:
         sys.exit(f'pubspec.yaml says {version} but lib/app/version.dart says {code}; make them equal and rebuild')
-    exe, apk = DIST / 'Scriptura-Setup.exe', DIST / 'app-release.apk'
+    exe, apk = EXE, APK
     for f in (exe, apk):
         if not f.exists():
             sys.exit(f'missing {f}: build it first')
+    check_package_versions(version, apk, exe)
 
     out = ROOT / 'generated-artifacts' / 'release-assets' / version
     if out.exists():
