@@ -354,6 +354,24 @@ void main() {
         expect(app.user.trailSeeds(app.user.pref('active_trail')!).map((s) => s.verseId), [7, 6, 5]);
       });
 
+      testWidgets('searches that keep timing out make Automatic turn Answer focus off', (tester) async {
+        final app = await withFocus(tester, (r) => Completer<SearchResponse>().future);
+        for (final q in ['one', 'two', 'three']) {
+          await tester.enterText(find.byType(TextField).first, q);
+          await tester.testTextInput.receiveAction(TextInputAction.search);
+          await tester.pump(const Duration(seconds: 4));
+          await tester.pumpAndSettle();
+        }
+        expect(app.focusChoice!.variant, FocusVariant.none);
+      });
+
+      testWidgets('when the graphics chip fails and the engine moves to the CPU, the next start goes straight to the CPU', (tester) async {
+        final app = await withFocus(tester, (r) async => SearchResponse(mode: 'focus', raw: {'scores': [0.1, 0.2, 0.3, 0.4], 'device': 'cpu', 'ms': 900.0}));
+        app.user.setPref('answer_focus_choice', const FocusChoice(FocusVariant.fp16, 10, 900).toJson());
+        await typeAndSubmit(tester, find.byType(TextField).first, 'peace');
+        expect(app.user.pref('focus_gpu_failed'), '1');
+      });
+
       testWidgets('slow searches teach Automatic to look at fewer candidates', (tester) async {
         final app = await withFocus(tester, (r) async => focused([0.1, 0.2, 0.3, 0.4], ms: 2600), k: 30);
         for (final q in ['one', 'two', 'three']) {

@@ -142,6 +142,7 @@ class _SearchScreenState extends State<SearchScreen> {
       return focusOrder(passages, scores);
     } on TimeoutException {
       _service.cancel(id);
+      app.recordFocusTime(2 * kFocusBudgetMs); // at least this long: so Automatic learns this device is too slow
       return passages;
     } on Object {
       return passages; // focus_unavailable, a driver error, a cancel: today's order

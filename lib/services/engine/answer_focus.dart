@@ -72,7 +72,7 @@ FocusChoice adapt(FocusChoice c, List<double> recentMs, FocusMode mode) {
   if (median <= kFocusBudgetMs) return c;
   final i = _ks.indexOf(c.k);
   if (i >= 0 && i < _ks.length - 1) return FocusChoice(c.variant, _ks[i + 1], median * _ks[i + 1] / c.k);
-  if (median > 2 * kFocusBudgetMs && mode == FocusMode.automatic) return FocusChoice.none;
+  if (median >= 2 * kFocusBudgetMs && mode == FocusMode.automatic) return FocusChoice.none; // a timeout counts
   return c;
 }
 
@@ -81,4 +81,11 @@ List<T> focusOrder<T>(List<T> items, List<double> scores) {
   final n = scores.length.clamp(0, items.length);
   final idx = List.generate(n, (i) => i)..sort((a, b) => scores[b].compareTo(scores[a]) != 0 ? scores[b].compareTo(scores[a]) : a - b);
   return [for (final i in idx) items[i], ...items.skip(n)];
+}
+
+/// After a new trial: a model already installed stays (a busy machine or a new driver must not strand a downloaded
+/// pack); the same model takes the new measurement; with nothing installed the trial decides.
+FocusChoice keep(FocusChoice? old, FocusChoice fresh, {required FocusVariant installed}) {
+  if (installed != FocusVariant.none && old?.variant == installed && fresh.variant != installed) return old!;
+  return fresh;
 }

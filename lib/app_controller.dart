@@ -133,6 +133,7 @@ class AppController extends ChangeNotifier {
     focusDevice = device ?? focusDevice;
     final c = focusChoice;
     if (c == null) return;
+    if (c.variant == FocusVariant.fp16 && device == 'cpu') user.setPref('focus_gpu_failed', '1'); // the engine fell back
     _focusTimes.add(ms);
     final next = adapt(c, _focusTimes, focusMode);
     if (next != c) {
@@ -155,15 +156,38 @@ class AppController extends ChangeNotifier {
   }
 
   /// Times this device with the installed search model and decides Answer focus (see answer_focus.dart). Quiet on failure.
-  Future<void> measureDevice() async {
+  /// A trial left pending (the app died during it, for example in a graphics driver) skips the graphics probe; a
+  /// graphics chip that failed at run time is not offered again. An installed model is kept (see [keep]).
+  /// Returns whether the chosen model changed.
+  Future<bool> measureDevice() async {
+    final before = focusChoice;
+    final probeGpu = user.pref('focus_trial_pending') != '1' && user.pref('focus_gpu_failed') != '1';
+    user.setPref('focus_trial_pending', '1');
     try {
-      final r = await _search.search(SearchRequest.raw('device_trial', const {}));
-      final c = choose(cpuMs: (r.raw['cpu_ms'] as num).toDouble(), gpu: r.raw['gpu'] == true, mode: focusMode);
+      final r = await _search.search(SearchRequest.raw('device_trial', {if (!probeGpu) 'probe_gpu': false}));
+      final fresh = choose(cpuMs: (r.raw['cpu_ms'] as num).toDouble(), gpu: probeGpu && r.raw['gpu'] == true, mode: focusMode);
+      final installed = _root == null
+          ? FocusVariant.none
+          : focusInt8Packs.active() != null
+              ? FocusVariant.int8
+              : focusFp16Packs.active() != null
+                  ? FocusVariant.fp16
+                  : FocusVariant.none;
+      final c = keep(before, fresh, installed: installed);
       user.setPref('answer_focus_choice', c.toJson());
+      _focusTimes.clear();
       notifyListeners();
+      return c.variant != before?.variant;
     } on Object {
-      // no choice yet; the trial runs again on the next start
+      return false; // no choice yet; the trial runs again on the next start
+    } finally {
+      user.setPref('focus_trial_pending', '0');
     }
+  }
+
+  /// Settings › Measure again: a new trial, and the engine reopened when the chosen model changed.
+  Future<void> remeasure() async {
+    if (await measureDevice() && _root != null) await _startEngine();
   }
 
   AnswersStore? _answers;
@@ -261,7 +285,12 @@ class AppController extends ChangeNotifier {
       _packFromDirectory(devPacks == null ? null : '${devPacks!.path}/colbert-pack-v1') ??
       (_root == null ? null : colbertPacks.active());
 
-  Future<void> _startEngine() async {
+  Future<void> _engineOpen = Future.value();
+
+  /// One engine (re)start at a time: two overlapping restarts would leave an engine and its model loaded.
+  Future<void> _startEngine() => _engineOpen = _engineOpen.then((_) => _startEngineNow(), onError: (_) => _startEngineNow());
+
+  Future<void> _startEngineNow() async {
     await _search.close();
     _state = EngineState.preparing;
     _engineProblem = null;
@@ -290,7 +319,7 @@ class AppController extends ChangeNotifier {
           entitiesDb: _entityPack()?.path('entities.db'),
           topicsDb: _topicsPack()?.path('topics.db'),
           focus: _focusPack(),
-          focusGpu: focusChoice?.variant == FocusVariant.fp16,
+          focusGpu: focusChoice?.variant == FocusVariant.fp16 && user.pref('focus_gpu_failed') != '1',
         );
         service = await NativeSearchService.open(libraryPath: lib, config: paths.config());
       }
@@ -302,14 +331,18 @@ class AppController extends ChangeNotifier {
     if (service != null) {
       _search = service;
       _state = EngineState.ready;
-      if (focusChoice == null && focusMode != FocusMode.off && _root != null) await measureDevice();
     } else {
       _search = UnavailableSearchService(problem ?? 'Search is unavailable');
       _state = EngineState.unavailable;
       _engineProblem = problem;
     }
     notifyListeners();
+    // the trial runs after search is ready, never holding it up
+    if (service != null && focusChoice == null && focusMode != FocusMode.off && _root != null) focusTrial = measureDevice();
   }
+
+  /// The first-start device trial, while it runs.
+  Future<bool>? focusTrial;
 
   Future<void> installRelease(Directory source) async {
     final manifest = jsonDecode(File('${source.path}/manifest.json').readAsStringSync()) as Map<String, dynamic>;

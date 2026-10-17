@@ -1,4 +1,4 @@
-"""The Windows app folder must carry real copies of the engine's native libraries (the engine imports DirectML.dll
+r"""The Windows app folder must carry real copies of the engine's native libraries (the engine imports DirectML.dll
 directly, so a missing or linked copy breaks all search on another PC).
 
   .venv\Scripts\python.exe -I test/windows_bundle_check.py   (after flutter build windows --release)

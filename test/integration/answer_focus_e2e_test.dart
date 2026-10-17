@@ -27,7 +27,8 @@ void main() {
     await app.load();
     expect(app.engineState, EngineState.ready, reason: app.engineProblem);
 
-    // the trial ran once the engine was ready, before anything was downloaded
+    // the trial runs once the engine is ready (not holding it up), before anything is downloaded
+    await app.focusTrial;
     final choice = app.focusChoice!;
     expect(choice.variant, isNot(FocusVariant.none), reason: 'this development machine is fast enough');
     expect(app.focusInstalled, isFalse);
@@ -53,6 +54,13 @@ void main() {
     final r = await app.search.search(SearchRequest.raw('focus', {'query': 'Why?', 'texts': ['Jesus wept.', 'And Seth begat Enos.']}));
     expect((r.raw['scores'] as List), hasLength(2));
     expect(r.raw['device'], choice.variant == FocusVariant.fp16 ? 'gpu' : 'cpu');
+
+    // Off then On in quick succession: one engine at a time, and the last choice wins
+    final off = app.setFocusMode(FocusMode.off);
+    final on = app.setFocusMode(FocusMode.automatic);
+    await Future.wait([off, on]);
+    expect(app.engineState, EngineState.ready, reason: app.engineProblem);
+    expect(app.search.hasFocus, isTrue, reason: 'the later restart (Automatic) must be the one left running');
     await app.close();
   }, timeout: const Timeout(Duration(minutes: 20)));
 }

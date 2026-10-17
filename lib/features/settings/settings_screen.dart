@@ -400,7 +400,7 @@ class _AnswerFocusTile extends StatelessWidget {
               if (app.canInstall && !app.focusInstalled && app.focusMode != FocusMode.off && (app.focusChoice?.variant ?? FocusVariant.none) != FocusVariant.none)
                 FilledButton(onPressed: app.setupBusy ? null : () => app.ensureData(includeFocus: true), child: const Text('Download')),
               if (app.offerAnswerFocus) TextButton(onPressed: app.declineAnswerFocus, child: const Text('Not now')),
-              TextButton(onPressed: app.engineState == EngineState.ready ? app.measureDevice : null, child: const Text('Measure again')),
+              TextButton(onPressed: app.engineState == EngineState.ready ? app.remeasure : null, child: const Text('Measure again')),
             ]),
           ]),
         ),
