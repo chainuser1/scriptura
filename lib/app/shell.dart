@@ -10,6 +10,7 @@ import '../features/study/study_screen.dart';
 import '../features/trails/return_bar.dart';
 import '../services/engine/search_models.dart';
 import 'brand.dart';
+import 'desktop.dart';
 import 'nav_state.dart';
 import 'theme.dart';
 
@@ -60,6 +61,8 @@ class _AppShellState extends State<AppShell> {
   void initState() {
     super.initState();
     HardwareKeyboard.instance.addHandler(_onKey);
+    Desktop.onQuickSearch(_commandBar);
+    Desktop.configure(background: app.user.pref('background') != '0');
   }
 
   @override
@@ -69,7 +72,10 @@ class _AppShellState extends State<AppShell> {
   }
 
   bool _onKey(KeyEvent e) {
-    if (e is! KeyDownEvent || e.logicalKey != LogicalKeyboardKey.keyK || !HardwareKeyboard.instance.isControlPressed) return false;
+    final k = HardwareKeyboard.instance;
+    // Ctrl+K, or Ctrl+Alt+Space when the system shortcut is not ours (Windows delivers that one through [Desktop]).
+    final hit = e.logicalKey == LogicalKeyboardKey.keyK || (e.logicalKey == LogicalKeyboardKey.space && k.isAltPressed);
+    if (e is! KeyDownEvent || !hit || !k.isControlPressed) return false;
     if (!_barOpen) _commandBar();
     return true;
   }

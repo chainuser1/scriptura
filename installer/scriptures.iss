@@ -7,6 +7,8 @@
 #define AppExe "Scriptura.exe"
 
 [Setup]
+; Scriptura may be running in the tray: setup and uninstall ask to close it first
+AppMutex=ScripturaSingleInstance
 AppId={{B7C1E4B0-5D3A-4B52-9B65-3C8F7A1E2D41}
 AppName={#AppName}
 AppVersion={#AppVersion}

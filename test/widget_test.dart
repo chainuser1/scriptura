@@ -180,6 +180,46 @@ void main() {
       expect(find.text('Enter to go · Esc to close'), findsOneWidget);
     });
 
+    testWidgets('Ctrl+Alt+Space from another program brings up the command bar', (tester) async {
+      await boot(tester, search: FakeSearchService((r, i) async => semantic([1])));
+      await tester.binding.defaultBinaryMessenger.handlePlatformMessage(
+          'scriptura/desktop', const StandardMethodCodec().encodeMethodCall(const MethodCall('quickSearch')), (_) {});
+      await tester.pumpAndSettle();
+      expect(find.text('Enter to go · Esc to close'), findsOneWidget);
+    });
+
+    testWidgets('Ctrl+Alt+Space inside the window works too', (tester) async {
+      await boot(tester, search: FakeSearchService((r, i) async => semantic([1])));
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.altLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.altLeft);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.pumpAndSettle();
+      expect(find.text('Enter to go · Esc to close'), findsOneWidget);
+    });
+
+    testWidgets('Settings turns quick search from anywhere off and on, and says when the shortcut is taken', (tester) async {
+      final calls = <Object?>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(const MethodChannel('scriptura/desktop'), (c) async {
+        calls.add(c.arguments);
+        return {'hotkey': false};
+      });
+      addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(const MethodChannel('scriptura/desktop'), null));
+      final app = await boot(tester, search: FakeSearchService((r, i) async => semantic([1])));
+      expect(calls.first, {'background': true}); // on by default
+      app.nav.go(Dest.settings);
+      await tester.pumpAndSettle();
+      final tile = find.text('Quick search from anywhere');
+      await tester.scrollUntilVisible(tile, 300, scrollable: find.byType(Scrollable).last);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Another program is using Ctrl+Alt+Space'), findsOneWidget);
+      await tester.tap(tile);
+      await tester.pumpAndSettle();
+      expect(app.user.pref('background'), '0');
+      expect(calls.last, {'background': false});
+    });
+
     testWidgets('anything else becomes a question', (tester) async {
       final svc = FakeSearchService((r, i) async {
         if (r.op == 'reference') return SearchResponse(mode: 'reference', reference: ReferenceResult(status: 'not_a_reference'));

@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/contact.dart';
+import '../../app/desktop.dart';
 import '../../app/keyboard_hints.dart';
 import '../../app/search_styles.dart';
 import '../../app/version.dart';
@@ -120,6 +121,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (colbert == null && app.engineState == EngineState.ready)
                   const ListTile(leading: Icon(Icons.lightbulb_outline), title: Text('Optional word-level index'), subtitle: Text('Installing it makes results for subtle wording slightly more precise. It is large (about 3 GB).')),
                 if (app.canInstall) SetupProgress(app: app),
+                if (Desktop.supported)
+                  ValueListenableBuilder(
+                    valueListenable: Desktop.hotkey,
+                    builder: (context, ours, _) => SwitchListTile(
+                      secondary: const Icon(Icons.keyboard_command_key),
+                      title: const Text('Quick search from anywhere'),
+                      subtitle: Text(ours == false
+                          ? 'Another program is using Ctrl+Alt+Space, so it works only inside Scriptura. Closing the window still keeps Scriptura in the tray.'
+                          : 'Ctrl+Alt+Space opens the quick search from any program. Closing the window keeps Scriptura in the tray; choose Quit from its tray icon to end it.'),
+                      value: user.pref('background') != '0',
+                      onChanged: (on) {
+                        user.setPref('background', on ? '1' : '0');
+                        Desktop.configure(background: on);
+                      },
+                    ),
+                  ),
                 header('Advanced'),
                 Theme(
                   data: Theme.of(context).copyWith(dividerColor: Colors.transparent),

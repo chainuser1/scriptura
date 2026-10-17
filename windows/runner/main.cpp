@@ -17,6 +17,16 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   // plugins.
   ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 
+  // One Scriptura at a time: it may be waiting in the tray, so a second launch brings that one forward instead.
+  ::CreateMutexW(nullptr, TRUE, L"ScripturaSingleInstance");
+  if (::GetLastError() == ERROR_ALREADY_EXISTS) {
+    if (HWND running = ::FindWindowW(L"FLUTTER_RUNNER_WIN32_WINDOW", L"Scriptura")) {
+      ::ShowWindow(running, ::IsIconic(running) ? SW_RESTORE : SW_SHOW);
+      ::SetForegroundWindow(running);
+    }
+    return EXIT_SUCCESS;
+  }
+
   flutter::DartProject project(L"data");
 
   std::vector<std::string> command_line_arguments =
