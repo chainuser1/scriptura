@@ -6,9 +6,11 @@ import 'package:scriptures_reader_mobile/services/engine/search_service.dart';
 /// Scriptable search backend: each call is answered by [handler], optionally after the returned future completes,
 /// so tests can hold a request open to exercise cancellation and stale-result handling.
 class FakeSearchService implements SearchService {
-  FakeSearchService(this.handler, {this.colbert = true});
+  FakeSearchService(this.handler, {this.colbert = true, this.hasFocus = false});
   final Future<SearchResponse> Function(SearchRequest request, int requestId) handler;
   final bool colbert;
+  @override
+  final bool hasFocus;
   final requests = <SearchRequest>[];
   final cancelled = <int>[];
   int _next = 0;

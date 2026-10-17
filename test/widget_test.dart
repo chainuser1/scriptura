@@ -11,6 +11,7 @@ import 'package:scriptures_reader_mobile/data/content/content_repository.dart';
 import 'package:scriptures_reader_mobile/data/trails/trail_models.dart';
 import 'package:scriptures_reader_mobile/data/user/user_store.dart';
 import 'package:scriptures_reader_mobile/main.dart';
+import 'package:scriptures_reader_mobile/services/engine/answer_focus.dart';
 import 'package:scriptures_reader_mobile/services/engine/search_models.dart';
 import 'package:scriptures_reader_mobile/services/engine/search_service.dart';
 
@@ -245,6 +246,122 @@ void main() {
       await openSection(tester, 'Search');
       return app;
     }
+
+    group('Answer focus', () {
+      // Fixture passages 2, 5, 6 and 7; focus scores put them in the opposite order.
+      SearchResponse focused(List<double> scores, {double ms = 400}) => SearchResponse(mode: 'focus', raw: {'scores': scores, 'device': 'cpu', 'ms': ms});
+
+      Future<AppController> withFocus(WidgetTester tester, Future<SearchResponse> Function(SearchRequest r) focus, {int k = 10}) async {
+        final svc = FakeSearchService((r, id) async => r.op == 'focus' ? focus(r) : r.op == 'phrase' ? SearchResponse(mode: 'phrase', hits: [Hit(2, 0)], total: 1) : semantic([2, 5, 6, 7]),
+            hasFocus: true);
+        final app = await inSearch(tester, svc);
+        app.user.setPref('answer_focus_choice', FocusChoice(FocusVariant.int8, k, 300).toJson());
+        return app;
+      }
+
+      double top(WidgetTester tester, int id) => tester.getTopLeft(find.byKey(ValueKey('hit-$id'))).dy;
+
+      testWidgets('reorders the top results by how well they answer, sending their texts in order', (tester) async {
+        final sent = <SearchRequest>[];
+        await withFocus(tester, (r) async {
+          sent.add(r);
+          return focused([0.1, 0.2, 0.3, 0.4]);
+        });
+        await typeAndSubmit(tester, find.byType(TextField).first, 'how can I find peace');
+        expect(top(tester, 7), lessThan(top(tester, 6)));
+        expect(top(tester, 6), lessThan(top(tester, 5)));
+        expect(top(tester, 5), lessThan(top(tester, 2)));
+        expect(sent.single.body!['query'], 'how can I find peace');
+        expect((sent.single.body!['texts'] as List), hasLength(4));
+        expect((sent.single.body!['texts'] as List).first, contains('Synthetic English passage'));
+      });
+
+      testWidgets('only the top K are reordered', (tester) async {
+        final sent = <SearchRequest>[];
+        await withFocus(tester, (r) async {
+          sent.add(r);
+          return focused([0.1, 0.9]);
+        }, k: 2);
+        await typeAndSubmit(tester, find.byType(TextField).first, 'peace');
+        expect((sent.single.body!['texts'] as List), hasLength(2));
+        expect(top(tester, 5), lessThan(top(tester, 2)));
+        expect(top(tester, 2), lessThan(top(tester, 6)));
+        expect(top(tester, 6), lessThan(top(tester, 7)));
+      });
+
+      testWidgets('a failure shows today\'s order', (tester) async {
+        await withFocus(tester, (r) async => throw SearchFailure('focus_failed', 'driver error'));
+        await typeAndSubmit(tester, find.byType(TextField).first, 'peace');
+        expect(top(tester, 2), lessThan(top(tester, 7)));
+        expect(find.textContaining('driver error'), findsNothing);
+      });
+
+      testWidgets('too slow shows today\'s order instead of waiting', (tester) async {
+        await withFocus(tester, (r) => Completer<SearchResponse>().future);
+        await tester.enterText(find.byType(TextField).first, 'peace');
+        await tester.testTextInput.receiveAction(TextInputAction.search);
+        await tester.pump(const Duration(seconds: 4));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('hit-2')), findsOneWidget);
+        expect(top(tester, 2), lessThan(top(tester, 7)));
+      });
+
+      testWidgets('a newer search wins over an older one still being focused', (tester) async {
+        final slow = Completer<SearchResponse>();
+        late AppController app;
+        final svc = FakeSearchService((r, id) async {
+          if (r.op == 'focus') return r.body!['query'] == 'first' ? slow.future : focused([0.1, 0.2, 0.3, 0.4]);
+          return r.query == 'first' ? semantic([3]) : semantic([2, 5, 6, 7]);
+        }, hasFocus: true);
+        app = await inSearch(tester, svc);
+        app.user.setPref('answer_focus_choice', const FocusChoice(FocusVariant.int8, 10, 300).toJson());
+        await tester.enterText(find.byType(TextField).first, 'first');
+        await tester.testTextInput.receiveAction(TextInputAction.search);
+        await tester.pump();
+        await typeAndSubmit(tester, find.byType(TextField).first, 'second');
+        slow.complete(focused([5.0]));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('hit-3')), findsNothing);
+        expect(top(tester, 7), lessThan(top(tester, 2)));
+      });
+
+      testWidgets('exact-phrase results are never focused', (tester) async {
+        final sent = <SearchRequest>[];
+        await withFocus(tester, (r) async {
+          sent.add(r);
+          return focused([0.1]);
+        });
+        await tester.tap(find.text('Exact phrase'));
+        await tester.pumpAndSettle();
+        await typeAndSubmit(tester, find.byType(TextField).first, 'in the beginning');
+        expect(sent, isEmpty);
+      });
+
+      testWidgets('without the pack, search is exactly today\'s', (tester) async {
+        final svc = FakeSearchService((r, id) async => semantic([2, 5, 6, 7]));
+        final app = await inSearch(tester, svc);
+        app.user.setPref('answer_focus_choice', const FocusChoice(FocusVariant.int8, 10, 300).toJson());
+        await typeAndSubmit(tester, find.byType(TextField).first, 'peace');
+        expect(svc.requests.map((r) => r.op), ['search']);
+        expect(top(tester, 2), lessThan(top(tester, 7)));
+      });
+
+      testWidgets('the question trail starts from the focused top three', (tester) async {
+        final app = await withFocus(tester, (r) async => focused([0.1, 0.2, 0.3, 0.4]));
+        await typeAndSubmit(tester, find.byType(TextField).first, 'how can I find peace');
+        await tester.tap(find.text('Start a trail from this question'));
+        await tester.pumpAndSettle();
+        expect(app.user.trailSeeds(app.user.pref('active_trail')!).map((s) => s.verseId), [7, 6, 5]);
+      });
+
+      testWidgets('slow searches teach Automatic to look at fewer candidates', (tester) async {
+        final app = await withFocus(tester, (r) async => focused([0.1, 0.2, 0.3, 0.4], ms: 2600), k: 30);
+        for (final q in ['one', 'two', 'three']) {
+          await typeAndSubmit(tester, find.byType(TextField).first, q);
+        }
+        expect(app.focusChoice!.k, 15);
+      });
+    });
 
     testWidgets('a question starts a trail seeded with the question and its top answers', (tester) async {
       final app = await inSearch(tester, FakeSearchService((r, id) async => semantic([2, 5, 6, 7])));

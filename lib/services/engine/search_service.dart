@@ -14,6 +14,9 @@ abstract class SearchService {
   /// Phrase/semantic profiles that need the ColBERT token pack are unavailable until it is installed.
   bool get hasColbertPack;
 
+  /// The engine was opened with an Answer focus pack (it may still report `focus_unavailable` if the model failed).
+  bool get hasFocus;
+
   /// Allocates a fresh request ID (monotonic). Pass it to [search] and, to abandon the request, to [cancel].
   int nextRequestId();
 
@@ -34,6 +37,8 @@ class UnavailableSearchService implements SearchService {
   String? get unavailableReason => reason;
   @override
   bool get hasColbertPack => false;
+  @override
+  bool get hasFocus => false;
   @override
   int nextRequestId() => ++_next;
   @override
@@ -78,7 +83,7 @@ void _worker(_WorkerInit init) {
 }
 
 class NativeSearchService implements SearchService {
-  NativeSearchService._(this._bindings, this._handle, this._isolate, this._to, this._from, this._sub, this._pending, this.hasColbertPack);
+  NativeSearchService._(this._bindings, this._handle, this._isolate, this._to, this._from, this._sub, this._pending, this.hasColbertPack, this.hasFocus);
 
   final EngineBindings _bindings;
   final int _handle;
@@ -93,6 +98,8 @@ class NativeSearchService implements SearchService {
 
   @override
   final bool hasColbertPack;
+  @override
+  final bool hasFocus;
 
   /// Starts the worker isolate and opens the engine there. Throws [SearchFailure] when it cannot open.
   static Future<NativeSearchService> open({required String libraryPath, required Map<String, dynamic> config}) async {
@@ -117,7 +124,7 @@ class NativeSearchService implements SearchService {
       throw SearchFailure(e['code'] as String, e['message'] as String);
     }
     return NativeSearchService._(EngineBindings(libraryPath), first[2] as int, isolate, first[1] as SendPort, from, sub, pending,
-        config['pack_dir'] != null);
+        config['pack_dir'] != null, config['focus_model'] != null);
   }
 
   @override

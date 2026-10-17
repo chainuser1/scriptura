@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../app/guide_content.dart';
@@ -6,6 +8,7 @@ import '../../app/nav_state.dart';
 import '../../app/theme.dart';
 import '../../app/verse_tools.dart';
 import '../../app_controller.dart';
+import '../../services/engine/answer_focus.dart';
 import '../../data/content/content_repository.dart';
 import '../../data/trails/trail_models.dart';
 import '../../services/engine/search_models.dart';
@@ -79,7 +82,7 @@ class _SearchScreenState extends State<SearchScreen> {
     return [VerseRange(v.firstVerseId, v.lastVerseId)];
   }
 
-  Future<void> _run(SearchRequest Function() build, {required String title, String? remember, String mode = 'meaning'}) async {
+  Future<void> _run(SearchRequest Function() build, {required String title, String? remember, String mode = 'meaning', String? focus}) async {
     if (_activeRequest != null) _service.cancel(_activeRequest!);
     final id = _service.nextRequestId();
     setState(() {
@@ -93,7 +96,9 @@ class _SearchScreenState extends State<SearchScreen> {
       final r = await _service.search(build(), requestId: id);
       if (!mounted || _activeRequest != id) return;
       if (remember != null) app.user.rememberSearch(remember, mode);
-      final passages = _resolve(r);
+      var passages = _resolve(r);
+      if (focus != null && r.mode != 'reference') passages = await _focus(focus, passages, id);
+      if (!mounted || _activeRequest != id) return;
       setState(() {
         _response = r;
         _passages = passages;
@@ -117,6 +122,29 @@ class _SearchScreenState extends State<SearchScreen> {
           _selected = null;
         }
       });
+    }
+  }
+
+  /// Answer focus: the top results reordered by how well each answers [query]. Today's order whenever focus is not
+  /// installed, fails, or takes longer than twice the budget; the request shares the search's id, so a newer search
+  /// cancels it.
+  Future<List<Passage>> _focus(String query, List<Passage> passages, int id) async {
+    final choice = app.focusChoice;
+    if (!_service.hasFocus || choice == null || choice.k == 0 || passages.length < 2) return passages;
+    final top = passages.take(choice.k).toList();
+    try {
+      final r = await _service
+          .search(SearchRequest.raw('focus', {'query': query, 'texts': [for (final p in top) p.text]}), requestId: id)
+          .timeout(Duration(milliseconds: (2 * kFocusBudgetMs).round()));
+      final scores = [for (final s in r.raw['scores'] as List) (s as num).toDouble()];
+      if (scores.length != top.length) return passages;
+      app.recordFocusTime((r.raw['ms'] as num).toDouble());
+      return focusOrder(passages, scores);
+    } on TimeoutException {
+      _service.cancel(id);
+      return passages;
+    } on Object {
+      return passages; // focus_unavailable, a driver error, a cancel: today's order
     }
   }
 
@@ -155,7 +183,7 @@ class _SearchScreenState extends State<SearchScreen> {
       _run(() => SearchRequest.phrase(q, language: app.language, filter: _filter),
           title: 'Exact phrase', remember: q, mode: 'phrase');
     } else {
-      _run(() => SearchRequest.search(q, language: app.language, filter: _filter, profile: app.searchProfile), title: 'Passages for “$q”', remember: q);
+      _run(() => SearchRequest.search(q, language: app.language, filter: _filter, profile: app.searchProfile), title: 'Passages for “$q”', remember: q, focus: q);
     }
   }
 
@@ -165,7 +193,7 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _pickPerson(String entityId) {
-    _run(() => SearchRequest.search(_lastQuery, language: app.language, filter: _filter, person: entityId, profile: app.searchProfile), title: 'Passages for “$_lastQuery”');
+    _run(() => SearchRequest.search(_lastQuery, language: app.language, filter: _filter, person: entityId, profile: app.searchProfile), title: 'Passages for “$_lastQuery”', focus: _lastQuery);
   }
 
   void _open(Passage p) => app.nav.openChapter(p.bookId, p.chapter, verseNumber: p.verse);

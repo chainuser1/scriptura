@@ -75,3 +75,10 @@ FocusChoice adapt(FocusChoice c, List<double> recentMs, FocusMode mode) {
   if (median > 2 * kFocusBudgetMs && mode == FocusMode.automatic) return FocusChoice.none;
   return c;
 }
+
+/// [items] with the first `scores.length` reordered by score, highest first (ties keep their order); the rest unchanged.
+List<T> focusOrder<T>(List<T> items, List<double> scores) {
+  final n = scores.length.clamp(0, items.length);
+  final idx = List.generate(n, (i) => i)..sort((a, b) => scores[b].compareTo(scores[a]) != 0 ? scores[b].compareTo(scores[a]) : a - b);
+  return [for (final i in idx) items[i], ...items.skip(n)];
+}

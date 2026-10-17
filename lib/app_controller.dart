@@ -123,6 +123,20 @@ class AppController extends ChangeNotifier {
       missingData.difference({'colbert'}).isEmpty &&
       _state == EngineState.ready;
 
+  final _focusTimes = <double>[];
+
+  /// A measured Answer focus time; after a few, Automatic adjusts how many results it reorders (or turns itself off).
+  void recordFocusTime(double ms) {
+    final c = focusChoice;
+    if (c == null) return;
+    _focusTimes.add(ms);
+    final next = adapt(c, _focusTimes, focusMode);
+    if (next != c) {
+      user.setPref('answer_focus_choice', next.toJson());
+      _focusTimes.clear();
+    }
+  }
+
   void declineAnswerFocus() {
     user.setPref('focus_declined', '1');
     notifyListeners();
