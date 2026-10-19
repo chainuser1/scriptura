@@ -231,10 +231,17 @@ intended behavior, not exact code):
 
 Add `PackKind` entries for both tiers now:
 `apollosFp16('apollos-fp16-v1', 'apollos-fp16')` and
-`apollosInt8('apollos-int8-weight-only-v1', 'apollos-int8')` (note the
-format string: the pack is named `apollos-int8-weight-only-v1`, not
-`apollos-int8-v1` — the earlier broken build used that name, don't reuse
-it for anything). Every switch currently enumerating `PackKind`/`FocusVariant`
+`apollosInt8('apollos-int8-v1', 'apollos-int8')`. IMPORTANT, corrected
+2026-10-19 after reading the real shipped zip: the int8 pack's *filename*
+is `apollos-int8-weight-only-v1.zip` (to distinguish it on disk/in the
+hosting bucket from an earlier broken build that used the plain name),
+but its internal `manifest.json`'s `"format"` field is literally
+`"apollos-int8-v1"` — the two were never changed to match. Since
+`engine_pack.dart`'s install/verify logic checks `m['format'] !=
+kind.format` and throws if they differ, `PackKind.format` MUST be
+`'apollos-int8-v1'` (matching the manifest), not the zip's filename, or
+every install of this pack fails. The owner decided to keep the manifest
+as-is rather than regenerate/re-verify the pack. Every switch currently enumerating `PackKind`/`FocusVariant`
 (the `_focusKind` getter, `_focusPack()`, the `order` map in
 `downloadAndInstall`, the `friendly()` switch, the download switch's case
 arms — all identified in the earlier research pass, `app_controller.dart`)

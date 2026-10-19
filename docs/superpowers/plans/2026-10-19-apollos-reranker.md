@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - No change to Ezra's shipped behavior, packs, tokenization, or default int8/fp16 tier logic.
-- Apollos ships with both tiers this round: fp16 (`apollos-fp16-v1`, GPU/DirectML) and int8 (`apollos-int8-weight-only-v1`, CPU, weight-only quantization — NOT `apollos-int8-v1`, an earlier broken build's name, never reused). Do not assume int8 is faster or lower-RAM than fp16 without measuring.
+- Apollos ships with both tiers this round: fp16 (`apollos-fp16-v1`, GPU/DirectML) and int8 (CPU, weight-only quantization, hosted as `apollos-int8-weight-only-v1.zip` but its manifest's internal `"format"` field is `"apollos-int8-v1"` — verified directly against the real shipped zip 2026-10-19; `PackKind`'s format string MUST be `'apollos-int8-v1'` to match, since the app checks this field exactly (`engine_pack.dart`'s `m['format'] != kind.format` guard) and a mismatch makes every install of this pack fail with `wrong_kind`. This reuses a string the design doc earlier warned against reusing, from before this was checked against the real file — the owner explicitly decided to keep the manifest as-is rather than regenerate/re-verify the pack, so this is the correct, current value, not an oversight). Do not assume int8 is faster or lower-RAM than fp16 without measuring.
 - `focus_family` absent from engine config must default to Ezra's current pair-encoding behavior (old-app/new-engine or new-app/old-engine compatibility).
 - Internal identifiers use lowercase `ezra`/`apollos`; capitalized `Ezra`/`Apollos` only in UI-facing strings.
 - An explicit user preference for Ezra is never auto-switched to Apollos, ever, under any re-probe.
@@ -235,11 +235,11 @@ git commit -m "app: add FocusModel and make FocusChoice/choose() model-aware"
 
 **Interfaces:**
 - Consumes: nothing new.
-- Produces: `PackKind.apollosFp16` with `format: 'apollos-fp16-v1'`, `dirName: 'apollos-fp16'`; `PackKind.apollosInt8` with `format: 'apollos-int8-weight-only-v1'`, `dirName: 'apollos-int8'` (the int8 pack's format string is NOT `apollos-int8-v1` — that name belongs to an earlier broken build and must never be reused). Confirm both exact uploaded `format` strings match each zip's internal `manifest.json` `"format"` field before finalizing — read `scriptura/artifacts/hosting/bucket/apollos-fp16-v1.zip` and `.../apollos-int8-weight-only-v1.zip`'s `manifest.json` if unsure.
+- Produces: `PackKind.apollosFp16` with `format: 'apollos-fp16-v1'`, `dirName: 'apollos-fp16'`; `PackKind.apollosInt8` with `format: 'apollos-int8-v1'`, `dirName: 'apollos-int8'`. IMPORTANT, already verified directly against the real shipped zip (2026-10-19): despite the zip being named `apollos-int8-weight-only-v1.zip` (to distinguish it from an earlier broken build on disk/in the hosting bucket), its internal `manifest.json`'s `"format"` field is literally `"apollos-int8-v1"` — confirmed by extracting and reading it. `PackKind.format` MUST match this exact string, since `engine_pack.dart`'s own install/verify code does `if (m['format'] != kind.format) throw PackException('wrong_kind', ...)` — using the zip's filename instead would make every install of this pack fail. The owner explicitly decided to keep the manifest as-is (not regenerate/re-verify the pack) rather than fix the mismatch at the source, so `'apollos-int8-v1'` is the correct, deliberate value here, not an oversight.
 
 - [ ] **Step 1: Add both enum entries**
 
-In `lib/services/engine/engine_pack.dart`, add `apollosFp16('apollos-fp16-v1', 'apollos-fp16'),` and `apollosInt8('apollos-int8-weight-only-v1', 'apollos-int8'),` to the `PackKind` enum, after `focusFp16`.
+In `lib/services/engine/engine_pack.dart`, add `apollosFp16('apollos-fp16-v1', 'apollos-fp16'),` and `apollosInt8('apollos-int8-v1', 'apollos-int8'),` to the `PackKind` enum, after `focusFp16`.
 
 - [ ] **Step 2: Run the existing pack test suite to confirm nothing broke**
 
