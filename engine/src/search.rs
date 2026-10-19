@@ -25,6 +25,13 @@ pub struct Weights {
 pub struct Hit {
     pub verse_id: i64,
     pub score: f64,
+    /// [dense, sparse, colbert, genome] z-scored lane values that `score` was fused from (docs: offline research
+    /// reads these to combine them differently from the shipped fusion weights). Set only when requested.
+    pub lanes: Option<[f64; 4]>,
+    /// Keyword concentration (docs/ANSWER_FOCUS_KEYWORD_CONCENTRATION_PROTOCOL.md): the sparse lane's single
+    /// largest per-term contribution divided by its total, in [0, 1]. Set only when requested, and only alongside
+    /// `lanes` (concentration is reported next to the sparse lane it describes).
+    pub concentration: Option<f64>,
 }
 
 #[derive(Debug)]
@@ -233,7 +240,7 @@ impl Index {
         let cand: Vec<usize> = (0..scores.len()).filter(|&r| r != row && allowed.map_or(true, |m| m[r])).collect();
         Ok(top_k(&scores, &self.verse_ids, Some(&cand), top)
             .into_iter()
-            .map(|r| Hit { verse_id: self.verse_ids[r], score: scores[r] })
+            .map(|r| Hit { verse_id: self.verse_ids[r], score: scores[r], lanes: None, concentration: None })
             .collect())
     }
 
@@ -263,21 +270,31 @@ impl Index {
         y
     }
 
-    fn sparse_scores(&self, q: &[(u32, f32)]) -> Vec<f64> {
+    /// Dense sparse-lane scores per row, also returning each row's keyword concentration: the single largest per-term
+    /// contribution to the sum, divided by the sum (0 when the sum is <= 0 -- nothing to concentrate). A verse whose
+    /// sparse score comes almost entirely from one shared word has concentration near 1; one that matches broadly
+    /// across several terms has a lower value. Both are already computed per term inside this loop; only the sum
+    /// survived before (docs/ANSWER_FOCUS_KEYWORD_CONCENTRATION_PROTOCOL.md).
+    fn sparse_scores_with_concentration(&self, q: &[(u32, f32)]) -> (Vec<f64>, Vec<f64>) {
         let mut dense_q = vec![0f32; self.csr.vocab];
         for &(t, w) in q {
             dense_q[t as usize] = w;
         }
-        (0..self.verse_ids.len())
-            .map(|r| {
-                let (lo, hi) = (self.csr.indptr[r] as usize, self.csr.indptr[r + 1] as usize);
-                let mut s = 0f32;
-                for k in lo..hi {
-                    s += self.csr.data[k] * dense_q[self.csr.indices[k] as usize];
-                }
-                s as f64
-            })
-            .collect()
+        let mut scores = Vec::with_capacity(self.verse_ids.len());
+        let mut concentration = Vec::with_capacity(self.verse_ids.len());
+        for r in 0..self.verse_ids.len() {
+            let (lo, hi) = (self.csr.indptr[r] as usize, self.csr.indptr[r + 1] as usize);
+            let mut s = 0f32;
+            let mut best = 0f32;
+            for k in lo..hi {
+                let term = self.csr.data[k] * dense_q[self.csr.indices[k] as usize];
+                s += term;
+                best = best.max(term);
+            }
+            scores.push(s as f64);
+            concentration.push(if s > 0.0 { (best / s) as f64 } else { 0.0 });
+        }
+        (scores, concentration)
     }
 
     /// `allowed`: per-row eligibility mask (None = whole corpus). Filtering happens before lane selection and
@@ -290,12 +307,20 @@ impl Index {
         allowed: Option<&[bool]>,
         cancel: &dyn Fn() -> bool,
     ) -> Result<Outcome, String> {
-        self.search_balanced(q, w, top, allowed, cancel, None)
+        self.search_balanced(q, w, top, allowed, cancel, None, false, false)
     }
 
     /// As [`Index::search`], with the dense and genome lanes volume-balanced (crate::balance) before the per-lane
     /// candidate pick. Spark is left as it is: most rows score 0 there, and an offset would rank verses without the word
     /// above verses with it. Thread scores only the candidates and is left as it is too.
+    ///
+    /// `want_lanes`: set each hit's [`Hit::lanes`] to the four z-scored values `score` was fused from (offline
+    /// research only; the shipped app never sets this). Costs only an allocation per candidate, no extra computation
+    /// -- the lane values are already computed to build `score`.
+    ///
+    /// `want_concentration`: set each hit's [`Hit::concentration`] (docs/ANSWER_FOCUS_KEYWORD_CONCENTRATION_PROTOCOL.md).
+    /// Ignored unless `want_lanes` is also set. Costs one extra running max per sparse-score term, already visited.
+    #[allow(clippy::too_many_arguments)]
     pub fn search_balanced(
         &self,
         q: &Encoded,
@@ -304,6 +329,8 @@ impl Index {
         allowed: Option<&[bool]>,
         cancel: &dyn Fn() -> bool,
         balance: Option<(&crate::balance::Volumes, f64)>,
+        want_lanes: bool,
+        want_concentration: bool,
     ) -> Result<Outcome, String> {
         let eligible: Option<Vec<usize>> = allowed.map(|m| m.iter().enumerate().filter(|(_, &a)| a).map(|(i, _)| i).collect());
         if matches!(&eligible, Some(e) if e.is_empty()) {
@@ -312,7 +339,7 @@ impl Index {
         let ids = &self.verse_ids;
         let mut da: Vec<f64> = dot_rows_f16(self.dense.f16_bits()?, DIM, &q.dense).into_iter().map(f64::from).collect();
         let mut ga: Vec<f64> = dot_rows_f32(&self.genome, self.genes, &self.query_genome(&q.dense)).into_iter().map(f64::from).collect();
-        let sa = self.sparse_scores(&q.sparse);
+        let (sa, conc) = self.sparse_scores_with_concentration(&q.sparse);
         if let Some((v, strength)) = balance {
             let ok = |r: usize| allowed.map_or(true, |m| m[r]);
             for lane in [&mut da, &mut ga] {
@@ -338,7 +365,15 @@ impl Index {
         };
         let fused: Vec<f64> = (0..cand.len()).map(|i| w.echo * zd[i] + w.spark * zs[i] + w.thread * zc[i] + w.root * zg[i]).collect();
         let cand_ids: Vec<i64> = cand.iter().map(|&r| ids[r]).collect();
-        let hits = top_k(&fused, &cand_ids, None, top).into_iter().map(|i| Hit { verse_id: cand_ids[i], score: fused[i] }).collect();
+        let hits = top_k(&fused, &cand_ids, None, top)
+            .into_iter()
+            .map(|i| Hit {
+                verse_id: cand_ids[i],
+                score: fused[i],
+                lanes: want_lanes.then_some([zd[i], zs[i], zc[i], zg[i]]),
+                concentration: (want_lanes && want_concentration).then(|| conc[cand[i]]),
+            })
+            .collect();
         Ok(Outcome { hits, candidates: cand.len() })
     }
 }

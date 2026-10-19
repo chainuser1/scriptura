@@ -391,7 +391,9 @@ impl Engine {
         let vb = self.balance_for(req)?;
         let ts = Instant::now();
         let is_cancelled = || cancel.load(Ordering::SeqCst);
-        let mut out = self.index.search_balanced(&encoded, &weights, top_k.max(if link.is_some() { 60 } else { 0 }), mask.as_deref(), &is_cancelled, vb)
+        let want_lanes = req.get("lanes").and_then(Value::as_bool).unwrap_or(false);
+        let want_concentration = req.get("concentration").and_then(Value::as_bool).unwrap_or(false);
+        let mut out = self.index.search_balanced(&encoded, &weights, top_k.max(if link.is_some() { 60 } else { 0 }), mask.as_deref(), &is_cancelled, vb, want_lanes, want_concentration)
             .map_err(internal)?;
 
         // person questions: the linked person's verses first, ordered by the engine's own score
@@ -411,7 +413,17 @@ impl Engine {
         let fsha = identity::filter_hash(self.filter_ids(&mask).as_deref());
         Ok(json!({
             "mode": "semantic",
-            "hits": out.hits.iter().map(|h| json!({"verse_id": h.verse_id, "score": h.score})).collect::<Vec<_>>(),
+            "hits": out.hits.iter().map(|h| {
+                let mut v = json!({"verse_id": h.verse_id, "score": h.score});
+                if let Some([d, s, c, g]) = h.lanes {
+                    let mut lanes = json!({"dense": d, "sparse": s, "colbert": c, "genome": g});
+                    if let Some(conc) = h.concentration {
+                        lanes["concentration"] = json!(conc);
+                    }
+                    v["lanes"] = lanes;
+                }
+                v
+            }).collect::<Vec<_>>(),
             "candidates": out.candidates,
             "profile": used, "requested_profile": wanted,
             "interpretation": interpretation,
