@@ -362,8 +362,23 @@ class _AnswerFocusTile extends StatelessWidget {
     }
     if (c == null) return 'Not measured yet.';
     if (c.variant == FocusVariant.none) return 'This device is too slow for it; search works as usual. Choose On to use it anyway.';
-    final size = c.variant == FocusVariant.fp16 ? 'about 1 GB' : 'about 400 MB';
+    final size = switch ((c.model, c.variant)) {
+      (FocusModel.apollos, FocusVariant.fp16) => 'about 2.5 GB',
+      (FocusModel.apollos, FocusVariant.int8) => 'about 2 GB',
+      (FocusModel.ezra, FocusVariant.fp16) => 'about 1 GB',
+      (FocusModel.ezra, FocusVariant.int8) => 'about 400 MB',
+      _ => 'a download',
+    };
     return 'This device will use the ${c.variant == FocusVariant.fp16 ? 'graphics chip' : 'processor'}. Not downloaded yet ($size, best on Wi-Fi).';
+  }
+
+  /// True once a trial has run with Apollos preferred but settled on Ezra anyway -- i.e. Apollos was tried and didn't
+  /// resolve on this device. Null (no trial yet, or preference is already Ezra) means "don't know/not applicable".
+  bool? get _apollosUnavailable {
+    if (app.focusModelPreference != FocusModel.apollos) return null;
+    final c = app.focusChoice;
+    if (c == null) return null;
+    return c.model != FocusModel.apollos;
   }
 
   @override
@@ -383,6 +398,8 @@ class _AnswerFocusTile extends StatelessWidget {
             Text('Puts the passages that answer your question first. Chosen for this device automatically.', style: t.bodySmall),
             const SizedBox(height: 4),
             Text(_status()),
+            const SizedBox(height: 12),
+            _ModelPicker(app: app, unavailable: _apollosUnavailable),
             const SizedBox(height: 8),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -406,5 +423,58 @@ class _AnswerFocusTile extends StatelessWidget {
         ),
       ]),
     );
+  }
+}
+
+/// Which model Answer focus uses on this device: Ezra or Apollos. Apollos is always shown, never hidden -- only
+/// greyed out with an explanation when a trial already tried it and it didn't resolve here.
+class _ModelPicker extends StatelessWidget {
+  const _ModelPicker({required this.app, required this.unavailable});
+  final AppController app;
+
+  /// true: tried and didn't resolve on this device. false/null: available, or not yet known.
+  final bool? unavailable;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final apollosUnavailable = unavailable ?? false;
+    if (apollosUnavailable && !app.apollosUnavailableNoticeShown) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!app.apollosUnavailableNoticeShown) app.markApollosUnavailableNoticeShown();
+      });
+    }
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SegmentedButton<FocusModel>(
+          segments: [
+            const ButtonSegment(value: FocusModel.ezra, label: Text('Ezra')),
+            ButtonSegment(value: FocusModel.apollos, label: const Text('Apollos'), enabled: !apollosUnavailable),
+          ],
+          selected: {app.focusModelPreference},
+          onSelectionChanged: (s) {
+            app.setFocusModelPreference(s.first);
+            app.remeasure();
+          },
+        ),
+      ),
+      const SizedBox(height: 4),
+      Text(
+        app.focusModelPreference == FocusModel.ezra
+            ? 'Ezra: a steady, well-tested choice that works on every device.'
+            : 'Apollos: looks harder for the exact answer. On some devices it takes a bit longer.',
+        style: t.bodySmall,
+      ),
+      if (apollosUnavailable) ...[
+        const SizedBox(height: 4),
+        Text(
+          app.apollosUnavailableNoticeShown
+              ? 'Apollos isn\'t available on this device yet. Using Ezra instead.'
+              : 'Scriptura Labs is working on a solution so Apollos can run on this device too. Using Ezra for now.',
+          style: t.bodySmall?.copyWith(color: Theme.of(context).colorScheme.error),
+        ),
+      ],
+    ]);
   }
 }
