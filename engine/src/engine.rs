@@ -3,7 +3,7 @@
 
 use crate::encoder::Encoder;
 use crate::entities::PeopleIndex;
-use crate::focus::Focus;
+use crate::focus::{Focus, RerankerFamily};
 use crate::identity;
 use crate::phrase::PhraseIndex;
 use crate::reference::{Catalog, Reference};
@@ -216,7 +216,9 @@ impl Engine {
         let started = Instant::now();
         let mut slot = slot.lock().unwrap();
         if let FocusSlot::NotLoaded { model, tokenizer, threads, gpu } = &*slot {
-            *slot = match Focus::open(model, tokenizer, *threads, *gpu) {
+            // Task 1 only generalizes Focus's tokenization; every caller here still means Ezra until Task 2
+            // threads a configured family through Config/FocusSlot.
+            *slot = match Focus::open(model, tokenizer, *threads, *gpu, RerankerFamily::Ezra) {
                 Ok(f) => FocusSlot::Ready(f),
                 Err(e) => FocusSlot::Failed(e),
             };

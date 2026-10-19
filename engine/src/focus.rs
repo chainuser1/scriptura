@@ -18,12 +18,22 @@ const MAX_TOKENS: usize = 512;
 const GPU_BATCH: usize = 10;
 const PAD_ID: u32 = 1;
 
+/// Which reranker model this [Focus] was opened for, since each tokenizes its input differently.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum RerankerFamily {
+    /// BAAI/bge-reranker-v2-m3: a tokenizer pair `(query, text)`.
+    Ezra,
+    /// nvidia/llama-nemotron-rerank-1b-v2: one concatenated string.
+    Apollos,
+}
+
 pub struct Focus {
     session: Session,
     tok: Tokenizer,
     gpu: bool,
     model: PathBuf,
     threads: usize,
+    family: RerankerFamily,
 }
 
 fn err<E: std::fmt::Display>(e: E) -> String {
@@ -71,18 +81,18 @@ fn dml_session_builder() -> Result<ort::session::builder::SessionBuilder, String
 
 impl Focus {
     /// Opens the model on the graphics chip when [want_gpu] and it works, else on the CPU.
-    pub fn open(model: &Path, tokenizer: &Path, threads: usize, want_gpu: bool) -> Result<Self, String> {
+    pub fn open(model: &Path, tokenizer: &Path, threads: usize, want_gpu: bool, family: RerankerFamily) -> Result<Self, String> {
         let mut tok = Tokenizer::from_file(tokenizer).map_err(err)?;
         tok.with_truncation(Some(TruncationParams { max_length: MAX_TOKENS, ..Default::default() })).map_err(err)?;
         tok.with_padding(None);
         let (model, threads) = (model.to_path_buf(), threads.max(1));
         if want_gpu && gpu_available() {
             if let Ok(session) = dml_session_builder().and_then(|b| b.with_optimization_level(GraphOptimizationLevel::Level3).map_err(err)).and_then(|mut b| b.commit_from_file(&model).map_err(err)) {
-                return Ok(Self { session, tok, gpu: true, model, threads });
+                return Ok(Self { session, tok, gpu: true, model, threads, family });
             }
         }
         let session = cpu_session(&model, threads)?;
-        Ok(Self { session, tok, gpu: false, model, threads })
+        Ok(Self { session, tok, gpu: false, model, threads, family })
     }
 
     /// Moves the model to the CPU for good (a graphics failure at run time: driver reset, device removed).
@@ -96,9 +106,24 @@ impl Focus {
         if self.gpu { "gpu" } else { "cpu" }
     }
 
-    /// Token ids of a (question, passage) pair: `<s> q </s></s> p </s>`, truncated to the model limit.
-    pub fn encode_pair(&self, query: &str, text: &str) -> Result<Vec<u32>, String> {
-        Ok(self.tok.encode((query, text), true).map_err(err)?.get_ids().to_vec())
+    /// Token ids for one (query, text) pair, tokenized the way [self.family] expects: Ezra as a tokenizer pair
+    /// (`<s> q </s></s> p </s>`), Apollos as one concatenated string. Truncated to the model limit either way.
+    pub fn encode(&self, query: &str, text: &str) -> Result<Vec<u32>, String> {
+        match self.family {
+            RerankerFamily::Ezra => Ok(self.tok.encode((query, text), true).map_err(err)?.get_ids().to_vec()),
+            RerankerFamily::Apollos => {
+                let s = format!("question:{query} \n \n passage:{text}");
+                Ok(self.tok.encode(s, true).map_err(err)?.get_ids().to_vec())
+            }
+        }
+    }
+
+    /// Tokenizes a single string with no query/passage formatting. Test-only in intent (lets tests verify
+    /// [Self::encode]'s Apollos formatting independently, without duplicating that formatting in the test itself),
+    /// but not `#[cfg(test)]`: `engine/tests/focus_e2e.rs` is a separate crate and links the library with that cfg
+    /// off, so a cfg-gated method would not be visible there.
+    pub fn tokenizer_encode_single(&self, s: &str) -> Result<Vec<u32>, String> {
+        Ok(self.tok.encode(s, true).map_err(err)?.get_ids().to_vec())
     }
 
     /// One score per text, in order. Checks [cancel] between batches. A graphics failure moves to the CPU and retries.
@@ -118,7 +143,7 @@ impl Focus {
             if cancel.load(Ordering::SeqCst) {
                 return Err("cancelled".into());
             }
-            let pairs: Vec<Vec<u32>> = chunk.iter().map(|t| self.encode_pair(query, t)).collect::<Result<_, _>>()?;
+            let pairs: Vec<Vec<u32>> = chunk.iter().map(|t| self.encode(query, t)).collect::<Result<_, _>>()?;
             let width = pairs.iter().map(Vec::len).max().unwrap_or(0);
             let (mut ids, mut mask) = (Vec::with_capacity(chunk.len() * width), Vec::with_capacity(chunk.len() * width));
             for p in &pairs {

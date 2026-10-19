@@ -4,7 +4,7 @@
 
 use scripture_engine::{
     engine::{Config, Engine},
-    focus::{gpu_available, Focus},
+    focus::{gpu_available, Focus, RerankerFamily},
 };
 use serde_json::{json, Value};
 use std::path::PathBuf;
@@ -34,7 +34,24 @@ fn shared(variant: &'static str) -> Option<MutexGuard<'static, Focus>> {
     static INT8: OnceLock<Option<Mutex<Focus>>> = OnceLock::new();
     static FP16: OnceLock<Option<Mutex<Focus>>> = OnceLock::new();
     let cell = if variant == "int8" { &INT8 } else { &FP16 };
-    cell.get_or_init(|| pack(variant).map(|d| Mutex::new(Focus::open(&d.join("model.onnx"), &d.join("tokenizer.json"), 4, variant == "fp16").unwrap())))
+    cell.get_or_init(|| pack(variant).map(|d| Mutex::new(Focus::open(&d.join("model.onnx"), &d.join("tokenizer.json"), 4, variant == "fp16", RerankerFamily::Ezra).unwrap())))
+        .as_ref()
+        .map(|m| m.lock().unwrap_or_else(|e| e.into_inner()))
+}
+
+/// Apollos's own shared model, mirroring [shared] above. Apollos only ships as fp16/GPU; skips gracefully (same
+/// as [pack]) if `generated-artifacts/apollos-fp16-v1` isn't built in this environment.
+fn shared_apollos() -> Option<MutexGuard<'static, Focus>> {
+    static APOLLOS: OnceLock<Option<Mutex<Focus>>> = OnceLock::new();
+    let d = root().join("generated-artifacts/apollos-fp16-v1");
+    APOLLOS
+        .get_or_init(|| {
+            if !d.join("model.onnx").exists() {
+                eprintln!("skipped: {} not built", d.display());
+                return None;
+            }
+            Some(Mutex::new(Focus::open(&d.join("model.onnx"), &d.join("tokenizer.json"), 4, true, RerankerFamily::Apollos).unwrap()))
+        })
         .as_ref()
         .map(|m| m.lock().unwrap_or_else(|e| e.into_inner()))
 }
@@ -58,7 +75,7 @@ fn pairs_tokenize_like_python() {
     let Some(f) = shared("int8") else { return };
     for p in golden()["pairs"].as_array().unwrap() {
         let want: Vec<u32> = p["input_ids"].as_array().unwrap().iter().map(|x| x.as_u64().unwrap() as u32).collect();
-        assert_eq!(f.encode_pair(p["query"].as_str().unwrap(), p["text"].as_str().unwrap()).unwrap(), want);
+        assert_eq!(f.encode(p["query"].as_str().unwrap(), p["text"].as_str().unwrap()).unwrap(), want);
     }
 }
 
@@ -66,7 +83,17 @@ fn pairs_tokenize_like_python() {
 fn long_passages_are_truncated_to_the_model_limit() {
     let Some(f) = shared("int8") else { return };
     let long = "And it came to pass ".repeat(400);
-    assert_eq!(f.encode_pair("What happened?", &long).unwrap().len(), 512);
+    assert_eq!(f.encode("What happened?", &long).unwrap().len(), 512);
+}
+
+#[test]
+fn apollos_concatenates_question_and_passage_as_one_string() {
+    let Some(f) = shared_apollos() else { return };
+    let ids = f.encode("What is the capital of France?", "Paris is the capital of France.").unwrap();
+    // Re-tokenize the same literal string the Kaggle pipeline used and compare, rather than hand-building IDs.
+    let expected_text = "question:What is the capital of France? \n \n passage:Paris is the capital of France.";
+    let direct = f.tokenizer_encode_single(expected_text).unwrap();
+    assert_eq!(ids, direct);
 }
 
 #[test]
