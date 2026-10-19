@@ -58,6 +58,21 @@ void main() {
       expect(choose(cpuMs: laptop, gpu: true, mode: FocusMode.automatic, preferred: FocusModel.ezra).model, FocusModel.ezra);
       expect(choose(cpuMs: laptop, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.ezra).model, FocusModel.ezra);
     });
+
+    test('Apollos gpu choice starts at k=10, independent of the CPU budget constant', () {
+      final apollos = choose(cpuMs: laptop, gpu: true, mode: FocusMode.automatic, preferred: FocusModel.apollos);
+      final ezra = choose(cpuMs: laptop, gpu: true, mode: FocusMode.automatic, preferred: FocusModel.ezra);
+      expect(apollos.k, ezra.k); // both 10 today, by coincidence of the shared starting point, not a shared constant
+      expect(apollos.model, FocusModel.apollos);
+      expect(ezra.model, FocusModel.ezra);
+    });
+
+    test('Apollos CPU ladder predicts a different time than Ezra for the same device speed', () {
+      final apollos = choose(cpuMs: laptop, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.apollos);
+      final ezra = choose(cpuMs: laptop, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.ezra);
+      // Same device, same k is plausible, but the predicted ms must come from Apollos's own constant, not Ezra's:
+      expect(apollos.predictedMs, isNot(equals(ezra.predictedMs)));
+    });
   });
 
   group('adapt (after install, from measured times)', () {

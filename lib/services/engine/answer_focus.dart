@@ -26,6 +26,20 @@ const _ks = [30, 15, 10];
 /// 10 candidates 1270 ms).
 const _cpuFactor = 0.069;
 
+/// Apollos's own starting GPU candidate count, independent of Ezra's: mirrors Ezra's fp16 starting k=10 as a
+/// conservative guess; `adapt()` corrects it from real measured search times.
+const _apollosGpuK = 10;
+
+/// Apollos's own CPU-tier candidate-count ladder, independent of Ezra's `_ks`.
+const _apollosKs = [30, 15, 10];
+
+/// Apollos's own CPU cost-per-candidate constant. UNMEASURED: no device has benchmarked Apollos's ~1.24B-parameter
+/// Llama-family int8 (weight-only, computes in fp32) pack yet, so this is not Ezra's `_cpuFactor` -- that would
+/// silently assume Apollos costs the same per candidate as Ezra's BGE-reranker-v2-m3. Placeholder: at least double
+/// Ezra's cost until a real-device pass replaces it; `adapt()`'s step-down logic corrects it from real search times
+/// exactly as it already does for Ezra.
+const _apollosCpuFactor = _cpuFactor * 2;
+
 class FocusChoice {
   const FocusChoice(this.model, this.variant, this.k, this.predictedMs);
   final FocusModel model;
@@ -64,10 +78,9 @@ FocusChoice choose({required double cpuMs, required bool gpu, required FocusMode
   if (mode == FocusMode.off) return FocusChoice.none;
   final cpu10 = cpuMs * _cpuFactor * 10;
   if (preferred == FocusModel.apollos) {
-    if (gpu) return FocusChoice(FocusModel.apollos, FocusVariant.fp16, 10, cpu10);
-    // ponytail: placeholder - reuses Ezra's ladder and cost; Task 5 gives Apollos its own constants.
-    for (final k in _ks) {
-      final ms = cpuMs * _cpuFactor * k;
+    if (gpu) return FocusChoice(FocusModel.apollos, FocusVariant.fp16, _apollosGpuK, cpuMs * _cpuFactor * _apollosGpuK);
+    for (final k in _apollosKs) {
+      final ms = cpuMs * _apollosCpuFactor * k;
       if (ms <= kFocusBudgetMs) return FocusChoice(FocusModel.apollos, FocusVariant.int8, k, ms);
     }
   }
