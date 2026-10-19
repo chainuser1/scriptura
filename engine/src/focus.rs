@@ -137,9 +137,15 @@ impl Focus {
         }
     }
 
+    /// Pairs per run: [GPU_BATCH] only for Ezra on the graphics chip. The Apollos packs are exported with a fixed
+    /// batch dimension of 1 (`input_ids [1, seq_len]`, manifest `batch_size: 1`), so Apollos always runs one at a time.
+    fn batch(&self) -> usize {
+        if self.gpu && self.family == RerankerFamily::Ezra { GPU_BATCH } else { 1 }
+    }
+
     fn score_on_device(&mut self, query: &str, texts: &[&str], cancel: &AtomicBool) -> Result<Vec<f32>, String> {
         let mut out = Vec::with_capacity(texts.len());
-        for chunk in texts.chunks(if self.gpu { GPU_BATCH } else { 1 }) {
+        for chunk in texts.chunks(self.batch()) {
             if cancel.load(Ordering::SeqCst) {
                 return Err("cancelled".into());
             }

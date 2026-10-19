@@ -116,5 +116,47 @@ void main() {
       expect(app.focusChoice!.variant, FocusVariant.fp16,
           reason: "keep()'s noise protection must still apply within Apollos, composed on top of resolveFallback");
     });
+
+    test('a chosen but never-downloaded Apollos does not block the Ezra fallback once Apollos stops fitting', () async {
+      // cpuMs 1500, no gpu (e.g. focus_gpu_failed): Apollos's CPU ladder does not fit, Ezra's does at k=10.
+      final root = Directory.systemTemp.createTempSync('scriptura-measure-');
+      addTearDown(() => root.deleteSync(recursive: true));
+      final svc = FakeSearchService((r, id) async => SearchResponse(mode: 'device_trial', raw: {'cpu_ms': 1500.0, 'gpu': false}));
+      final app = AppController.fixed(root: root, search: svc, user: UserStore.memory());
+      app.user.setPref('answer_focus_choice', const FocusChoice(FocusModel.apollos, FocusVariant.fp16, 10, 800).toJson());
+      await app.measureDevice();
+      expect(app.focusChoice!.model, FocusModel.ezra);
+
+      // The same trial with the Apollos pack installed keeps it (noise protection for a real download).
+      _markInstalled(root, PackKind.apollosFp16);
+      app.user.setPref('answer_focus_choice', const FocusChoice(FocusModel.apollos, FocusVariant.fp16, 10, 800).toJson());
+      await app.measureDevice();
+      expect(app.focusChoice, const FocusChoice(FocusModel.apollos, FocusVariant.fp16, 10, 800));
+    });
+  });
+
+  group('the trial is re-run when the preference it ran under is not the current one (C2)', () {
+    test('an upgrading user with an old Ezra choice and no recorded trial preference is due a trial', () async {
+      final (app, _) = setup();
+      app.user.setPref('answer_focus_choice', const FocusChoice(FocusModel.ezra, FocusVariant.fp16, 10, 1200).toJson());
+      expect(app.focusTrialPreference, isNull);
+      expect(app.focusTrialDue, isTrue, reason: 'the Ezra choice was never evaluated against the Apollos default');
+      await app.measureDevice();
+      expect(app.focusChoice!.model, FocusModel.apollos, reason: 'migrated');
+      expect(app.focusTrialPreference, FocusModel.apollos);
+      expect(app.focusTrialDue, isFalse);
+    });
+
+    test('changing the preference without a finished trial leaves one due; a failed trial records nothing', () async {
+      final svc = FakeSearchService((r, id) async => throw Exception('engine busy'));
+      final app = AppController.fixed(search: svc, user: UserStore.memory());
+      app.user.setPref('answer_focus_choice', const FocusChoice(FocusModel.apollos, FocusVariant.fp16, 10, 800).toJson());
+      app.user.setPref('focus_trial_preference', 'apollos');
+      expect(app.focusTrialDue, isFalse);
+      app.setFocusModelPreference(FocusModel.ezra);
+      expect(await app.measureDevice(), isFalse);
+      expect(app.focusTrialPreference, FocusModel.apollos);
+      expect(app.focusTrialDue, isTrue, reason: 'the next start re-trials under Ezra');
+    });
   });
 }

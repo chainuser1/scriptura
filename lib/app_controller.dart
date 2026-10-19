@@ -139,6 +139,17 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// The preference the last successful device trial ran under (pref `focus_trial_preference`, written with
+  /// `answer_focus_choice`); null for a choice made before this was recorded (an upgrade) or no trial yet.
+  FocusModel? get focusTrialPreference {
+    final p = user.pref('focus_trial_preference');
+    return p == null ? null : FocusModel.values.asNameMap()[p];
+  }
+
+  /// A trial is due at start when none has run, or the persisted choice was not computed under the current
+  /// preference (an upgrade from before Apollos, or a picker change whose trial never finished).
+  bool get focusTrialDue => focusChoice == null || focusTrialPreference != focusModelPreference;
+
   bool get focusInstalled => _focusPack() != null;
 
   /// Offered once everything required is installed, the trial chose a model and the reader has not said "not now".
@@ -214,11 +225,13 @@ class AppController extends ChangeNotifier {
         fresh: fresh,
         before: before,
         apollosInstallable: fresh.model == FocusModel.apollos,
+        apollosInstalled: _installedVariant(FocusModel.apollos) != FocusVariant.none,
       );
       // keep() only guards variant-level noise within one model; a genuine model switch (resolveFallback's job)
       // must not be masked by it, so it only sees `before` when `before` was already on the resolved model.
       final c = keep(before?.model == resolved.model ? before : null, resolved, installed: _installedVariant(resolved.model));
       user.setPref('answer_focus_choice', c.toJson());
+      user.setPref('focus_trial_preference', focusModelPreference.name);
       _focusTimes.clear();
       notifyListeners();
       return c.model != before?.model || c.variant != before?.variant;
@@ -382,8 +395,16 @@ class AppController extends ChangeNotifier {
       _engineProblem = problem;
     }
     notifyListeners();
-    // the trial runs after search is ready, never holding it up
-    if (service != null && focusChoice == null && focusMode != FocusMode.off && _root != null) focusTrial = measureDevice();
+    // the trial runs after search is ready, never holding it up; a re-trial that changes which installed pack should
+    // be loaded reopens the engine (the recorded preference then matches, so the reopen does not trial again)
+    if (service != null && focusTrialDue && focusMode != FocusMode.off && _root != null) {
+      String? loaded() => _focusPack() == null ? null : focusKind;
+      final was = loaded();
+      focusTrial = measureDevice().then((changed) async {
+        if (changed && loaded() != was) await _startEngine();
+        return changed;
+      });
+    }
   }
 
   /// The first-start device trial, while it runs.

@@ -116,23 +116,30 @@ void main() {
     const apollosChoice = FocusChoice(FocusModel.apollos, FocusVariant.fp16, 10, 800);
 
     test('an explicit Ezra preference is never overridden to Apollos', () {
-      final r = resolveFallback(preference: FocusModel.ezra, fresh: apollosChoice, before: ezraChoice, apollosInstallable: true);
+      final r = resolveFallback(preference: FocusModel.ezra, fresh: apollosChoice, before: ezraChoice, apollosInstallable: true, apollosInstalled: false);
       expect(r.model, FocusModel.ezra);
     });
 
     test('an explicit Ezra preference is never overridden even on a first run with no persisted choice yet', () {
-      final r = resolveFallback(preference: FocusModel.ezra, fresh: apollosChoice, before: null, apollosInstallable: true);
+      final r = resolveFallback(preference: FocusModel.ezra, fresh: apollosChoice, before: null, apollosInstallable: true, apollosInstalled: false);
       expect(r.model, FocusModel.ezra);
     });
 
     test('preferring Apollos, once genuinely installable, replaces a stale Ezra fallback', () {
-      final r = resolveFallback(preference: FocusModel.apollos, fresh: apollosChoice, before: ezraChoice, apollosInstallable: true);
+      final r = resolveFallback(preference: FocusModel.apollos, fresh: apollosChoice, before: ezraChoice, apollosInstallable: true, apollosInstalled: false);
       expect(r.model, FocusModel.apollos);
     });
 
     test('preferring Apollos but still not installable keeps the Ezra fallback (no regression)', () {
-      final r = resolveFallback(preference: FocusModel.apollos, fresh: ezraChoice, before: ezraChoice, apollosInstallable: false);
+      final r = resolveFallback(preference: FocusModel.apollos, fresh: ezraChoice, before: ezraChoice, apollosInstallable: false, apollosInstalled: false);
       expect(r.model, FocusModel.ezra);
+    });
+
+    test('a previous Apollos choice is kept against a noisy Ezra trial only when an Apollos pack is installed', () {
+      final kept = resolveFallback(preference: FocusModel.apollos, fresh: ezraChoice, before: apollosChoice, apollosInstallable: false, apollosInstalled: true);
+      expect(kept, apollosChoice);
+      final released = resolveFallback(preference: FocusModel.apollos, fresh: ezraChoice, before: apollosChoice, apollosInstallable: false, apollosInstalled: false);
+      expect(released, ezraChoice, reason: 'nothing downloaded to protect: the trial fallback decides');
     });
   });
 

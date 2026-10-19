@@ -51,11 +51,15 @@ void main() {
     expect(app.focusModelPreference, FocusModel.apollos);
     await tester.ensureVisible(find.text('Measure again'));
     await tester.tap(find.text('Measure again'));
-    await tester.pump(); // the trial resolves and the tile rebuilds, but not yet the post-frame notice-mark
+    await tester.pumpAndSettle();
     expect(app.focusChoice!.model, FocusModel.ezra); // fell back
+    // The prominent notice stays (across frames) until the reader acknowledges it.
     expect(find.textContaining('Scriptura Labs is working on a solution'), findsOneWidget);
+    expect(app.apollosUnavailableNoticeShown, isFalse);
+    await tester.tap(find.text('Got it'));
     await tester.pumpAndSettle();
     expect(app.apollosUnavailableNoticeShown, isTrue);
+    expect(find.text('Got it'), findsNothing);
 
     // Leave and come back: the prominent notice is gone, replaced by the quiet greyed state.
     app.nav.go(Dest.home);
@@ -69,5 +73,32 @@ void main() {
 
     final apollosSegment = tester.widget<SegmentedButton<FocusModel>>(find.byType(SegmentedButton<FocusModel>).last);
     expect(apollosSegment.segments.firstWhere((s) => s.value == FocusModel.apollos).enabled, isFalse);
+  });
+
+  testWidgets('an old Ezra choice never trialled under Apollos is not reported as Apollos being unavailable', (tester) async {
+    final (app, _) = await settings(tester);
+    // An upgrade: a persisted Ezra choice from before Apollos, with no recorded trial preference.
+    app.user.setPref('answer_focus_choice', const FocusChoice(FocusModel.ezra, FocusVariant.int8, 10, 1200).toJson());
+    await tester.pumpAndSettle();
+    expect(app.focusTrialPreference, isNull);
+    expect(app.focusModelPreference, FocusModel.apollos);
+    expect(find.textContaining('Scriptura Labs is working on a solution'), findsNothing);
+    expect(find.textContaining('isn\'t available on this device yet'), findsNothing);
+    final picker = tester.widget<SegmentedButton<FocusModel>>(find.byType(SegmentedButton<FocusModel>));
+    expect(picker.segments.firstWhere((s) => s.value == FocusModel.apollos).enabled, isTrue);
+  });
+
+  testWidgets('the whole model picker is disabled while the engine is not ready', (tester) async {
+    final app = await boot(tester); // no search service: the engine is unavailable
+    expect(app.engineState, isNot(EngineState.ready));
+    app.nav.go(Dest.settings);
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Answer focus'), 300, scrollable: find.byType(Scrollable).last);
+    await tester.pumpAndSettle();
+    final picker = tester.widget<SegmentedButton<FocusModel>>(find.byType(SegmentedButton<FocusModel>));
+    expect(picker.onSelectionChanged, isNull);
+    await tester.tap(find.text('Ezra'));
+    await tester.pumpAndSettle();
+    expect(app.focusModelPreference, FocusModel.apollos, reason: 'a disabled picker does not change the preference');
   });
 }

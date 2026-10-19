@@ -56,6 +56,56 @@ fn shared_apollos() -> Option<MutexGuard<'static, Focus>> {
         .map(|m| m.lock().unwrap_or_else(|e| e.into_inner()))
 }
 
+/// Scores a pack's own `verification.json` cases through [Focus::score], one call per query so the
+/// two-passage query goes through as a multi-text batch, and checks each against the reference `logit` within
+/// the pack's recorded `absolute_tolerance`.
+fn matches_pack_verification(f: &mut Focus, dir: &std::path::Path) {
+    let v: Value = serde_json::from_str(&std::fs::read_to_string(dir.join("verification.json")).unwrap()).unwrap();
+    let tol = v["absolute_tolerance"].as_f64().unwrap() as f32;
+    let cases = v["cases"].as_array().unwrap();
+    let mut queries: Vec<&str> = cases.iter().map(|c| c["query"].as_str().unwrap()).collect();
+    queries.dedup();
+    assert!(queries.len() < cases.len(), "no query has more than one passage, so no call would batch");
+    for q in queries {
+        let group: Vec<&Value> = cases.iter().filter(|c| c["query"] == q).collect();
+        let texts: Vec<&str> = group.iter().map(|c| c["passage"].as_str().unwrap()).collect();
+        let got = f.score(q, &texts, &AtomicBool::new(false)).unwrap();
+        for (c, g) in group.iter().zip(&got) {
+            let want = c["logit"].as_f64().unwrap() as f32;
+            assert!((g - want).abs() <= tol, "{}: {q:?} / {:?}: got {g}, want {want} (tolerance {tol})", dir.display(), c["passage"]);
+        }
+    }
+}
+
+#[test]
+fn apollos_on_the_graphics_chip_scores_several_texts_in_one_call() {
+    let Some(mut f) = shared_apollos() else { return };
+    let got = f.score("Why?", &["Jesus wept.", "And Seth begat Enos.", "Faith is the substance of things hoped for."], &AtomicBool::new(false)).unwrap();
+    assert_eq!(got.len(), 3);
+    // score() moves to the CPU for good on a graphics error, so success alone would hide a batch the graph rejects.
+    // Checked against gpu_available(), not the device before scoring, so an earlier test's fallback cannot mask it.
+    assert_eq!(f.device(), if gpu_available() { "gpu" } else { "cpu" }, "Apollos fell off the graphics chip while scoring");
+}
+
+#[test]
+fn apollos_fp16_matches_its_pack_verification() {
+    let Some(mut f) = shared_apollos() else { return };
+    matches_pack_verification(&mut f, &root().join("generated-artifacts/apollos-fp16-v1"));
+    assert_eq!(f.device(), if gpu_available() { "gpu" } else { "cpu" }, "Apollos fell off the graphics chip while scoring");
+}
+
+#[test]
+fn apollos_int8_matches_its_pack_verification() {
+    let d = root().join("generated-artifacts/apollos-int8-v1");
+    if !d.join("model.onnx").exists() {
+        eprintln!("skipped: {} not built", d.display());
+        return;
+    }
+    // Opened here, not shared: dropped after this test so two ~2 GB Apollos models are not held at once.
+    let mut f = Focus::open(&d.join("model.onnx"), &d.join("tokenizer.json"), 4, false, RerankerFamily::Apollos).unwrap();
+    matches_pack_verification(&mut f, &d);
+}
+
 fn scores(f: &mut Focus) -> Vec<f32> {
     let g = golden();
     g["pairs"]

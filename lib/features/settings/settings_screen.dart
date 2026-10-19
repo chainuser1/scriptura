@@ -372,12 +372,13 @@ class _AnswerFocusTile extends StatelessWidget {
     return 'This device will use the ${c.variant == FocusVariant.fp16 ? 'graphics chip' : 'processor'}. Not downloaded yet ($size, best on Wi-Fi).';
   }
 
-  /// True once a trial has run with Apollos preferred but settled on Ezra anyway -- i.e. Apollos was tried and didn't
-  /// resolve on this device. Null (no trial yet, or preference is already Ezra) means "don't know/not applicable".
+  /// True once a trial has actually run with Apollos preferred and settled on a working Ezra tier anyway -- i.e. Apollos
+  /// was tried and didn't resolve on this device. A stale Ezra choice from before Apollos (never trialled under the
+  /// Apollos preference) is not evidence. Null means "don't know/not applicable".
   bool? get _apollosUnavailable {
-    if (app.focusModelPreference != FocusModel.apollos) return null;
+    if (app.focusModelPreference != FocusModel.apollos || app.focusTrialPreference != FocusModel.apollos) return null;
     final c = app.focusChoice;
-    if (c == null) return null;
+    if (c == null || c.variant == FocusVariant.none) return null;
     return c.model != FocusModel.apollos;
   }
 
@@ -439,11 +440,6 @@ class _ModelPicker extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final apollosUnavailable = unavailable ?? false;
-    if (apollosUnavailable && !app.apollosUnavailableNoticeShown) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!app.apollosUnavailableNoticeShown) app.markApollosUnavailableNoticeShown();
-      });
-    }
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -453,10 +449,13 @@ class _ModelPicker extends StatelessWidget {
             ButtonSegment(value: FocusModel.apollos, label: const Text('Apollos'), enabled: !apollosUnavailable),
           ],
           selected: {app.focusModelPreference},
-          onSelectionChanged: (s) {
-            app.setFocusModelPreference(s.first);
-            app.remeasure();
-          },
+          // Same gate as Measure again: a pick the engine cannot trial would leave the old model running.
+          onSelectionChanged: app.engineState == EngineState.ready
+              ? (s) {
+                  app.setFocusModelPreference(s.first);
+                  app.remeasure();
+                }
+              : null,
         ),
       ),
       const SizedBox(height: 4),
@@ -474,6 +473,8 @@ class _ModelPicker extends StatelessWidget {
               : 'Scriptura Labs is working on a solution so Apollos can run on this device too. Using Ezra for now.',
           style: t.bodySmall?.copyWith(color: Theme.of(context).colorScheme.error),
         ),
+        // Marked shown only when the reader acknowledges it, so the prominent copy stays until read.
+        if (!app.apollosUnavailableNoticeShown) TextButton(onPressed: app.markApollosUnavailableNoticeShown, child: const Text('Got it')),
       ],
     ]);
   }
