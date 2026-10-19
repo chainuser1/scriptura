@@ -67,11 +67,24 @@ void main() {
       expect(ezra.model, FocusModel.ezra);
     });
 
-    test('Apollos CPU ladder predicts a different time than Ezra for the same device speed', () {
-      final apollos = choose(cpuMs: laptop, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.apollos);
-      final ezra = choose(cpuMs: laptop, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.ezra);
-      // Same device, same k is plausible, but the predicted ms must come from Apollos's own constant, not Ezra's:
+    test('Apollos CPU ladder predicts cost from its own constant, not Ezra\'s', () {
+      const fast = 200.0; // fast enough both ladders fit at k=30 with room to spare (414ms / 828ms vs 1500 budget)
+      final apollos = choose(cpuMs: fast, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.apollos);
+      final ezra = choose(cpuMs: fast, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.ezra);
+      expect(apollos.model, FocusModel.apollos); // confirms it didn't fall back to Ezra at this speed
+      expect(apollos.k, 30);
+      expect(ezra.k, 30);
+      // Same device, same k -- but the predicted ms must come from Apollos's own constant, not Ezra's:
       expect(apollos.predictedMs, isNot(equals(ezra.predictedMs)));
+    });
+
+    test('preferring Apollos on a device too slow for its own ladder at the reference laptop speed falls back to Ezra', () {
+      // At laptop=1839ms, Apollos's _apollosCpuFactor (2x Ezra's) makes even k=10 exceed the 1500ms budget (2537.8ms),
+      // while Ezra's own ladder still fits at k=10 (1268.9ms) -- this is a real, correct divergence between the two
+      // ladders at this device speed, not a test artifact.
+      final apollos = choose(cpuMs: laptop, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.apollos);
+      expect(apollos.model, FocusModel.ezra);
+      expect(apollos.k, 10);
     });
   });
 
