@@ -118,3 +118,23 @@ FocusChoice keep(FocusChoice? old, FocusChoice fresh, {required FocusVariant ins
   if (installed != FocusVariant.none && old?.variant == installed && fresh.variant != installed) return old!;
   return fresh;
 }
+
+/// Decides between the persisted fallback and a fresh trial without ever overriding an explicit user preference.
+/// [preference] is what the user actually wants (explicit choice, or Apollos by default); [fresh] is this trial run's
+/// result; [before] is the previously persisted choice; [apollosInstallable] is true when this trial's own `choose()`
+/// call already found a usable Apollos tier (i.e. `fresh.model == FocusModel.apollos`). An explicit Ezra preference is
+/// absolute. Otherwise Apollos un-sticks a stale Ezra fallback as soon as it's genuinely available, and -- mirroring
+/// `keep()` -- whichever model is already installed wins against routine re-trial noise.
+FocusChoice resolveFallback({
+  required FocusModel preference,
+  required FocusChoice fresh,
+  required FocusChoice? before,
+  required bool apollosInstallable,
+}) {
+  if (preference == FocusModel.ezra) {
+    return before?.model == FocusModel.ezra && fresh.model != FocusModel.ezra ? before! : fresh;
+  }
+  if (fresh.model == FocusModel.apollos && apollosInstallable) return fresh; // genuinely available now: un-stick
+  if (before?.model == FocusModel.apollos && fresh.model != FocusModel.apollos) return before!; // installed Apollos wins against noise
+  return fresh; // still on the Ezra fallback; nothing to un-stick yet
+}

@@ -111,6 +111,26 @@ void main() {
     });
   });
 
+  group('resolveFallback', () {
+    const ezraChoice = FocusChoice(FocusModel.ezra, FocusVariant.int8, 10, 1200);
+    const apollosChoice = FocusChoice(FocusModel.apollos, FocusVariant.fp16, 10, 800);
+
+    test('an explicit Ezra preference is never overridden to Apollos', () {
+      final r = resolveFallback(preference: FocusModel.ezra, fresh: apollosChoice, before: ezraChoice, apollosInstallable: true);
+      expect(r.model, FocusModel.ezra);
+    });
+
+    test('preferring Apollos, once genuinely installable, replaces a stale Ezra fallback', () {
+      final r = resolveFallback(preference: FocusModel.apollos, fresh: apollosChoice, before: ezraChoice, apollosInstallable: true);
+      expect(r.model, FocusModel.apollos);
+    });
+
+    test('preferring Apollos but still not installable keeps the Ezra fallback (no regression)', () {
+      final r = resolveFallback(preference: FocusModel.apollos, fresh: ezraChoice, before: ezraChoice, apollosInstallable: false);
+      expect(r.model, FocusModel.ezra);
+    });
+  });
+
   test('choices survive being saved', () {
     const c = FocusChoice(FocusModel.apollos, FocusVariant.fp16, 15, 812.5);
     expect(FocusChoice.fromJson(c.toJson()), c);
