@@ -46,11 +46,16 @@ that decision is already made.
   official template/prefix differs from Ezra's. (The Qwen challenger tested
   earlier used yet another format entirely — not relevant here, Qwen is not
   being shipped.)
-- Apollos currently has a **verified-working fp16 pack** and a **broken int8
-  pack** (confirmed: one test pair's score flips sign after int8
-  quantization — a real bug, not a tolerance issue; see
-  `apollos-fp16-only-for-now` memory). fp16 is GPU/DirectML-only, same
-  constraint as Ezra's fp16 tier today.
+- Apollos has **two verified-working packs**: fp16 (GPU/DirectML, ~2.5GB)
+  and int8 (CPU, ~2.0GB, `apollos-int8-weight-only-v1`). The first int8
+  attempt (dynamic quantization) was broken — one test pair's score flipped
+  sign — and was replaced with weight-only quantization (int8 storage,
+  `DequantizeLinear` back to fp32 before the matmul; activations stay
+  fp32), which passes all three verification pairs within tolerance. See
+  `apollos-int8-fixed-weight-only` memory. Weight-only int8 shrinks
+  download/disk size; it does not by itself mean faster inference or
+  lower RAM than fp16 — that's a separate, unmeasured question, same as
+  Ezra's own int8 tier was originally measured rather than assumed.
 
 ## Goals
 
@@ -66,10 +71,15 @@ that decision is already made.
    fp16→int8 runtime fallback already uses (`focus.rs`'s
    `fall_back_to_cpu`/`Focus::score`'s retry-on-GPU-failure) — extended to
    also cover "chosen model's pack isn't usable at all on this device," not
-   only "GPU failed mid-session."
+   only "GPU failed mid-session." With both Apollos tiers now working,
+   this scenario (Apollos entirely unavailable) should be rare — most
+   devices get either fp16 (GPU) or int8 (CPU) Apollos — but the mechanism
+   stays in place for the genuine edge case (e.g. a device too slow even
+   for Apollos's CPU budget, mirroring Ezra's own "too slow for Automatic"
+   outcome).
 5. The very first time a device can't get the user's chosen/default model
-   (specifically: Apollos unavailable because the device has no working GPU
-   and Apollos int8 isn't ready yet), show one prominent, explicit notice:
+   at all (both Apollos tiers unusable on this device), show one prominent,
+   explicit notice:
    **"Scriptura Labs is working on a solution"** (exact copy is the
    builder's call within that spirit — see Non-goals). After that first
    showing, the unavailable option appears permanently greyed out in the
@@ -80,10 +90,10 @@ that decision is already made.
 
 ## Non-goals
 
-- Fixing Apollos's int8 quantization bug. Tracked separately
-  (`apollos-fp16-only-for-now` memory). This design assumes Apollos is
-  fp16/GPU-only for now and the CPU-only fallback message exists precisely
-  because of that gap.
+- Re-deriving or re-explaining Apollos's int8 quantization fix. The weight-
+  only approach is already built, verified, and placed
+  (`apollos-int8-fixed-weight-only` memory) — this design consumes the
+  finished pack, it doesn't revisit how it was made.
 - Changing Ezra at all. Ezra's existing int8/fp16 packs, tokenization, and
   behavior are untouched.
 - A third reranker, or a generic "N reranker families" abstraction beyond
@@ -101,8 +111,12 @@ that decision is already made.
 ## Constraints
 
 - No change to Ezra's shipped behavior, packs, or tokenization format.
-- Apollos ships fp16-only in this round; the plan must not assume a working
-  Apollos int8 pack exists.
+- Apollos ships with both tiers this round: fp16 (GPU/DirectML,
+  `apollos-fp16-v1`) and int8 (CPU, weight-only quantization,
+  `apollos-int8-weight-only-v1`). Do not assume int8 is faster or lower-
+  RAM than fp16 without measuring — weight-only quantization shrinks
+  storage, not necessarily runtime cost (stated plainly in the pack's own
+  `CONVERSION_NOTICE.txt`).
 - The engine config contract (`focus_model`/`focus_tokenizer`/`focus_device`
   triple passed from Dart to Rust) may grow a new field for "which
   tokenization/encoding family," but must stay backward compatible: an
@@ -179,23 +193,29 @@ intended behavior, not exact code):
 
 - `FocusVariant` becomes two dimensions conceptually: which model
   (`ezra`/`apollos`) × which precision (`int8`/`fp16`/`none`) — but keep the
-  actual enum small and concrete rather than a generic cross product, since
-  Apollos only has one real precision today. A reasonable concrete shape:
-  `enum FocusModel { ezra, apollos }` plus the existing `FocusVariant` kept
-  for precision, with `FocusChoice` carrying both `model` and `variant`.
+  actual enum small and concrete rather than a generic cross product. A
+  reasonable concrete shape: `enum FocusModel { ezra, apollos }` plus the
+  existing `FocusVariant` kept for precision, with `FocusChoice` carrying
+  both `model` and `variant`. Both models now have a real int8-CPU and
+  fp16-GPU tier.
 - Selection logic, given the mode is the user's pick (default: automatic →
   Apollos preferred):
   - If GPU available: Apollos fp16 (the new default good case).
-  - If GPU not available: Apollos has no answer today → fall back to Ezra's
-    existing int8-CPU ladder, and set the "first time unavailable" flag so
-    the UI shows the one-time notice, then greys Apollos in the picker from
-    then on.
+  - If GPU not available: Apollos's own int8-CPU budget ladder (its own
+    per-candidate cost constant, not Ezra's `_cpuFactor` — see Review Focus
+    #4), mirroring Ezra's existing `_ks`-based "most candidates that fit
+    the budget" logic exactly, just parameterized per model.
+  - Only if Apollos's CPU ladder finds no candidate count fits even at the
+    minimum (a device too slow for Apollos specifically, the genuine edge
+    case Goal 4/5 cover): fall back to Ezra's existing ladder, set the
+    "first time unavailable" flag so the UI shows the one-time notice, then
+    greys Apollos in the picker from then on.
   - If the user explicitly chose Ezra in Settings: use Ezra's existing
     logic unchanged, regardless of GPU.
-  - If the user explicitly chose Apollos and has no GPU: same fallback-to-
-    Ezra-with-notice as the automatic case, framed as "the device can't run
-    your choice yet," not silently overriding their pick without
-    explanation.
+  - If the user explicitly chose Apollos and neither tier fits: same
+    fallback-to-Ezra-with-notice as the automatic case, framed as "the
+    device can't run your choice yet," not silently overriding their pick
+    without explanation.
 - `adapt()`'s real-time step-down logic and `keep()`'s "already installed
   wins" rule need the same per-model treatment Ezra has today, extended to
   not cross-contaminate (an installed Apollos pack shouldn't be "kept" if
@@ -209,9 +229,12 @@ intended behavior, not exact code):
 
 ### Pack management (`lib/services/engine/engine_pack.dart`)
 
-Add `PackKind` entries: `apollosFp16('apollos-fp16-v1', 'apollos-fp16')` now;
-`apollosInt8` added later, once that pack is fixed (not part of this round —
-Non-goals). Every switch currently enumerating `PackKind`/`FocusVariant`
+Add `PackKind` entries for both tiers now:
+`apollosFp16('apollos-fp16-v1', 'apollos-fp16')` and
+`apollosInt8('apollos-int8-weight-only-v1', 'apollos-int8')` (note the
+format string: the pack is named `apollos-int8-weight-only-v1`, not
+`apollos-int8-v1` — the earlier broken build used that name, don't reuse
+it for anything). Every switch currently enumerating `PackKind`/`FocusVariant`
 (the `_focusKind` getter, `_focusPack()`, the `order` map in
 `downloadAndInstall`, the `friendly()` switch, the download switch's case
 arms — all identified in the earlier research pass, `app_controller.dart`)
@@ -238,19 +261,23 @@ less risky than a one-time special-cased migration script.
 
 ### Un-sticking a fallback (owner decision, 2026-10-19)
 
-A device parked on Ezra because Apollos wasn't available (no GPU, or no
-Apollos int8 pack yet) is **not** stuck there permanently. Re-probe
+With both Apollos tiers now working, a device falling back to Ezra should
+be rare (only a device too slow for Apollos's CPU budget *and* without a
+GPU). But the mechanism still matters — for that edge case, and for the
+general principle that a fallback is never silently permanent. A device
+parked on Ezra this way is **not** stuck there permanently. Re-probe
 automatically at the two natural existing checkpoints, both already present
 in the app:
 
-- **App update** — a later update may ship Apollos int8 (once that bug is
-  fixed); the normal "trial runs if no choice yet, or mode just changed"
-  logic isn't enough by itself here, since the user already has a choice
-  (Ezra). The plan needs a small explicit rule: if the user's preference is
-  "Apollos" (explicit or default-from-migration) but the active choice is
-  Ezra-via-fallback, re-run `choose()` on next app start after an update
-  that changes which Apollos packs are available — not on every single
-  launch, to avoid re-probe churn.
+- **App update** — a later update could raise Apollos's CPU budget, change
+  its packs, or otherwise change what this device can run; the normal
+  "trial runs if no choice yet, or mode just changed" logic isn't enough by
+  itself here, since the user already has a choice (Ezra). The plan needs a
+  small explicit rule: if the user's preference is "Apollos" (explicit or
+  default-from-migration) but the active choice is Ezra-via-fallback,
+  re-run `choose()` on next app start after an update that changes which
+  Apollos packs are available — not on every single launch, to avoid
+  re-probe churn.
 - **The existing "Measure again" button** (`remeasure()` in
   `app_controller.dart`, already user-triggered today) — works as-is, no
   change needed, since it already re-runs the full trial.
