@@ -86,3 +86,8 @@ android/.kotlin/
 
 # executor scratch
 .superpowers/
+
+# Kaggle scratch: scripture data/zips never enter git, but its scripts are source worth keeping
+/.kaggle-package/data/
+/.kaggle-package/data-heldout/
+/.kaggle-package/*.zip
