@@ -155,6 +155,14 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Whether the "we're working on a solution" notice (shown when Apollos isn't genuinely available) has already
+  /// been shown once. Shown prominently the first time, then stays quietly marked as already-shown.
+  bool get apollosUnavailableNoticeShown => user.pref('apollos_unavailable_notice_shown') == '1';
+  void markApollosUnavailableNoticeShown() {
+    user.setPref('apollos_unavailable_notice_shown', '1');
+    notifyListeners();
+  }
+
   /// Times this device with the installed search model and decides Answer focus (see answer_focus.dart). Quiet on failure.
   /// A trial left pending (the app died during it, for example in a graphics driver) skips the graphics probe; a
   /// graphics chip that failed at run time is not offered again. An installed model is kept (see [keep]).
@@ -165,7 +173,14 @@ class AppController extends ChangeNotifier {
     user.setPref('focus_trial_pending', '1');
     try {
       final r = await _search.search(SearchRequest.raw('device_trial', {if (!probeGpu) 'probe_gpu': false}));
-      final fresh = choose(cpuMs: (r.raw['cpu_ms'] as num).toDouble(), gpu: probeGpu && r.raw['gpu'] == true, mode: focusMode);
+      // ponytail: preferred hardcoded to ezra (pre-existing behavior); wire to a real model preference when Task 6's
+      // Apollos preference UI lands.
+      final fresh = choose(
+        cpuMs: (r.raw['cpu_ms'] as num).toDouble(),
+        gpu: probeGpu && r.raw['gpu'] == true,
+        mode: focusMode,
+        preferred: FocusModel.ezra,
+      );
       final installed = _root == null
           ? FocusVariant.none
           : focusInt8Packs.active() != null
