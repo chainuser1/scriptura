@@ -34,9 +34,10 @@ class AppController extends ChangeNotifier {
       : _root = root,
         _env = environment ?? Platform.environment;
 
-  /// For widget tests: fixed repository and service, no installation.
-  AppController.fixed({ContentRepository? repository, SearchService? search, UserStore? user})
-      : _root = null,
+  /// For widget tests: fixed repository and service, no installation. [root], when given, lets pack-store lookups
+  /// (e.g. [_installedVariant]) see real installed packs without going through [load]/[_startEngine].
+  AppController.fixed({ContentRepository? repository, SearchService? search, UserStore? user, Directory? root})
+      : _root = root,
         _user = user,
         _env = const {},
         devPacks = null,
@@ -117,6 +118,18 @@ class AppController extends ChangeNotifier {
     };
   }
 
+  /// Which variant of [model] is installed, if any (for [keep]'s noise protection -- see [measureDevice]).
+  FocusVariant _installedVariant(FocusModel model) {
+    if (_root == null) return FocusVariant.none;
+    final (int8Store, fp16Store) = switch (model) {
+      FocusModel.ezra => (focusInt8Packs, focusFp16Packs),
+      FocusModel.apollos => (focusApollosInt8Packs, focusApollosFp16Packs),
+    };
+    if (int8Store.active() != null) return FocusVariant.int8;
+    if (fp16Store.active() != null) return FocusVariant.fp16;
+    return FocusVariant.none;
+  }
+
   /// Which model Answer focus should use: the reader's explicit choice, or Apollos by default when none has
   /// been made yet (Settings' Apollos/Ezra picker writes this).
   FocusModel get focusModelPreference => FocusModel.values.byName(user.pref('focus_model_preference') ?? 'apollos');
@@ -180,8 +193,10 @@ class AppController extends ChangeNotifier {
 
   /// Times this device with the installed search model and decides Answer focus (see answer_focus.dart). Quiet on failure.
   /// A trial left pending (the app died during it, for example in a graphics driver) skips the graphics probe; a
-  /// graphics chip that failed at run time is not offered again. An installed model is kept (see [keep]).
-  /// Returns whether the chosen model changed.
+  /// graphics chip that failed at run time is not offered again. [resolveFallback] picks which model should be active
+  /// (never overriding an explicit Ezra preference); [keep] is then applied on top for that resolved model, so an
+  /// installed variant is still protected from flip-flopping on routine trial noise.
+  /// Returns whether the chosen model or variant changed (i.e. whether the engine needs to restart).
   Future<bool> measureDevice() async {
     final before = focusChoice;
     final probeGpu = user.pref('focus_trial_pending') != '1' && user.pref('focus_gpu_failed') != '1';
@@ -194,16 +209,19 @@ class AppController extends ChangeNotifier {
         mode: focusMode,
         preferred: focusModelPreference,
       );
-      final c = resolveFallback(
+      final resolved = resolveFallback(
         preference: focusModelPreference,
         fresh: fresh,
         before: before,
         apollosInstallable: fresh.model == FocusModel.apollos,
       );
+      // keep() only guards variant-level noise within one model; a genuine model switch (resolveFallback's job)
+      // must not be masked by it, so it only sees `before` when `before` was already on the resolved model.
+      final c = keep(before?.model == resolved.model ? before : null, resolved, installed: _installedVariant(resolved.model));
       user.setPref('answer_focus_choice', c.toJson());
       _focusTimes.clear();
       notifyListeners();
-      return c.variant != before?.variant;
+      return c.model != before?.model || c.variant != before?.variant;
     } on Object {
       return false; // no choice yet; the trial runs again on the next start
     } finally {
