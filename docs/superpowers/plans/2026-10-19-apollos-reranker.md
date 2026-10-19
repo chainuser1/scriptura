@@ -590,3 +590,16 @@ an additional check this plan does not consider complete without. At minimum, co
 Report what was observed (which tier was chosen, whether it worked, any crash/hang) back to the owner
 as part of this plan's final report — this is real evidence the Review Focus list's open measurement
 questions deserved, and the first chance to confirm or correct them.
+
+### Hugging Face bucket upload (owner decision, 2026-10-19: explicitly held until this point)
+
+Do NOT upload `apollos-fp16-v1.zip`/`apollos-int8-weight-only-v1.zip` to the live hosting bucket
+(`kDefaultDataAddress`'s `index.json`) at any point before this. Uploading to that bucket is a real,
+hard-to-reverse action on the actual address real users' installed apps already query — it should
+only happen once there's a working build that can actually request and use these packs (i.e. after
+the real-device test above has passed), not as a side effect of landing any individual task.
+
+Once the real-device test above has passed: this is the deliberate "ship it" step, done consciously,
+not automatically. The owner performs or explicitly approves the actual upload (same standing rule as
+every other upload in this project: no pushes/uploads without the owner). This plan's own completion
+does not require the upload to have happened — it requires the app to be *ready* for it.
