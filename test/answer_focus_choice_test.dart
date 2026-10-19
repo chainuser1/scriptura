@@ -7,39 +7,61 @@ void main() {
 
   group('choose', () {
     test('a working graphics chip gets the graphics model', () {
-      final c = choose(cpuMs: laptop, gpu: true, mode: FocusMode.automatic);
+      final c = choose(cpuMs: laptop, gpu: true, mode: FocusMode.automatic, preferred: FocusModel.ezra);
       expect(c.variant, FocusVariant.fp16);
       expect(c.k, 10);
     });
 
     test('without graphics, a fast processor gets the CPU model with the most candidates within budget', () {
-      final fast = choose(cpuMs: 600, gpu: false, mode: FocusMode.automatic); // 0.69 * 600 * 30 / 10 = 1242 ms
+      final fast = choose(cpuMs: 600, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.ezra); // 0.69 * 600 * 30 / 10 = 1242 ms
       expect(fast.variant, FocusVariant.int8);
       expect(fast.k, 30);
-      final mid = choose(cpuMs: 1200, gpu: false, mode: FocusMode.automatic); // 15 -> 1242 ms, 30 -> 2484 ms
+      final mid = choose(cpuMs: 1200, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.ezra); // 15 -> 1242 ms, 30 -> 2484 ms
       expect(mid.k, 15);
-      final here = choose(cpuMs: laptop, gpu: false, mode: FocusMode.automatic); // 10 -> 1269 ms
+      final here = choose(cpuMs: laptop, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.ezra); // 10 -> 1269 ms
       expect((here.variant, here.k), (FocusVariant.int8, 10));
       expect(here.predictedMs, closeTo(1269, 1));
     });
 
     test('too slow for Automatic means none', () {
-      expect(choose(cpuMs: 5000, gpu: false, mode: FocusMode.automatic).variant, FocusVariant.none);
+      expect(choose(cpuMs: 5000, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.ezra).variant, FocusVariant.none);
     });
 
     test('Off is always none, even with graphics', () {
-      expect(choose(cpuMs: 100, gpu: true, mode: FocusMode.off).variant, FocusVariant.none);
+      expect(choose(cpuMs: 100, gpu: true, mode: FocusMode.off, preferred: FocusModel.ezra).variant, FocusVariant.none);
     });
 
     test('On still uses it when slow, with the fewest candidates', () {
-      final c = choose(cpuMs: 5000, gpu: false, mode: FocusMode.on);
+      final c = choose(cpuMs: 5000, gpu: false, mode: FocusMode.on, preferred: FocusModel.ezra);
       expect((c.variant, c.k), (FocusVariant.int8, 10));
-      expect(choose(cpuMs: 5000, gpu: true, mode: FocusMode.on).variant, FocusVariant.fp16);
+      expect(choose(cpuMs: 5000, gpu: true, mode: FocusMode.on, preferred: FocusModel.ezra).variant, FocusVariant.fp16);
+    });
+
+    test('preferring Apollos with a working graphics chip gets Apollos fp16', () {
+      final c = choose(cpuMs: laptop, gpu: true, mode: FocusMode.automatic, preferred: FocusModel.apollos);
+      expect(c.model, FocusModel.apollos);
+      expect(c.variant, FocusVariant.fp16);
+    });
+
+    test('preferring Apollos without a graphics chip gets Apollos int8 on a fast-enough device', () {
+      final c = choose(cpuMs: 600, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.apollos);
+      expect(c.model, FocusModel.apollos);
+      expect(c.variant, FocusVariant.int8);
+    });
+
+    test('preferring Apollos on a device too slow for even its smallest int8 candidate count falls back to Ezra', () {
+      final c = choose(cpuMs: 50000, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.apollos);
+      expect(c.model, FocusModel.ezra); // Apollos's own ladder (Task 5) found nothing that fits; fall back
+    });
+
+    test('preferring Ezra always gets Ezra, with or without graphics', () {
+      expect(choose(cpuMs: laptop, gpu: true, mode: FocusMode.automatic, preferred: FocusModel.ezra).model, FocusModel.ezra);
+      expect(choose(cpuMs: laptop, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.ezra).model, FocusModel.ezra);
     });
   });
 
   group('adapt (after install, from measured times)', () {
-    const start = FocusChoice(FocusVariant.int8, 30, 1200);
+    const start = FocusChoice(FocusModel.ezra, FocusVariant.int8, 30, 1200);
 
     test('keeps the choice while searches are within budget', () {
       expect(adapt(start, [900, 1100, 1300], FocusMode.automatic), start);
@@ -47,11 +69,11 @@ void main() {
 
     test('steps down to fewer candidates when searches are slow', () {
       expect(adapt(start, [2600, 2500, 2700], FocusMode.automatic).k, 15);
-      expect(adapt(const FocusChoice(FocusVariant.fp16, 15, 900), [2000, 2100, 1900], FocusMode.automatic).k, 10);
+      expect(adapt(const FocusChoice(FocusModel.ezra, FocusVariant.fp16, 15, 900), [2000, 2100, 1900], FocusMode.automatic).k, 10);
     });
 
     test('at 10 candidates and still far too slow, Automatic turns itself off; On keeps going', () {
-      const ten = FocusChoice(FocusVariant.int8, 10, 1200);
+      const ten = FocusChoice(FocusModel.ezra, FocusVariant.int8, 10, 1200);
       expect(adapt(ten, [3200, 3500, 3100], FocusMode.automatic).variant, FocusVariant.none);
       expect(adapt(ten, [3200, 3500, 3100], FocusMode.on), ten);
     });
@@ -62,9 +84,11 @@ void main() {
   });
 
   test('choices survive being saved', () {
-    const c = FocusChoice(FocusVariant.fp16, 15, 812.5);
+    const c = FocusChoice(FocusModel.apollos, FocusVariant.fp16, 15, 812.5);
     expect(FocusChoice.fromJson(c.toJson()), c);
     expect(FocusChoice.fromJson('nonsense'), isNull);
+    // Saved before the model field existed: still loads, as Ezra.
+    expect(FocusChoice.fromJson('{"variant":"int8","k":10,"predicted_ms":1269.0}')?.model, FocusModel.ezra);
     expect(FocusMode.parse(null), FocusMode.automatic);
     expect(FocusMode.parse('off'), FocusMode.off);
   });

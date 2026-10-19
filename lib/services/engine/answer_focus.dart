@@ -15,6 +15,9 @@ enum FocusMode {
 /// Which pack: `answer-focus-int8-v1` (CPU) or `answer-focus-fp16-v1` (graphics chip).
 enum FocusVariant { none, int8, fp16 }
 
+/// Which reranker model: Ezra (always available) or Apollos. Ezra is also the "nothing chosen yet" placeholder.
+enum FocusModel { ezra, apollos }
+
 /// A search should not wait longer than this for Answer focus.
 const kFocusBudgetMs = 1500.0;
 const _ks = [30, 15, 10];
@@ -24,43 +27,56 @@ const _ks = [30, 15, 10];
 const _cpuFactor = 0.069;
 
 class FocusChoice {
-  const FocusChoice(this.variant, this.k, this.predictedMs);
+  const FocusChoice(this.model, this.variant, this.k, this.predictedMs);
+  final FocusModel model;
   final FocusVariant variant;
   final int k;
   final double predictedMs;
 
-  static const none = FocusChoice(FocusVariant.none, 0, 0);
+  static const none = FocusChoice(FocusModel.ezra, FocusVariant.none, 0, 0);
 
-  String toJson() => jsonEncode({'variant': variant.name, 'k': k, 'predicted_ms': predictedMs});
+  String toJson() => jsonEncode({'model': model.name, 'variant': variant.name, 'k': k, 'predicted_ms': predictedMs});
 
   static FocusChoice? fromJson(String? s) {
     try {
       final m = jsonDecode(s!) as Map<String, dynamic>;
-      return FocusChoice(FocusVariant.values.byName(m['variant'] as String), m['k'] as int, (m['predicted_ms'] as num).toDouble());
+      // Saved before the model field existed: those were Ezra.
+      final model = m['model'] == null ? FocusModel.ezra : FocusModel.values.byName(m['model'] as String);
+      return FocusChoice(model, FocusVariant.values.byName(m['variant'] as String), m['k'] as int, (m['predicted_ms'] as num).toDouble());
     } catch (_) {
       return null;
     }
   }
 
   @override
-  bool operator ==(Object other) => other is FocusChoice && other.variant == variant && other.k == k && other.predictedMs == predictedMs;
+  bool operator ==(Object other) =>
+      other is FocusChoice && other.model == model && other.variant == variant && other.k == k && other.predictedMs == predictedMs;
   @override
-  int get hashCode => Object.hash(variant, k, predictedMs);
+  int get hashCode => Object.hash(model, variant, k, predictedMs);
   @override
-  String toString() => 'FocusChoice(${variant.name}, $k, ${predictedMs.round()} ms)';
+  String toString() => 'FocusChoice(${model.name}, ${variant.name}, $k, ${predictedMs.round()} ms)';
 }
 
 /// The choice from the device trial: a working graphics chip gets the graphics model; otherwise the CPU model with the
-/// most candidates that fit the budget. Automatic declines a device too slow for even 10; On uses 10 anyway.
-FocusChoice choose({required double cpuMs, required bool gpu, required FocusMode mode}) {
+/// most candidates that fit the budget. Automatic declines a device too slow for even 10; On uses 10 anyway. Apollos is
+/// used when preferred and it fits; otherwise (no Apollos candidate fits) the Ezra logic decides.
+FocusChoice choose({required double cpuMs, required bool gpu, required FocusMode mode, required FocusModel preferred}) {
   if (mode == FocusMode.off) return FocusChoice.none;
   final cpu10 = cpuMs * _cpuFactor * 10;
-  if (gpu) return FocusChoice(FocusVariant.fp16, 10, cpu10); // first searches measure the real graphics time
+  if (preferred == FocusModel.apollos) {
+    if (gpu) return FocusChoice(FocusModel.apollos, FocusVariant.fp16, 10, cpu10);
+    // ponytail: placeholder - reuses Ezra's ladder and cost; Task 5 gives Apollos its own constants.
+    for (final k in _ks) {
+      final ms = cpuMs * _cpuFactor * k;
+      if (ms <= kFocusBudgetMs) return FocusChoice(FocusModel.apollos, FocusVariant.int8, k, ms);
+    }
+  }
+  if (gpu) return FocusChoice(FocusModel.ezra, FocusVariant.fp16, 10, cpu10); // first searches measure the real graphics time
   for (final k in _ks) {
     final ms = cpuMs * _cpuFactor * k;
-    if (ms <= kFocusBudgetMs) return FocusChoice(FocusVariant.int8, k, ms);
+    if (ms <= kFocusBudgetMs) return FocusChoice(FocusModel.ezra, FocusVariant.int8, k, ms);
   }
-  return mode == FocusMode.on ? FocusChoice(FocusVariant.int8, 10, cpu10) : FocusChoice.none;
+  return mode == FocusMode.on ? FocusChoice(FocusModel.ezra, FocusVariant.int8, 10, cpu10) : FocusChoice.none;
 }
 
 /// After install: with at least three measured searches, fewer candidates when the median is over budget; at 10 and
@@ -71,7 +87,7 @@ FocusChoice adapt(FocusChoice c, List<double> recentMs, FocusMode mode) {
   final median = sorted[sorted.length ~/ 2];
   if (median <= kFocusBudgetMs) return c;
   final i = _ks.indexOf(c.k);
-  if (i >= 0 && i < _ks.length - 1) return FocusChoice(c.variant, _ks[i + 1], median * _ks[i + 1] / c.k);
+  if (i >= 0 && i < _ks.length - 1) return FocusChoice(c.model, c.variant, _ks[i + 1], median * _ks[i + 1] / c.k);
   if (median >= 2 * kFocusBudgetMs && mode == FocusMode.automatic) return FocusChoice.none; // a timeout counts
   return c;
 }
