@@ -132,7 +132,9 @@ FocusChoice resolveFallback({
   required bool apollosInstallable,
 }) {
   if (preference == FocusModel.ezra) {
-    return before?.model == FocusModel.ezra && fresh.model != FocusModel.ezra ? before! : fresh;
+    if (before?.model == FocusModel.ezra && fresh.model != FocusModel.ezra) return before!;
+    if (fresh.model == FocusModel.ezra) return fresh;
+    return FocusChoice(FocusModel.ezra, fresh.variant, fresh.k, fresh.predictedMs); // never leak Apollos through
   }
   if (fresh.model == FocusModel.apollos && apollosInstallable) return fresh; // genuinely available now: un-stick
   if (before?.model == FocusModel.apollos && fresh.model != FocusModel.apollos) return before!; // installed Apollos wins against noise

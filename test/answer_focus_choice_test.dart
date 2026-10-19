@@ -120,6 +120,11 @@ void main() {
       expect(r.model, FocusModel.ezra);
     });
 
+    test('an explicit Ezra preference is never overridden even on a first run with no persisted choice yet', () {
+      final r = resolveFallback(preference: FocusModel.ezra, fresh: apollosChoice, before: null, apollosInstallable: true);
+      expect(r.model, FocusModel.ezra);
+    });
+
     test('preferring Apollos, once genuinely installable, replaces a stale Ezra fallback', () {
       final r = resolveFallback(preference: FocusModel.apollos, fresh: apollosChoice, before: ezraChoice, apollosInstallable: true);
       expect(r.model, FocusModel.apollos);
