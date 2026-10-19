@@ -1,0 +1,23 @@
+{
+ "provenance": "Assistant-authored on 2026-10-18 before inference for this experiment. Compared manually with the 76 historical canonical questions to avoid direct paraphrases. Broader topics and corpus passages can overlap. These are held-out synthetic questions, not independent reader needs.",
+ "queries": [
+  {"id":"cal-scales","split":"calibration","kind":"answerable","language":"english","query":"What do the scriptures say about using dishonest scales when selling goods?"},
+  {"id":"cal-vows","split":"calibration","kind":"answerable","language":"english","query":"Is it better not to make a promise to God than to make one and fail to keep it?"},
+  {"id":"cal-witness","split":"calibration","kind":"answerable","language":"english","query":"Can an accusation be established by only one witness?"},
+  {"id":"cal-permitted","split":"calibration","kind":"answerable","language":"english","query":"Does being allowed to do something mean that doing it will help others?"},
+  {"id":"cal-rejected-messengers","split":"calibration","kind":"answerable","language":"english","query":"What instructions did Jesus give when a town would not receive his messengers?"},
+  {"id":"cal-es-wages","split":"calibration","kind":"answerable","language":"spanish","query":"¿Qué enseñan las escrituras sobre pagar al trabajador a tiempo?"},
+  {"id":"cal-caffeine","split":"calibration","kind":"absent","language":"english","query":"What is the chemical formula of caffeine?"},
+  {"id":"cal-steps-today","split":"calibration","kind":"absent","language":"english","query":"What is the exact number of steps I walked today?"},
+  {"id":"test-cup","split":"test","kind":"answerable","language":"english","query":"What did Jesus say about cleaning the outside of a cup while leaving its inside unclean?"},
+  {"id":"test-temple-merchants","split":"test","kind":"answerable","language":"english","query":"Why did Jesus drive the money changers out of the temple?"},
+  {"id":"test-own-faults","split":"test","kind":"answerable","language":"english","query":"Should I examine my own faults before judging someone else's faults?"},
+  {"id":"test-teacher-factions","split":"test","kind":"answerable","language":"english","query":"What does Paul say about believers dividing themselves into groups named after different teachers?"},
+  {"id":"test-other-side","split":"test","kind":"answerable","language":"english","query":"What should I do with a report about someone before I have heard the other side?"},
+  {"id":"test-leper-returned","split":"test","kind":"answerable","language":"english","query":"When Jesus healed ten lepers, what did he say about the one who returned?"},
+  {"id":"test-different-gifts","split":"test","kind":"answerable","language":"english","query":"Does everyone in the church have the same spiritual gift?"},
+  {"id":"test-es-tomorrow","split":"test","kind":"answerable","language":"spanish","query":"¿Qué dice la Biblia sobre jactarse de lo que haremos mañana?"},
+  {"id":"test-phone-model","split":"test","kind":"absent","language":"english","query":"What is the model number of the phone I am using?"},
+  {"id":"test-rice-protein","split":"test","kind":"absent","language":"english","query":"How many grams of protein are in 100 grams of cooked rice?"}
+ ]
+}

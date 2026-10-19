@@ -1,0 +1,31 @@
+{
+ "provenance": "Assistant-authored on 2026-10-19 before inference for this held-out confirmation round. Compared manually against all 94 previously used questions (76 historical canonical questions in local-benchmarks/reranker-stage2/rankings.json, 8 calibration and 10 test questions in tool/answer_focus_calibration_questions.json) to avoid direct paraphrase. Intended-answer verses noted here were used only to check each question has a real textual answer at authoring time; grading is blind and does not reference this file.",
+ "queries": [
+  {"id":"held-widows-mite","split":"heldout","kind":"answerable","language":"english","query":"What did Jesus say about the widow who gave two small coins at the temple treasury?"},
+  {"id":"held-doubting-thomas","split":"heldout","kind":"answerable","language":"english","query":"What did Jesus say to Thomas about believing without having seen?"},
+  {"id":"held-prodigal-father","split":"heldout","kind":"answerable","language":"english","query":"What did the father do when he saw his son returning while he was still a long way off?"},
+  {"id":"held-good-samaritan-neighbor","split":"heldout","kind":"answerable","language":"english","query":"Who did Jesus say was a neighbor to the man who fell among thieves?"},
+  {"id":"held-salt-of-earth","split":"heldout","kind":"answerable","language":"english","query":"What did Jesus mean when he called his followers the salt of the earth?"},
+  {"id":"held-sower-seed-thorns","split":"heldout","kind":"answerable","language":"english","query":"In the parable of the sower, what happens to seed that falls among thorns?"},
+  {"id":"held-pharisee-publican-prayer","split":"heldout","kind":"answerable","language":"english","query":"What was different about how the Pharisee and the publican prayed in the temple?"},
+  {"id":"held-talents-buried","split":"heldout","kind":"answerable","language":"english","query":"What happened to the servant who buried his one talent instead of investing it?"},
+  {"id":"held-peter-walk-water","split":"heldout","kind":"answerable","language":"english","query":"What happened when Peter began to sink while walking on the water toward Jesus?"},
+  {"id":"held-zacchaeus-tree","split":"heldout","kind":"answerable","language":"english","query":"Why did Zacchaeus climb a tree to see Jesus?"},
+  {"id":"held-gideon-fleece","split":"heldout","kind":"answerable","language":"english","query":"What sign did Gideon ask for using a fleece of wool?"},
+  {"id":"held-daniel-lions-den","split":"heldout","kind":"answerable","language":"english","query":"Why was Daniel thrown into the den of lions?"},
+  {"id":"held-moses-burning-bush","split":"heldout","kind":"answerable","language":"english","query":"What name did God give for himself when he spoke to Moses from the burning bush?"},
+  {"id":"held-david-goliath-stone","split":"heldout","kind":"answerable","language":"english","query":"What did David use to strike down Goliath?"},
+  {"id":"held-joseph-coat-colors","split":"heldout","kind":"answerable","language":"english","query":"What gift did Jacob give Joseph that made his brothers jealous?"},
+  {"id":"held-ruth-loyalty","split":"heldout","kind":"answerable","language":"english","query":"What did Ruth say to Naomi about not leaving her and going back to her own people?"},
+  {"id":"held-esther-such-a-time","split":"heldout","kind":"answerable","language":"english","query":"What did Mordecai say to Esther about being queen for such a time as this?"},
+  {"id":"held-paul-shipwreck","split":"heldout","kind":"answerable","language":"english","query":"What happened to Paul when he was bitten by a viper after the shipwreck on Malta?"},
+  {"id":"held-abinadi-king-noah","split":"heldout","kind":"answerable","language":"english","query":"Why was Abinadi put to death by King Noah's priests?"},
+  {"id":"held-ammon-arms","split":"heldout","kind":"answerable","language":"english","query":"What did Ammon do to defend King Lamoni's flocks at the waters of Sebus?"},
+  {"id":"held-es-loaves-fishes","split":"heldout","kind":"answerable","language":"spanish","query":"¿Qué hizo Jesús con los cinco panes y los dos peces para alimentar a la multitud?"},
+  {"id":"held-es-centurion-faith","split":"heldout","kind":"answerable","language":"spanish","query":"¿Qué dijo Jesús sobre la fe del centurión que pidió sanar a su siervo?"},
+  {"id":"abs-wifi-password","split":"heldout","kind":"absent","language":"english","query":"What is the Wi-Fi password for my home router?"},
+  {"id":"abs-stock-price","split":"heldout","kind":"absent","language":"english","query":"What was the closing stock price of a major technology company yesterday?"},
+  {"id":"abs-car-oil-change","split":"heldout","kind":"absent","language":"english","query":"How many miles can I drive before my car needs an oil change?"},
+  {"id":"abs-time-zone","split":"heldout","kind":"absent","language":"english","query":"What time zone am I currently in?"}
+ ]
+}
