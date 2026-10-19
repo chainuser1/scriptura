@@ -46,6 +46,29 @@ fn open() -> Option<Engine> {
     Some(Engine::open(serde_json::from_value::<Config>(cfg).unwrap()).unwrap())
 }
 
+fn minimal_cfg_json() -> Value {
+    json!({
+        "retrieval_dir": "x",
+        "head_npz": "x",
+        "encoder_model": "x",
+        "tokenizer_json": "x",
+        "profiles": {"p": [0.0, 0.0, 0.0, 0.0]},
+        "default_profile": "p",
+        "fallback_without_thread": "p",
+    })
+}
+
+#[test]
+fn focus_family_absent_defaults_to_none_and_apollos_round_trips() {
+    let absent = serde_json::from_value::<Config>(minimal_cfg_json()).unwrap();
+    assert_eq!(absent.focus_family, None);
+
+    let mut with_family = minimal_cfg_json();
+    with_family["focus_family"] = json!("apollos");
+    let cfg = serde_json::from_value::<Config>(with_family).unwrap();
+    assert_eq!(cfg.focus_family, Some("apollos".to_string()));
+}
+
 #[test]
 fn entity_links_match_python_cases() {
     let db = root().join(".artifact-staging/entities.db");

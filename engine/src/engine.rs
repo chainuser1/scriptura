@@ -46,6 +46,9 @@ pub struct Config {
     /// "gpu" (graphics chip when it works, else CPU) or "cpu".
     #[serde(default)]
     pub focus_device: Option<String>,
+    /// Reranker family/tokenization: "ezra" or "apollos". Absent or unrecognized means Ezra (backward compatible).
+    #[serde(default)]
+    pub focus_family: Option<String>,
     /// profile id -> [echo, spark, thread, root]
     pub profiles: BTreeMap<String, [f64; 4]>,
     pub default_profile: String,
@@ -61,8 +64,16 @@ fn one() -> usize {
     1
 }
 
+/// Absent or unrecognized family names mean Ezra, never a panic or error: the backward-compat contract.
+fn parse_family(s: Option<&str>) -> RerankerFamily {
+    match s {
+        Some("apollos") => RerankerFamily::Apollos,
+        _ => RerankerFamily::Ezra,
+    }
+}
+
 enum FocusSlot {
-    NotLoaded { model: PathBuf, tokenizer: PathBuf, threads: usize, gpu: bool },
+    NotLoaded { model: PathBuf, tokenizer: PathBuf, threads: usize, gpu: bool, family: RerankerFamily },
     Ready(Focus),
     Failed(String),
 }
@@ -144,6 +155,7 @@ impl Engine {
                     tokenizer: t.clone(),
                     threads: cfg.threads.max(1),
                     gpu: cfg.focus_device.as_deref() == Some("gpu"),
+                    family: parse_family(cfg.focus_family.as_deref()),
                 })),
                 _ => None,
             },
@@ -215,10 +227,8 @@ impl Engine {
             .collect::<Result<_, _>>()?;
         let started = Instant::now();
         let mut slot = slot.lock().unwrap();
-        if let FocusSlot::NotLoaded { model, tokenizer, threads, gpu } = &*slot {
-            // Task 1 only generalizes Focus's tokenization; every caller here still means Ezra until Task 2
-            // threads a configured family through Config/FocusSlot.
-            *slot = match Focus::open(model, tokenizer, *threads, *gpu, RerankerFamily::Ezra) {
+        if let FocusSlot::NotLoaded { model, tokenizer, threads, gpu, family } = &*slot {
+            *slot = match Focus::open(model, tokenizer, *threads, *gpu, *family) {
                 Ok(f) => FocusSlot::Ready(f),
                 Err(e) => FocusSlot::Failed(e),
             };
