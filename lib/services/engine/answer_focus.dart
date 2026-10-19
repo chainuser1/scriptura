@@ -26,10 +26,6 @@ const _ks = [30, 15, 10];
 /// 10 candidates 1270 ms).
 const _cpuFactor = 0.069;
 
-/// Apollos's own starting GPU candidate count, independent of Ezra's: mirrors Ezra's fp16 starting k=10 as a
-/// conservative guess; `adapt()` corrects it from real measured search times.
-const _apollosGpuK = 10;
-
 /// Apollos's own CPU-tier candidate-count ladder, independent of Ezra's `_ks`.
 const _apollosKs = [30, 15, 10];
 
@@ -73,12 +69,16 @@ class FocusChoice {
 
 /// The choice from the device trial: a working graphics chip gets the graphics model; otherwise the CPU model with the
 /// most candidates that fit the budget. Automatic declines a device too slow for even 10; On uses 10 anyway. Apollos is
-/// used when preferred and it fits; otherwise (no Apollos candidate fits) the Ezra logic decides.
+/// used when preferred and it fits; otherwise (no Apollos candidate fits) the Ezra logic decides. Apollos's fp16/GPU
+/// tier is temporarily unavailable (a real pack defect, not a device limitation) -- Apollos only ever offers int8/CPU
+/// for now, even on a GPU-capable device, until that pack is fixed.
 FocusChoice choose({required double cpuMs, required bool gpu, required FocusMode mode, required FocusModel preferred}) {
   if (mode == FocusMode.off) return FocusChoice.none;
   final cpu10 = cpuMs * _cpuFactor * 10;
   if (preferred == FocusModel.apollos) {
-    if (gpu) return FocusChoice(FocusModel.apollos, FocusVariant.fp16, _apollosGpuK, cpuMs * _cpuFactor * _apollosGpuK);
+    // Apollos's fp16/GPU pack has a real ONNX export defect (DirectML rejects it; see memory
+    // apollos-fp16-gpu-broken-int8-only-for-now) -- not yet fixed/re-uploaded. Until it is, a
+    // GPU-capable device still gets Apollos, just on its working int8/CPU tier below, not fp16/GPU.
     for (final k in _apollosKs) {
       final ms = cpuMs * _apollosCpuFactor * k;
       if (ms <= kFocusBudgetMs) return FocusChoice(FocusModel.apollos, FocusVariant.int8, k, ms);

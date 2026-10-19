@@ -62,15 +62,17 @@ void main() {
 
   group('measureDevice change detection (Finding 1)', () {
     test('a pure model switch at the same variant is detected as changed (engine must restart)', () async {
-      // Ezra fp16 -> Apollos fp16: same variant, different model. The device trial itself doesn't need to move;
-      // a fresh preference change is enough to make resolveFallback hand back a different model.
-      final svc = FakeSearchService((r, id) async => SearchResponse(mode: 'device_trial', raw: {'cpu_ms': 1839.0, 'gpu': true}));
+      // Ezra int8 k=30 -> Apollos int8 k=30: same variant, different model. A fast-enough device (200ms, same
+      // speed used elsewhere to keep both ladders comfortably under budget -- Apollos's fp16/GPU tier is gated
+      // off for now, so this has to go through its own CPU ladder, same as any other Apollos choice today) is
+      // enough for a fresh preference change to make resolveFallback hand back a different model.
+      final svc = FakeSearchService((r, id) async => SearchResponse(mode: 'device_trial', raw: {'cpu_ms': 200.0, 'gpu': true}));
       final app = AppController.fixed(search: svc, user: UserStore.memory());
-      app.user.setPref('answer_focus_choice', const FocusChoice(FocusModel.ezra, FocusVariant.fp16, 10, 1200).toJson());
+      app.user.setPref('answer_focus_choice', const FocusChoice(FocusModel.ezra, FocusVariant.int8, 30, 414.0).toJson());
       app.setFocusModelPreference(FocusModel.apollos);
       final changed = await app.measureDevice();
       expect(app.focusChoice!.model, FocusModel.apollos);
-      expect(app.focusChoice!.variant, FocusVariant.fp16); // same variant as before -- only the model moved
+      expect(app.focusChoice!.variant, FocusVariant.int8); // same variant as before -- only the model moved
       expect(changed, isTrue, reason: 'a same-variant model switch must still trigger an engine restart');
     });
 
@@ -137,7 +139,12 @@ void main() {
 
   group('the trial is re-run when the preference it ran under is not the current one (C2)', () {
     test('an upgrading user with an old Ezra choice and no recorded trial preference is due a trial', () async {
-      final (app, _) = setup();
+      // A fast-enough device (200ms, same speed used elsewhere in this file): Apollos's fp16/GPU tier is gated
+      // off for now, so migrating to Apollos has to land on its own CPU ladder, which only fits comfortably at
+      // this speed -- at the slower reference speed `setup()` uses by default, Apollos's ladder doesn't fit and
+      // migration would correctly stay on Ezra, which isn't what this test is checking.
+      final svc = FakeSearchService((r, id) async => SearchResponse(mode: 'device_trial', raw: {'cpu_ms': 200.0, 'gpu': r.body?['probe_gpu'] != false}));
+      final app = AppController.fixed(search: svc, user: UserStore.memory());
       app.user.setPref('answer_focus_choice', const FocusChoice(FocusModel.ezra, FocusVariant.fp16, 10, 1200).toJson());
       expect(app.focusTrialPreference, isNull);
       expect(app.focusTrialDue, isTrue, reason: 'the Ezra choice was never evaluated against the Apollos default');

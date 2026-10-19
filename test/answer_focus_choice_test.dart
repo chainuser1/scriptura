@@ -37,10 +37,12 @@ void main() {
       expect(choose(cpuMs: 5000, gpu: true, mode: FocusMode.on, preferred: FocusModel.ezra).variant, FocusVariant.fp16);
     });
 
-    test('preferring Apollos with a working graphics chip gets Apollos fp16', () {
-      final c = choose(cpuMs: laptop, gpu: true, mode: FocusMode.automatic, preferred: FocusModel.apollos);
+    test('preferring Apollos with a working graphics chip still goes through the int8/CPU ladder, not fp16/GPU (fp16 pack is broken for now)', () {
+      // A fast-enough device: GPU being available no longer grants fp16 (removed until the pack is fixed), but a
+      // working graphics chip says nothing about CPU speed, so this still has to go through Apollos's own CPU ladder.
+      final c = choose(cpuMs: 600, gpu: true, mode: FocusMode.automatic, preferred: FocusModel.apollos);
       expect(c.model, FocusModel.apollos);
-      expect(c.variant, FocusVariant.fp16);
+      expect(c.variant, FocusVariant.int8);
     });
 
     test('preferring Apollos without a graphics chip gets Apollos int8 on a fast-enough device', () {
@@ -57,14 +59,6 @@ void main() {
     test('preferring Ezra always gets Ezra, with or without graphics', () {
       expect(choose(cpuMs: laptop, gpu: true, mode: FocusMode.automatic, preferred: FocusModel.ezra).model, FocusModel.ezra);
       expect(choose(cpuMs: laptop, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.ezra).model, FocusModel.ezra);
-    });
-
-    test('Apollos gpu choice starts at k=10, independent of the CPU budget constant', () {
-      final apollos = choose(cpuMs: laptop, gpu: true, mode: FocusMode.automatic, preferred: FocusModel.apollos);
-      final ezra = choose(cpuMs: laptop, gpu: true, mode: FocusMode.automatic, preferred: FocusModel.ezra);
-      expect(apollos.k, ezra.k); // both 10 today, by coincidence of the shared starting point, not a shared constant
-      expect(apollos.model, FocusModel.apollos);
-      expect(ezra.model, FocusModel.ezra);
     });
 
     test('Apollos CPU ladder predicts cost from its own constant, not Ezra\'s', () {
