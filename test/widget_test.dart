@@ -255,7 +255,7 @@ void main() {
         final svc = FakeSearchService((r, id) async => r.op == 'focus' ? focus(r) : r.op == 'phrase' ? SearchResponse(mode: 'phrase', hits: [Hit(2, 0)], total: 1) : semantic([2, 5, 6, 7]),
             hasFocus: true);
         final app = await inSearch(tester, svc);
-        app.user.setPref('answer_focus_choice', FocusChoice(FocusVariant.int8, k, 300).toJson());
+        app.user.setPref('answer_focus_choice', FocusChoice(FocusModel.ezra, FocusVariant.int8, k, 300).toJson());
         return app;
       }
 
@@ -314,7 +314,7 @@ void main() {
           return r.query == 'first' ? semantic([3]) : semantic([2, 5, 6, 7]);
         }, hasFocus: true);
         app = await inSearch(tester, svc);
-        app.user.setPref('answer_focus_choice', const FocusChoice(FocusVariant.int8, 10, 300).toJson());
+        app.user.setPref('answer_focus_choice', const FocusChoice(FocusModel.ezra, FocusVariant.int8, 10, 300).toJson());
         await tester.enterText(find.byType(TextField).first, 'first');
         await tester.testTextInput.receiveAction(TextInputAction.search);
         await tester.pump();
@@ -340,7 +340,7 @@ void main() {
       testWidgets('without the pack, search is exactly today\'s', (tester) async {
         final svc = FakeSearchService((r, id) async => semantic([2, 5, 6, 7]));
         final app = await inSearch(tester, svc);
-        app.user.setPref('answer_focus_choice', const FocusChoice(FocusVariant.int8, 10, 300).toJson());
+        app.user.setPref('answer_focus_choice', const FocusChoice(FocusModel.ezra, FocusVariant.int8, 10, 300).toJson());
         await typeAndSubmit(tester, find.byType(TextField).first, 'peace');
         expect(svc.requests.map((r) => r.op), ['search']);
         expect(top(tester, 2), lessThan(top(tester, 7)));
@@ -367,7 +367,7 @@ void main() {
 
       testWidgets('when the graphics chip fails and the engine moves to the CPU, the next start goes straight to the CPU', (tester) async {
         final app = await withFocus(tester, (r) async => SearchResponse(mode: 'focus', raw: {'scores': [0.1, 0.2, 0.3, 0.4], 'device': 'cpu', 'ms': 900.0}));
-        app.user.setPref('answer_focus_choice', const FocusChoice(FocusVariant.fp16, 10, 900).toJson());
+        app.user.setPref('answer_focus_choice', const FocusChoice(FocusModel.ezra, FocusVariant.fp16, 10, 900).toJson());
         await typeAndSubmit(tester, find.byType(TextField).first, 'peace');
         expect(app.user.pref('focus_gpu_failed'), '1');
       });

@@ -153,7 +153,17 @@ class PackStore {
 /// Everything needed to open the engine, resolved from installed packs. Environment overrides are for development
 /// and tests only (they point at already-built directories and skip installation).
 class EnginePaths {
-  EnginePaths({required this.libraryPath, required this.engine, this.colbert, this.phraseDb, this.catalogDb, this.entitiesDb, this.topicsDb, this.focus, this.focusGpu = false});
+  EnginePaths(
+      {required this.libraryPath,
+      required this.engine,
+      this.colbert,
+      this.phraseDb,
+      this.catalogDb,
+      this.entitiesDb,
+      this.topicsDb,
+      this.focus,
+      this.focusGpu = false,
+      this.focusFamily});
   final String libraryPath;
   final InstalledPack engine;
   final InstalledPack? colbert;
@@ -169,6 +179,10 @@ class EnginePaths {
   final InstalledPack? focus;
   final bool focusGpu;
 
+  /// Which model family [focus] is ('ezra' or 'apollos'); an engine build that predates this field treats an
+  /// absent `focus_family` as Ezra, so omitting or leaving this null is backward compatible.
+  final String? focusFamily;
+
   /// Engine configuration JSON (see engine/src/engine.rs `Config`).
   Map<String, dynamic> config() {
     final m = engine.manifest;
@@ -180,7 +194,12 @@ class EnginePaths {
       if (colbert != null && colbert!.has('shard-0000.vec.npy')) 'pack_dir': colbert!.dir.path,
       if (phraseDb != null) 'phrase_db': phraseDb,
       if (topicsDb != null) 'topics_db': topicsDb,
-      if (focus != null) ...{'focus_model': focus!.path('model.onnx'), 'focus_tokenizer': focus!.path('tokenizer.json'), 'focus_device': focusGpu ? 'gpu' : 'cpu'},
+      if (focus != null) ...{
+        'focus_model': focus!.path('model.onnx'),
+        'focus_tokenizer': focus!.path('tokenizer.json'),
+        'focus_device': focusGpu ? 'gpu' : 'cpu',
+        'focus_family': focusFamily ?? 'ezra',
+      },
       // no volume wins only for being itself (engine/src/balance.rs); strength chosen in tool/volume_balance.py
       'volume_balance': 0.75,
       if (catalogDb != null) 'catalog_db': catalogDb,

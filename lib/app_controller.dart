@@ -88,6 +88,8 @@ class AppController extends ChangeNotifier {
   PackStore get answerPacks => PackStore(Directory('${_root!.path}/scriptura'), PackKind.answers);
   PackStore get focusInt8Packs => PackStore(Directory('${_root!.path}/scriptura'), PackKind.focusInt8);
   PackStore get focusFp16Packs => PackStore(Directory('${_root!.path}/scriptura'), PackKind.focusFp16);
+  PackStore get focusApollosFp16Packs => PackStore(Directory('${_root!.path}/scriptura'), PackKind.apollosFp16);
+  PackStore get focusApollosInt8Packs => PackStore(Directory('${_root!.path}/scriptura'), PackKind.apollosInt8);
 
   /// Answer focus setting (Settings › Advanced): Automatic, On or Off.
   FocusMode get focusMode => FocusMode.parse(user.pref('answer_focus'));
@@ -95,20 +97,33 @@ class AppController extends ChangeNotifier {
   /// What the device trial chose (and later measurements adjusted); null until the trial has run.
   FocusChoice? get focusChoice => FocusChoice.fromJson(user.pref('answer_focus_choice'));
 
-  String? get _focusKind => switch (focusChoice?.variant) {
-        FocusVariant.int8 => 'answer-focus-int8',
-        FocusVariant.fp16 => 'answer-focus-fp16',
+  String? get focusKind => switch ((focusChoice?.model, focusChoice?.variant)) {
+        (FocusModel.ezra, FocusVariant.int8) => 'answer-focus-int8',
+        (FocusModel.ezra, FocusVariant.fp16) => 'answer-focus-fp16',
+        (FocusModel.apollos, FocusVariant.int8) => 'apollos-int8',
+        (FocusModel.apollos, FocusVariant.fp16) => 'apollos-fp16',
         _ => null,
       };
 
   /// The installed pack for the current choice, unless Answer focus is off.
   InstalledPack? _focusPack() {
     if (_root == null || focusMode == FocusMode.off) return null;
-    return switch (focusChoice?.variant) {
-      FocusVariant.int8 => focusInt8Packs.active(),
-      FocusVariant.fp16 => focusFp16Packs.active(),
+    return switch ((focusChoice?.model, focusChoice?.variant)) {
+      (FocusModel.ezra, FocusVariant.int8) => focusInt8Packs.active(),
+      (FocusModel.ezra, FocusVariant.fp16) => focusFp16Packs.active(),
+      (FocusModel.apollos, FocusVariant.int8) => focusApollosInt8Packs.active(),
+      (FocusModel.apollos, FocusVariant.fp16) => focusApollosFp16Packs.active(),
       _ => null,
     };
+  }
+
+  /// Which model Answer focus should use: the reader's explicit choice, or Apollos by default when none has
+  /// been made yet (Settings' Apollos/Ezra picker writes this).
+  FocusModel get focusModelPreference => FocusModel.values.byName(user.pref('focus_model_preference') ?? 'apollos');
+
+  void setFocusModelPreference(FocusModel m) {
+    user.setPref('focus_model_preference', m.name);
+    notifyListeners();
   }
 
   bool get focusInstalled => _focusPack() != null;
@@ -116,7 +131,7 @@ class AppController extends ChangeNotifier {
   /// Offered once everything required is installed, the trial chose a model and the reader has not said "not now".
   bool get offerAnswerFocus =>
       _root != null &&
-      _focusKind != null &&
+      focusKind != null &&
       !focusInstalled &&
       focusMode != FocusMode.off &&
       user.pref('focus_declined') != '1' &&
@@ -173,22 +188,18 @@ class AppController extends ChangeNotifier {
     user.setPref('focus_trial_pending', '1');
     try {
       final r = await _search.search(SearchRequest.raw('device_trial', {if (!probeGpu) 'probe_gpu': false}));
-      // ponytail: preferred hardcoded to ezra (pre-existing behavior); wire to a real model preference when Task 6's
-      // Apollos preference UI lands.
       final fresh = choose(
         cpuMs: (r.raw['cpu_ms'] as num).toDouble(),
         gpu: probeGpu && r.raw['gpu'] == true,
         mode: focusMode,
-        preferred: FocusModel.ezra,
+        preferred: focusModelPreference,
       );
-      final installed = _root == null
-          ? FocusVariant.none
-          : focusInt8Packs.active() != null
-              ? FocusVariant.int8
-              : focusFp16Packs.active() != null
-                  ? FocusVariant.fp16
-                  : FocusVariant.none;
-      final c = keep(before, fresh, installed: installed);
+      final c = resolveFallback(
+        preference: focusModelPreference,
+        fresh: fresh,
+        before: before,
+        apollosInstallable: fresh.model == FocusModel.apollos,
+      );
       user.setPref('answer_focus_choice', c.toJson());
       _focusTimes.clear();
       notifyListeners();
@@ -335,6 +346,7 @@ class AppController extends ChangeNotifier {
           topicsDb: _topicsPack()?.path('topics.db'),
           focus: _focusPack(),
           focusGpu: focusChoice?.variant == FocusVariant.fp16 && user.pref('focus_gpu_failed') != '1',
+          focusFamily: focusChoice?.model.name,
         );
         service = await NativeSearchService.open(libraryPath: lib, config: paths.config());
       }
@@ -455,7 +467,18 @@ class AppController extends ChangeNotifier {
       final grand = packs.fold<int>(0, (a, p) => a + p.bytes);
       var done = 0;
       // content first (reading needs it), then search data, then the optional index
-      const order = {'release': 0, 'engine': 1, 'entities': 2, 'answers': 3, 'topics': 4, 'colbert': 5, 'answer-focus-int8': 6, 'answer-focus-fp16': 6};
+      const order = {
+        'release': 0,
+        'engine': 1,
+        'entities': 2,
+        'answers': 3,
+        'topics': 4,
+        'colbert': 5,
+        'answer-focus-int8': 6,
+        'answer-focus-fp16': 6,
+        'apollos-int8': 6,
+        'apollos-fp16': 6,
+      };
       final sorted = [...packs]..sort((a, b) => (order[a.kind] ?? 9).compareTo(order[b.kind] ?? 9));
       for (final p in sorted) {
         onPack?.call(p);
@@ -499,6 +522,12 @@ class AppController extends ChangeNotifier {
             await _startEngine();
           case 'answer-focus-fp16':
             await focusFp16Packs.adoptVerified(dir);
+            await _startEngine();
+          case 'apollos-int8':
+            await focusApollosInt8Packs.adoptVerified(dir);
+            await _startEngine();
+          case 'apollos-fp16':
+            await focusApollosFp16Packs.adoptVerified(dir);
             await _startEngine();
           default:
             throw PackException('unknown_kind', 'This host offers a pack this version cannot install (${p.kind}).');
@@ -567,7 +596,7 @@ class AppController extends ChangeNotifier {
     lastRunIncludedFocus = includeFocus;
     final missing = {
       ...(includeOptional ? missingData : (missingData..remove('colbert'))),
-      if (includeFocus && _focusKind != null && !focusInstalled) _focusKind!,
+      if (includeFocus && focusKind != null && !focusInstalled) focusKind!,
     };
     // The topics pack is offered only when the host lists it; with everything else installed, look at most once a day.
     final topicsDue = _root != null && topicPacks.active() == null && user.pref('topics_checked_on') != _today();
@@ -599,7 +628,7 @@ class AppController extends ChangeNotifier {
             'entities' => 'names of people and places',
             'answers' => 'study questions',
             'topics' => 'topic index',
-            'answer-focus-int8' || 'answer-focus-fp16' => 'Answer focus',
+            'answer-focus-int8' || 'answer-focus-fp16' || 'apollos-fp16' || 'apollos-int8' => 'Answer focus',
             _ => 'word-level index',
           };
       var current = wanted.first;

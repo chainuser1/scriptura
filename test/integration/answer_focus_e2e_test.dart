@@ -29,6 +29,11 @@ void main() {
 
     // the trial runs once the engine is ready (not holding it up), before anything is downloaded
     await app.focusTrial;
+    // This fixture bucket's index.json lists only Ezra's answer-focus-* packs (no apollos-* entries), so pin the
+    // preference to Ezra and re-measure; otherwise the default (Apollos) trial finds this dev machine fast enough
+    // and the test's own ensureData() call below would ask the bucket for a pack it was never set up to serve.
+    app.setFocusModelPreference(FocusModel.ezra);
+    await app.remeasure();
     final choice = app.focusChoice!;
     expect(choice.variant, isNot(FocusVariant.none), reason: 'this development machine is fast enough');
     expect(app.focusInstalled, isFalse);

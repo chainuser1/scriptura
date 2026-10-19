@@ -49,7 +49,7 @@ void main() {
   });
 
   testWidgets('says what it is using once installed', (tester) async {
-    await settings(tester, hasFocus: true, choice: const FocusChoice(FocusVariant.fp16, 10, 1200));
+    await settings(tester, hasFocus: true, choice: const FocusChoice(FocusModel.ezra, FocusVariant.fp16, 10, 1200));
     expect(find.textContaining('Using the graphics chip'), findsOneWidget);
   });
 

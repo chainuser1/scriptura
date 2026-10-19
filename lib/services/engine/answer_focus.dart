@@ -15,7 +15,7 @@ enum FocusMode {
 /// Which pack: `answer-focus-int8-v1` (CPU) or `answer-focus-fp16-v1` (graphics chip).
 enum FocusVariant { none, int8, fp16 }
 
-/// Which reranker model: Ezra (always available) or Apollos. Ezra is also the "nothing chosen yet" placeholder.
+/// Which model: Ezra (always available) or Apollos. Ezra is also the "nothing chosen yet" placeholder.
 enum FocusModel { ezra, apollos }
 
 /// A search should not wait longer than this for Answer focus.
@@ -35,7 +35,7 @@ const _apollosKs = [30, 15, 10];
 
 /// Apollos's own CPU cost-per-candidate constant. UNMEASURED: no device has benchmarked Apollos's ~1.24B-parameter
 /// Llama-family int8 (weight-only, computes in fp32) pack yet, so this is not Ezra's `_cpuFactor` -- that would
-/// silently assume Apollos costs the same per candidate as Ezra's BGE-reranker-v2-m3. Placeholder: at least double
+/// silently assume Apollos costs the same per candidate as Ezra's bge-reranker-v2-m3. Placeholder: at least double
 /// Ezra's cost until a real-device pass replaces it; `adapt()`'s step-down logic corrects it from real search times
 /// exactly as it already does for Ezra.
 const _apollosCpuFactor = _cpuFactor * 2;

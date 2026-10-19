@@ -29,8 +29,8 @@ void main() {
   });
 
   group('keep', () {
-    const int8 = FocusChoice(FocusVariant.int8, 10, 1200);
-    const fp16 = FocusChoice(FocusVariant.fp16, 10, 1200);
+    const int8 = FocusChoice(FocusModel.ezra, FocusVariant.int8, 10, 1200);
+    const fp16 = FocusChoice(FocusModel.ezra, FocusVariant.fp16, 10, 1200);
 
     test('an installed model is kept when a new trial would pick the other one', () {
       expect(keep(int8, fp16, installed: FocusVariant.int8), int8);
@@ -43,7 +43,7 @@ void main() {
     });
 
     test('the same model takes the new measurement', () {
-      const faster = FocusChoice(FocusVariant.int8, 30, 900);
+      const faster = FocusChoice(FocusModel.ezra, FocusVariant.int8, 30, 900);
       expect(keep(int8, faster, installed: FocusVariant.int8), faster);
     });
   });
