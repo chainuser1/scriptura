@@ -25,9 +25,11 @@ jobs:
           v=$(sed -n 's/^version:[[:space:]]*\([0-9.]*\).*/\1/p' pubspec.yaml)
           test "v$v" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME but pubspec.yaml says $v"; exit 1; }
 
-      # Every machine here would make its own temporary key, so phones could never update from one release to the next.
-      # The release stops unless the store key is in the repository secrets (Settings > Secrets and variables > Actions):
-      # ANDROID_KEYSTORE_BASE64 (the .jks file, base64), ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD.
+      # Every machine here would make its own temporary key, so phones could never update from one release to the next
+      # on a Play Store listing. Without the store key in the repository secrets (Settings > Secrets and variables >
+      # Actions: ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD), the build
+      # falls back to Flutter's debug key (android/app/build.gradle.kts), which is fine for a direct-download GitHub
+      # release (not published to a store) but must not be used for anything distributed through the Play Store.
       - name: Android store key
         shell: bash
         env:
@@ -37,8 +39,8 @@ jobs:
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           if [ -z "$KEYSTORE" ]; then
-            echo "::error::No Android store key in the repository secrets: add it before releasing (see the comment above)."
-            exit 1
+            echo "::warning::No Android store key in the repository secrets: signing this APK with Flutter's debug key. Fine for a direct-download release; do not publish it to the Play Store."
+            exit 0
           fi
           echo "$KEYSTORE" | base64 -d > android/app/release.jks
           printf 'storeFile=release.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
