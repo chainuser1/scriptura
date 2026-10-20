@@ -372,16 +372,6 @@ class _AnswerFocusTile extends StatelessWidget {
     return 'This device will use the ${c.variant == FocusVariant.fp16 ? 'graphics chip' : 'processor'}. Not downloaded yet ($size, best on Wi-Fi).';
   }
 
-  /// True once a trial has actually run with Apollos preferred and settled on a working Ezra tier anyway -- i.e. Apollos
-  /// was tried and didn't resolve on this device. A stale Ezra choice from before Apollos (never trialled under the
-  /// Apollos preference) is not evidence. Null means "don't know/not applicable".
-  bool? get _apollosUnavailable {
-    if (app.focusModelPreference != FocusModel.apollos || app.focusTrialPreference != FocusModel.apollos) return null;
-    final c = app.focusChoice;
-    if (c == null || c.variant == FocusVariant.none) return null;
-    return c.model != FocusModel.apollos;
-  }
-
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
@@ -400,7 +390,7 @@ class _AnswerFocusTile extends StatelessWidget {
             const SizedBox(height: 4),
             Text(_status()),
             const SizedBox(height: 12),
-            _ModelPicker(app: app, unavailable: _apollosUnavailable),
+            _ModelPicker(app: app),
             const SizedBox(height: 8),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -427,33 +417,74 @@ class _AnswerFocusTile extends StatelessWidget {
   }
 }
 
-/// Which model Answer focus uses on this device: Ezra or Apollos. Apollos is always shown, never hidden -- only
-/// greyed out with an explanation when a trial already tried it and it didn't resolve here.
-class _ModelPicker extends StatelessWidget {
-  const _ModelPicker({required this.app, required this.unavailable});
+/// Which model Answer focus uses on this device: Ezra or Apollos. Picking Apollos always re-measures; if the trial
+/// shows it does not fit this device, a dialog asks whether to try it anyway (it stays selectable, never greyed out).
+class _ModelPicker extends StatefulWidget {
+  const _ModelPicker({required this.app});
   final AppController app;
 
-  /// true: tried and didn't resolve on this device. false/null: available, or not yet known.
-  final bool? unavailable;
+  @override
+  State<_ModelPicker> createState() => _ModelPickerState();
+}
+
+class _ModelPickerState extends State<_ModelPicker> {
+  AppController get app => widget.app;
+  bool _checking = false;
+
+  Future<void> _selectApollos() async {
+    setState(() => _checking = true);
+    app.setFocusModelPreference(FocusModel.apollos);
+    await app.remeasure();
+    setState(() => _checking = false);
+    final c = app.focusChoice;
+    final doesNotFit = c != null && c.variant != FocusVariant.none && c.model != FocusModel.apollos;
+    if (doesNotFit && !app.apollosOverrideAccepted && mounted) await _warn();
+  }
+
+  Future<void> _warn() async {
+    final proceed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('This device may not be fast enough for Apollos'),
+        content: const Text(
+          'Ezra works better here. You can still try Apollos -- it is experimental and may take much longer to '
+          'search, or affect your experience. Download it anyway?',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Use Ezra instead')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Try Apollos anyway')),
+        ],
+      ),
+    );
+    if (proceed == true) {
+      app.acceptApollosOverride();
+    } else {
+      app.setFocusModelPreference(FocusModel.ezra);
+      await app.remeasure();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    final apollosUnavailable = unavailable ?? false;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: SegmentedButton<FocusModel>(
-          segments: [
-            const ButtonSegment(value: FocusModel.ezra, label: Text('Ezra')),
-            ButtonSegment(value: FocusModel.apollos, label: const Text('Apollos'), enabled: !apollosUnavailable),
+          segments: const [
+            ButtonSegment(value: FocusModel.ezra, label: Text('Ezra')),
+            ButtonSegment(value: FocusModel.apollos, label: Text('Apollos')),
           ],
           selected: {app.focusModelPreference},
           // Same gate as Measure again: a pick the engine cannot trial would leave the old model running.
-          onSelectionChanged: app.engineState == EngineState.ready
+          onSelectionChanged: app.engineState == EngineState.ready && !_checking
               ? (s) {
-                  app.setFocusModelPreference(s.first);
-                  app.remeasure();
+                  if (s.first == FocusModel.ezra) {
+                    app.setFocusModelPreference(FocusModel.ezra);
+                    app.remeasure();
+                  } else {
+                    _selectApollos();
+                  }
                 }
               : null,
         ),
@@ -462,20 +493,10 @@ class _ModelPicker extends StatelessWidget {
       Text(
         app.focusModelPreference == FocusModel.ezra
             ? 'Ezra: a steady, well-tested choice that works on every device.'
-            : 'Apollos: looks harder for the exact answer. On some devices it takes a bit longer.',
+            : 'Apollos: looks harder for the exact answer, but is slower and experimental -- a good fit if you '
+                'don\'t mind waiting a bit longer for more refined results.',
         style: t.bodySmall,
       ),
-      if (apollosUnavailable) ...[
-        const SizedBox(height: 4),
-        Text(
-          app.apollosUnavailableNoticeShown
-              ? 'Apollos isn\'t available on this device yet. Using Ezra instead.'
-              : 'Scriptura Labs is working on a solution so Apollos can run on this device too. Using Ezra for now.',
-          style: t.bodySmall?.copyWith(color: Theme.of(context).colorScheme.error),
-        ),
-        // Marked shown only when the reader acknowledges it, so the prominent copy stays until read.
-        if (!app.apollosUnavailableNoticeShown) TextButton(onPressed: app.markApollosUnavailableNoticeShown, child: const Text('Got it')),
-      ],
     ]);
   }
 }

@@ -1,5 +1,5 @@
-// Settings' Ezra/Apollos model picker: both choices always visible, selecting changes the preference and triggers a
-// remeasure, and the one-time "working on a solution" notice gives way to a quiet greyed state.
+// Settings' Ezra/Apollos model picker: both choices always visible and enabled, selecting Apollos re-measures and
+// warns (with an explicit choice to proceed or fall back) when the device does not fit it.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scriptures_reader_mobile/app/nav_state.dart';
@@ -27,14 +27,25 @@ void main() {
     return (app, svc);
   }
 
-  testWidgets('both Ezra and Apollos are always visible as choices', (tester) async {
+  testWidgets('both Ezra and Apollos are always visible and enabled', (tester) async {
     await settings(tester);
     expect(find.text('Ezra'), findsOneWidget);
     expect(find.text('Apollos'), findsOneWidget);
+    final picker = tester.widget<SegmentedButton<FocusModel>>(find.byType(SegmentedButton<FocusModel>).last);
+    expect(picker.segments.firstWhere((s) => s.value == FocusModel.apollos).enabled, isTrue);
+  });
+
+  testWidgets('Ezra is the default preference', (tester) async {
+    final (app, _) = await settings(tester);
+    expect(app.focusModelPreference, FocusModel.ezra);
   });
 
   testWidgets('choosing Ezra sets the preference and remeasures', (tester) async {
     final (app, svc) = await settings(tester);
+    svc.requests.clear();
+    await tester.ensureVisible(find.text('Apollos'));
+    await tester.tap(find.text('Apollos'));
+    await tester.pumpAndSettle();
     svc.requests.clear();
     await tester.ensureVisible(find.text('Ezra'));
     await tester.tap(find.text('Ezra'));
@@ -43,49 +54,56 @@ void main() {
     expect(svc.requests.map((r) => r.op), contains('device_trial')); // remeasure() ran a fresh trial
   });
 
-  testWidgets('a device where Apollos never resolves shows the notice once, then a quiet greyed state', (tester) async {
-    // cpuMs chosen so Ezra's int8 ladder still fits at k=10 (1500 * 0.069 * 10 = 1035ms, under the 1500ms budget) but
-    // Apollos's (double the per-candidate cost) does not even at k=10 (1500 * 0.138 * 10 = 2070ms, over budget), and
-    // no gpu, so with Apollos preferred the trial falls back to Ezra -- Apollos "didn't resolve here".
-    final (app, _) = await settings(tester, gpu: false, cpuMs: 1500.0);
+  testWidgets('choosing Apollos on a device it fits just switches, no dialog', (tester) async {
+    // cpuMs chosen so Apollos's own ladder fits comfortably (far under its 15000ms budget at k=10).
+    final (app, _) = await settings(tester, cpuMs: 200.0);
+    await tester.ensureVisible(find.text('Apollos'));
+    await tester.tap(find.text('Apollos'));
+    await tester.pumpAndSettle();
     expect(app.focusModelPreference, FocusModel.apollos);
+    expect(app.focusChoice!.model, FocusModel.apollos);
+    expect(find.byType(AlertDialog), findsNothing);
+  });
+
+  testWidgets('choosing Apollos on a device it does not fit warns, and "Use Ezra instead" falls back', (tester) async {
+    // cpuMs chosen so Ezra's ladder fits (k=10) but Apollos's own (much heavier, much longer budget) ladder does not.
+    final (app, _) = await settings(tester, cpuMs: 1800.0);
+    await tester.ensureVisible(find.text('Apollos'));
+    await tester.tap(find.text('Apollos'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('may not be fast enough'), findsOneWidget);
+    await tester.tap(find.text('Use Ezra instead'));
+    await tester.pumpAndSettle();
+    expect(app.focusModelPreference, FocusModel.ezra);
+    expect(app.apollosOverrideAccepted, isFalse);
+  });
+
+  testWidgets('choosing Apollos on a device it does not fit, then "Try Apollos anyway" keeps Apollos', (tester) async {
+    final (app, _) = await settings(tester, cpuMs: 1800.0);
+    await tester.ensureVisible(find.text('Apollos'));
+    await tester.tap(find.text('Apollos'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('may not be fast enough'), findsOneWidget);
+    await tester.tap(find.text('Try Apollos anyway'));
+    await tester.pumpAndSettle();
+    expect(app.focusModelPreference, FocusModel.apollos);
+    expect(app.apollosOverrideAccepted, isTrue);
+    expect(app.focusChoice!.model, FocusModel.apollos); // the override made it stick despite not fitting
+  });
+
+  testWidgets('once the override is accepted, re-measuring does not warn again', (tester) async {
+    final (app, _) = await settings(tester, cpuMs: 1800.0);
+    await tester.ensureVisible(find.text('Apollos'));
+    await tester.tap(find.text('Apollos'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Try Apollos anyway'));
+    await tester.pumpAndSettle();
+
     await tester.ensureVisible(find.text('Measure again'));
     await tester.tap(find.text('Measure again'));
     await tester.pumpAndSettle();
-    expect(app.focusChoice!.model, FocusModel.ezra); // fell back
-    // The prominent notice stays (across frames) until the reader acknowledges it.
-    expect(find.textContaining('Scriptura Labs is working on a solution'), findsOneWidget);
-    expect(app.apollosUnavailableNoticeShown, isFalse);
-    await tester.tap(find.text('Got it'));
-    await tester.pumpAndSettle();
-    expect(app.apollosUnavailableNoticeShown, isTrue);
-    expect(find.text('Got it'), findsNothing);
-
-    // Leave and come back: the prominent notice is gone, replaced by the quiet greyed state.
-    app.nav.go(Dest.home);
-    await tester.pumpAndSettle();
-    app.nav.go(Dest.settings);
-    await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Answer focus'), 300, scrollable: find.byType(Scrollable).last);
-    await tester.pumpAndSettle();
-    expect(find.textContaining('Scriptura Labs is working on a solution'), findsNothing);
-    expect(find.textContaining('isn\'t available on this device yet'), findsOneWidget);
-
-    final apollosSegment = tester.widget<SegmentedButton<FocusModel>>(find.byType(SegmentedButton<FocusModel>).last);
-    expect(apollosSegment.segments.firstWhere((s) => s.value == FocusModel.apollos).enabled, isFalse);
-  });
-
-  testWidgets('an old Ezra choice never trialled under Apollos is not reported as Apollos being unavailable', (tester) async {
-    final (app, _) = await settings(tester);
-    // An upgrade: a persisted Ezra choice from before Apollos, with no recorded trial preference.
-    app.user.setPref('answer_focus_choice', const FocusChoice(FocusModel.ezra, FocusVariant.int8, 10, 1200).toJson());
-    await tester.pumpAndSettle();
-    expect(app.focusTrialPreference, isNull);
-    expect(app.focusModelPreference, FocusModel.apollos);
-    expect(find.textContaining('Scriptura Labs is working on a solution'), findsNothing);
-    expect(find.textContaining('isn\'t available on this device yet'), findsNothing);
-    final picker = tester.widget<SegmentedButton<FocusModel>>(find.byType(SegmentedButton<FocusModel>));
-    expect(picker.segments.firstWhere((s) => s.value == FocusModel.apollos).enabled, isTrue);
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(app.focusChoice!.model, FocusModel.apollos);
   });
 
   testWidgets('the whole model picker is disabled while the engine is not ready', (tester) async {
@@ -97,8 +115,8 @@ void main() {
     await tester.pumpAndSettle();
     final picker = tester.widget<SegmentedButton<FocusModel>>(find.byType(SegmentedButton<FocusModel>));
     expect(picker.onSelectionChanged, isNull);
-    await tester.tap(find.text('Ezra'));
+    await tester.tap(find.text('Apollos'));
     await tester.pumpAndSettle();
-    expect(app.focusModelPreference, FocusModel.apollos, reason: 'a disabled picker does not change the preference');
+    expect(app.focusModelPreference, FocusModel.ezra, reason: 'a disabled picker does not change the preference');
   });
 }

@@ -23,9 +23,9 @@ void main() {
     expect(controller.focusKind, 'answer-focus-int8');
   });
 
-  test('focusModelPreference defaults to Apollos when no preference is persisted yet', () {
+  test('focusModelPreference defaults to Ezra when no preference is persisted yet', () {
     final controller = AppController.fixed();
-    expect(controller.focusModelPreference, FocusModel.apollos);
+    expect(controller.focusModelPreference, FocusModel.ezra);
   });
 
   test('setFocusModelPreference persists an explicit Ezra choice', () {

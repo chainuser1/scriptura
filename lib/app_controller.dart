@@ -130,12 +130,14 @@ class AppController extends ChangeNotifier {
     return FocusVariant.none;
   }
 
-  /// Which model Answer focus should use: the reader's explicit choice, or Apollos by default when none has
-  /// been made yet (Settings' Apollos/Ezra picker writes this).
-  FocusModel get focusModelPreference => FocusModel.values.byName(user.pref('focus_model_preference') ?? 'apollos');
+  /// Which model Answer focus should use: the reader's explicit choice, or Ezra by default when none has
+  /// been made yet (Settings' Apollos/Ezra picker writes this). Ezra is the safe, well-tested default;
+  /// Apollos is opt-in and marked experimental.
+  FocusModel get focusModelPreference => FocusModel.values.byName(user.pref('focus_model_preference') ?? 'ezra');
 
   void setFocusModelPreference(FocusModel m) {
     user.setPref('focus_model_preference', m.name);
+    if (m == FocusModel.ezra) user.setPref('apollos_override_accepted', '0'); // a fresh Apollos pick re-warns
     notifyListeners();
   }
 
@@ -194,12 +196,13 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Whether the "we're working on a solution" notice (shown when Apollos isn't genuinely available) has already
-  /// been shown once. Shown prominently the first time, then stays quietly marked as already-shown.
-  bool get apollosUnavailableNoticeShown => user.pref('apollos_unavailable_notice_shown') == '1';
-  void markApollosUnavailableNoticeShown() {
-    user.setPref('apollos_unavailable_notice_shown', '1');
+  /// The reader was warned Apollos likely doesn't fit this device (too slow in the trial) and chose to try it
+  /// anyway. Persists across restarts/re-trials so the choice to override sticks until they pick Ezra again.
+  bool get apollosOverrideAccepted => user.pref('apollos_override_accepted') == '1';
+  void acceptApollosOverride() {
+    user.setPref('apollos_override_accepted', '1');
     notifyListeners();
+    remeasure();
   }
 
   /// Times this device with the installed search model and decides Answer focus (see answer_focus.dart). Quiet on failure.
@@ -219,6 +222,7 @@ class AppController extends ChangeNotifier {
         gpu: probeGpu && r.raw['gpu'] == true,
         mode: focusMode,
         preferred: focusModelPreference,
+        forceApollos: apollosOverrideAccepted,
       );
       final resolved = resolveFallback(
         preference: focusModelPreference,

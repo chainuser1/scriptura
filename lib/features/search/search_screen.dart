@@ -132,17 +132,18 @@ class _SearchScreenState extends State<SearchScreen> {
     final choice = app.focusChoice;
     if (!_service.hasFocus || choice == null || choice.k == 0 || passages.length < 2) return passages;
     final top = passages.take(choice.k).toList();
+    final budget = choice.model == FocusModel.apollos ? kApollosBudgetMs : kFocusBudgetMs;
     try {
       final r = await _service
           .search(SearchRequest.raw('focus', {'query': query, 'texts': [for (final p in top) p.text]}), requestId: id)
-          .timeout(Duration(milliseconds: (2 * kFocusBudgetMs).round()));
+          .timeout(Duration(milliseconds: (2 * budget).round()));
       final scores = [for (final s in r.raw['scores'] as List) (s as num).toDouble()];
       if (scores.length != top.length) return passages;
       app.recordFocusTime((r.raw['ms'] as num).toDouble(), device: r.raw['device'] as String?);
       return focusOrder(passages, scores);
     } on TimeoutException {
       _service.cancel(id);
-      app.recordFocusTime(2 * kFocusBudgetMs); // at least this long: so Automatic learns this device is too slow
+      app.recordFocusTime(2 * budget); // at least this long: so Automatic learns this device is too slow
       return passages;
     } on Object {
       return passages; // focus_unavailable, a driver error, a cancel: today's order

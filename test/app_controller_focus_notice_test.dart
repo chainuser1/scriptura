@@ -1,12 +1,21 @@
-// Pref round-trip for the Apollos-unavailable notice flag: no engine, no filesystem.
+// Pref round-trip for the Apollos-override-accepted flag: no engine, no filesystem.
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scriptures_reader_mobile/app_controller.dart';
+import 'package:scriptures_reader_mobile/services/engine/answer_focus.dart';
 
 void main() {
-  test('the Apollos-unavailable notice is shown once, then stays marked', () {
+  test('accepting the Apollos override is persisted', () {
     final controller = AppController.fixed();
-    expect(controller.apollosUnavailableNoticeShown, isFalse);
-    controller.markApollosUnavailableNoticeShown();
-    expect(controller.apollosUnavailableNoticeShown, isTrue);
+    expect(controller.apollosOverrideAccepted, isFalse);
+    controller.acceptApollosOverride();
+    expect(controller.apollosOverrideAccepted, isTrue);
+  });
+
+  test('switching back to Ezra clears a previously accepted override', () {
+    final controller = AppController.fixed();
+    controller.acceptApollosOverride();
+    expect(controller.apollosOverrideAccepted, isTrue);
+    controller.setFocusModelPreference(FocusModel.ezra);
+    expect(controller.apollosOverrideAccepted, isFalse);
   });
 }

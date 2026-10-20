@@ -18,7 +18,7 @@ enum FocusVariant { none, int8, fp16 }
 /// Which model: Ezra (always available) or Apollos. Ezra is also the "nothing chosen yet" placeholder.
 enum FocusModel { ezra, apollos }
 
-/// A search should not wait longer than this for Answer focus.
+/// A search should not wait longer than this for Answer focus (Ezra).
 const kFocusBudgetMs = 1500.0;
 const _ks = [30, 15, 10];
 
@@ -26,15 +26,25 @@ const _ks = [30, 15, 10];
 /// 10 candidates 1270 ms).
 const _cpuFactor = 0.069;
 
+/// Apollos's own, much longer budget: measured real device data (see below) showed its int8/CPU tier
+/// cannot fit Ezra's 1500ms "feels instant" budget at any reasonable candidate count, on any
+/// realistic device speed -- not a tuning problem, a real size difference (Apollos is a ~1.24B-param
+/// Llama-family cross-encoder; Ezra's bge-reranker-v2-m3 is much smaller). Apollos's own copy already
+/// tells the reader "on some devices it takes a bit longer" -- this budget is what makes that honest.
+/// Owner's choice (2026-10-19): ~15s, long enough that k=10 (the ladder's top CPU tier) stays reachable
+/// on a typical phone at this constant's own calibration point.
+const kApollosBudgetMs = 15000.0;
+
 /// Apollos's own CPU-tier candidate-count ladder, independent of Ezra's `_ks`.
 const _apollosKs = [30, 15, 10];
 
-/// Apollos's own CPU cost-per-candidate constant. UNMEASURED: no device has benchmarked Apollos's ~1.24B-parameter
-/// Llama-family int8 (weight-only, computes in fp32) pack yet, so this is not Ezra's `_cpuFactor` -- that would
-/// silently assume Apollos costs the same per candidate as Ezra's bge-reranker-v2-m3. Placeholder: at least double
-/// Ezra's cost until a real-device pass replaces it; `adapt()`'s step-down logic corrects it from real search times
-/// exactly as it already does for Ezra.
-const _apollosCpuFactor = _cpuFactor * 2;
+/// Apollos's own CPU cost-per-candidate constant, measured on a real Android phone (2026-10-19):
+/// device trial cpu_ms 1238/1295 (avg 1267), k=10 completed in 12846/12342 ms (avg 12594) -- a real,
+/// unforced `session.run()` time, not a timeout. `12594 / (1267 * 10)` ~= 0.994. This replaces an
+/// earlier UNMEASURED placeholder (`_cpuFactor * 2`) that assumed Apollos cost about the same per
+/// candidate as Ezra's much smaller model -- it does not: this is ~14x Ezra's `_cpuFactor`.
+/// `adapt()`'s step-down logic still corrects this further from real search times, same as for Ezra.
+const _apollosCpuFactor = 0.994;
 
 class FocusChoice {
   const FocusChoice(this.model, this.variant, this.k, this.predictedMs);
@@ -72,17 +82,29 @@ class FocusChoice {
 /// used when preferred and it fits; otherwise (no Apollos candidate fits) the Ezra logic decides. Apollos's fp16/GPU
 /// tier is temporarily unavailable (a real pack defect, not a device limitation) -- Apollos only ever offers int8/CPU
 /// for now, even on a GPU-capable device, until that pack is fixed.
-FocusChoice choose({required double cpuMs, required bool gpu, required FocusMode mode, required FocusModel preferred}) {
+///
+/// [forceApollos]: the reader was warned Apollos likely won't fit this device and chose to try it anyway. Skips the
+/// budget-fit check entirely and uses Apollos's smallest tier (already known to be slow here) -- never applies when
+/// [preferred] is Ezra, and never brings Answer focus back from Off.
+FocusChoice choose({
+  required double cpuMs,
+  required bool gpu,
+  required FocusMode mode,
+  required FocusModel preferred,
+  bool forceApollos = false,
+}) {
   if (mode == FocusMode.off) return FocusChoice.none;
   final cpu10 = cpuMs * _cpuFactor * 10;
   if (preferred == FocusModel.apollos) {
     // Apollos's fp16/GPU pack has a real ONNX export defect (DirectML rejects it; see memory
     // apollos-fp16-gpu-broken-int8-only-for-now) -- not yet fixed/re-uploaded. Until it is, a
     // GPU-capable device still gets Apollos, just on its working int8/CPU tier below, not fp16/GPU.
+    // Apollos's own budget is much longer than Ezra's -- see kApollosBudgetMs.
     for (final k in _apollosKs) {
       final ms = cpuMs * _apollosCpuFactor * k;
-      if (ms <= kFocusBudgetMs) return FocusChoice(FocusModel.apollos, FocusVariant.int8, k, ms);
+      if (ms <= kApollosBudgetMs) return FocusChoice(FocusModel.apollos, FocusVariant.int8, k, ms);
     }
+    if (forceApollos) return FocusChoice(FocusModel.apollos, FocusVariant.int8, 10, cpuMs * _apollosCpuFactor * 10);
   }
   if (gpu) return FocusChoice(FocusModel.ezra, FocusVariant.fp16, 10, cpu10); // first searches measure the real graphics time
   for (final k in _ks) {
@@ -93,15 +115,18 @@ FocusChoice choose({required double cpuMs, required bool gpu, required FocusMode
 }
 
 /// After install: with at least three measured searches, fewer candidates when the median is over budget; at 10 and
-/// still over twice the budget, Automatic turns Answer focus off (On keeps it).
+/// still over twice the budget, Automatic turns Answer focus off (On keeps it). Apollos uses its own, much longer
+/// budget and ladder (see kApollosBudgetMs) -- Ezra's are not big enough for Apollos's real per-candidate cost.
 FocusChoice adapt(FocusChoice c, List<double> recentMs, FocusMode mode) {
   if (c.variant == FocusVariant.none || recentMs.length < 3) return c;
+  final budget = c.model == FocusModel.apollos ? kApollosBudgetMs : kFocusBudgetMs;
+  final ks = c.model == FocusModel.apollos ? _apollosKs : _ks;
   final sorted = [...recentMs]..sort();
   final median = sorted[sorted.length ~/ 2];
-  if (median <= kFocusBudgetMs) return c;
-  final i = _ks.indexOf(c.k);
-  if (i >= 0 && i < _ks.length - 1) return FocusChoice(c.model, c.variant, _ks[i + 1], median * _ks[i + 1] / c.k);
-  if (median >= 2 * kFocusBudgetMs && mode == FocusMode.automatic) return FocusChoice.none; // a timeout counts
+  if (median <= budget) return c;
+  final i = ks.indexOf(c.k);
+  if (i >= 0 && i < ks.length - 1) return FocusChoice(c.model, c.variant, ks[i + 1], median * ks[i + 1] / c.k);
+  if (median >= 2 * budget && mode == FocusMode.automatic) return FocusChoice.none; // a timeout counts
   return c;
 }
 
