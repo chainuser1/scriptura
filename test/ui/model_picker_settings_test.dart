@@ -66,8 +66,10 @@ void main() {
   });
 
   testWidgets('choosing Apollos on a device it does not fit warns, and "Use Ezra instead" falls back', (tester) async {
-    // cpuMs chosen so Ezra's ladder fits (k=10) but Apollos's own (much heavier, much longer budget) ladder does not.
-    final (app, _) = await settings(tester, cpuMs: 1800.0);
+    // Apollos's 40s budget is generous, so this only happens on a genuinely very slow device: at this speed
+    // Apollos's own ladder exceeds 40s even at k=10, and under Automatic mode (the default here) Ezra's own
+    // 1500ms budget fails too at every k, landing on FocusVariant.none -- still "Apollos did not fit".
+    final (app, _) = await settings(tester, cpuMs: 4200.0);
     await tester.ensureVisible(find.text('Apollos'));
     await tester.tap(find.text('Apollos'));
     await tester.pumpAndSettle();
@@ -79,7 +81,7 @@ void main() {
   });
 
   testWidgets('choosing Apollos on a device it does not fit, then "Try Apollos anyway" keeps Apollos', (tester) async {
-    final (app, _) = await settings(tester, cpuMs: 1800.0);
+    final (app, _) = await settings(tester, cpuMs: 4200.0);
     await tester.ensureVisible(find.text('Apollos'));
     await tester.tap(find.text('Apollos'));
     await tester.pumpAndSettle();
@@ -92,7 +94,7 @@ void main() {
   });
 
   testWidgets('once the override is accepted, re-measuring does not warn again', (tester) async {
-    final (app, _) = await settings(tester, cpuMs: 1800.0);
+    final (app, _) = await settings(tester, cpuMs: 4200.0);
     await tester.ensureVisible(find.text('Apollos'));
     await tester.tap(find.text('Apollos'));
     await tester.pumpAndSettle();

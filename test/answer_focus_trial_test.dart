@@ -120,13 +120,16 @@ void main() {
     });
 
     test('a chosen but never-downloaded Apollos does not block the Ezra fallback once Apollos stops fitting', () async {
-      // cpuMs 1800, no gpu (e.g. focus_gpu_failed): Apollos's own (much longer) budget still does not fit this
-      // device at any k (measured _apollosCpuFactor is ~14x Ezra's), but Ezra's ladder fits at k=10. An explicit
-      // Apollos preference (Ezra is the default now) so resolveFallback's Apollos path is actually exercised.
+      // Apollos's 40s budget is generous, so this needs a genuinely very slow device (cpuMs=4200): Apollos's own
+      // ladder exceeds 40000ms even at k=10 (measured _apollosCpuFactor ~14x Ezra's), and Ezra's own 1500ms
+      // budget fails too at every k under Automatic -- mode On keeps Ezra at k=10 anyway, which is what
+      // surfaces "falls back to Ezra" here rather than FocusVariant.none. An explicit Apollos preference
+      // (Ezra is the default now) so resolveFallback's Apollos path is actually exercised.
       final root = Directory.systemTemp.createTempSync('scriptura-measure-');
       addTearDown(() => root.deleteSync(recursive: true));
-      final svc = FakeSearchService((r, id) async => SearchResponse(mode: 'device_trial', raw: {'cpu_ms': 1800.0, 'gpu': false}));
+      final svc = FakeSearchService((r, id) async => SearchResponse(mode: 'device_trial', raw: {'cpu_ms': 4200.0, 'gpu': false}));
       final app = AppController.fixed(root: root, search: svc, user: UserStore.memory())..setFocusModelPreference(FocusModel.apollos);
+      app.user.setPref('answer_focus', 'on');
       app.user.setPref('answer_focus_choice', const FocusChoice(FocusModel.apollos, FocusVariant.fp16, 10, 800).toJson());
       await app.measureDevice();
       expect(app.focusChoice!.model, FocusModel.ezra);

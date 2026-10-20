@@ -436,8 +436,9 @@ class _ModelPickerState extends State<_ModelPicker> {
     app.setFocusModelPreference(FocusModel.apollos);
     await app.remeasure();
     setState(() => _checking = false);
-    final c = app.focusChoice;
-    final doesNotFit = c != null && c.variant != FocusVariant.none && c.model != FocusModel.apollos;
+    // Anything other than Apollos itself -- Ezra's own fallback, or FocusVariant.none when even Ezra's budget
+    // fails under Automatic -- means Apollos genuinely did not fit this device's trial.
+    final doesNotFit = app.focusChoice?.model != FocusModel.apollos;
     if (doesNotFit && !app.apollosOverrideAccepted && mounted) await _warn();
   }
 

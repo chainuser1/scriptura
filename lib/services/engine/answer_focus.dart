@@ -31,9 +31,10 @@ const _cpuFactor = 0.069;
 /// realistic device speed -- not a tuning problem, a real size difference (Apollos is a ~1.24B-param
 /// Llama-family cross-encoder; Ezra's bge-reranker-v2-m3 is much smaller). Apollos's own copy already
 /// tells the reader "on some devices it takes a bit longer" -- this budget is what makes that honest.
-/// Owner's choice (2026-10-19): ~15s, long enough that k=10 (the ladder's top CPU tier) stays reachable
-/// on a typical phone at this constant's own calibration point.
-const kApollosBudgetMs = 15000.0;
+/// Owner's choice (2026-10-19, raised from 15s to 40s same day): room for k=10 even on somewhat slower
+/// devices than the one this constant was calibrated on. A search that finishes sooner returns right
+/// away -- this is a ceiling before Automatic gives up and falls back, never a fixed wait.
+const kApollosBudgetMs = 40000.0;
 
 /// Apollos's own CPU-tier candidate-count ladder, independent of Ezra's `_ks`.
 const _apollosKs = [30, 15, 10];

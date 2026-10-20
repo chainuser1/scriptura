@@ -72,18 +72,21 @@ void main() {
       expect(apollos.predictedMs, isNot(equals(ezra.predictedMs)));
     });
 
-    test('preferring Apollos on a device too slow for its own ladder at the reference laptop speed falls back to Ezra', () {
-      // At laptop=1839ms, Apollos's measured _apollosCpuFactor (~0.994, ~14x Ezra's) makes even k=10 exceed
-      // Apollos's own 15000ms budget (~18284ms), while Ezra's own ladder still fits at k=10 (1268.9ms) -- a
-      // real, correct divergence between the two ladders at this device speed, not a test artifact.
-      final apollos = choose(cpuMs: laptop, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.apollos);
+    test('preferring Apollos on a device too slow for its own 40s budget falls back to Ezra', () {
+      // Apollos's budget is generous (40s -- the reader already opted into a slower, more refined search), so
+      // this only happens on a genuinely very slow device: at cpuMs=4200, Apollos's own ladder exceeds 40000ms
+      // even at k=10 (41748ms), and Ezra's 1500ms budget fails too at every k -- mode On keeps Ezra at k=10
+      // anyway rather than giving up, which is what surfaces the fallback here.
+      const verySlow = 4200.0;
+      final apollos = choose(cpuMs: verySlow, gpu: false, mode: FocusMode.on, preferred: FocusModel.apollos);
       expect(apollos.model, FocusModel.ezra);
       expect(apollos.k, 10);
     });
 
     test('forceApollos overrides the budget fit check: Apollos is used even when it would not otherwise fit', () {
       // The reader explicitly chose to try Apollos anyway after being warned it may not fit their device.
-      final c = choose(cpuMs: laptop, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.apollos, forceApollos: true);
+      const verySlow = 4200.0;
+      final c = choose(cpuMs: verySlow, gpu: false, mode: FocusMode.on, preferred: FocusModel.apollos, forceApollos: true);
       expect(c.model, FocusModel.apollos);
       expect(c.variant, FocusVariant.int8);
       expect(c.k, 10); // the smallest tier, since it's already known to be slow here
