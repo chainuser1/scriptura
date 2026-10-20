@@ -716,9 +716,10 @@ class AppController extends ChangeNotifier {
     } on HttpException catch (e) {
       _setup = SetupPhase.failed;
       setupError = 'The download server did not respond properly (${e.message}). Try again in a moment.';
-    } on Object catch (e) {
+    } on Object catch (e, st) {
       _setup = SetupPhase.failed;
       setupError = 'Setup could not finish: $e';
+      if (kDebugMode) debugPrint('ensureData failed: $e\n$st');
     }
     notifyListeners();
   }

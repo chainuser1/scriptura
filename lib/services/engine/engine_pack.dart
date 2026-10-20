@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
+import 'package:path/path.dart' as p;
 
 /// An installed, verified directory of engine data: the engine pack (encoder, tokenizer, head, retrieval indexes,
 /// people index) or the optional ColBERT token pack. Both carry a manifest listing every file with size and SHA-256.
@@ -84,12 +85,20 @@ class PackStore {
     if (!manifestFile.existsSync()) throw PackException('manifest_missing', 'The download has no manifest.json');
     final m = jsonDecode(await manifestFile.readAsString()) as Map<String, dynamic>;
     if (m['format'] != kind.format) throw PackException('wrong_kind', 'Expected ${kind.format}, found ${m['format']}');
-    for (final e in listed(m).entries) {
+    final files = listed(m);
+    for (final e in files.entries) {
       final f = File('${staged.path}/${e.key}');
       if (!f.existsSync() || f.lengthSync() != e.value.bytes) throw PackException('size_mismatch', '${e.key} is missing or the wrong size');
     }
+    // Compare by path relative to `staged`, normalized with `package:path` -- `Directory.listSync()`
+    // returns backslash-separated paths on Windows while manifest keys and hand-built paths use `/`,
+    // so a raw string/`File.path` comparison here silently never matches and defeats this guard.
+    final keep = files.keys.map(p.normalize).toSet();
     for (final f in staged.listSync(recursive: true).whereType<File>()) {
-      if (f.path.endsWith('.ok') || f.path.endsWith('.part')) f.deleteSync(); // downloader bookkeeping
+      final rel = p.normalize(p.relative(f.path, from: staged.path));
+      // Downloader bookkeeping only -- never a file the manifest actually lists (e.g. Apollos's own
+      // real `converted.ok`), which a blanket "*.ok" match would otherwise delete.
+      if ((f.path.endsWith('.ok') || f.path.endsWith('.part')) && !keep.contains(rel)) f.deleteSync();
     }
     await File('${staged.path}/install.json').writeAsString(jsonEncode(m));
     if (_dir.existsSync()) _dir.deleteSync(recursive: true);
