@@ -32,6 +32,10 @@ pub enum RerankerFamily {
     /// see `.kaggle-package/build_priscilla_pack_kaggle.py`) — a future GPU tier would need its own export
     /// with a dynamic batch axis before [Focus::batch] could return anything but 1 for this family.
     Priscilla,
+    /// cross-encoder/ettin-reranker-400m-v1: a tokenizer pair `(query, text)`, same shape and special tokens as
+    /// Priscilla (both ModernBERT-family; verified directly against Ettin's own real tokenizer.json). CPU-only
+    /// for now, same reasoning as Priscilla's own doc comment — see `.kaggle-package/build_aquila_pack_kaggle.py`.
+    Aquila,
 }
 
 pub struct Focus {
@@ -113,13 +117,13 @@ impl Focus {
         if self.gpu { "gpu" } else { "cpu" }
     }
 
-    /// Token ids for one (query, text) pair, tokenized the way [self.family] expects: Ezra and Priscilla as a
-    /// tokenizer pair (`<s> q </s></s> p </s>` for Ezra, `[CLS] q [SEP] p [SEP]` for Priscilla — same call, each
-    /// tokenizer.json supplies its own special tokens), Apollos as one concatenated string. Truncated to the
-    /// model limit either way.
+    /// Token ids for one (query, text) pair, tokenized the way [self.family] expects: Ezra, Priscilla and Aquila
+    /// as a tokenizer pair (`<s> q </s></s> p </s>` for Ezra, `[CLS] q [SEP] p [SEP]` for Priscilla/Aquila — same
+    /// call, each tokenizer.json supplies its own special tokens), Apollos as one concatenated string. Truncated
+    /// to the model limit either way.
     pub fn encode(&self, query: &str, text: &str) -> Result<Vec<u32>, String> {
         match self.family {
-            RerankerFamily::Ezra | RerankerFamily::Priscilla => Ok(self.tok.encode((query, text), true).map_err(err)?.get_ids().to_vec()),
+            RerankerFamily::Ezra | RerankerFamily::Priscilla | RerankerFamily::Aquila => Ok(self.tok.encode((query, text), true).map_err(err)?.get_ids().to_vec()),
             RerankerFamily::Apollos => {
                 let s = format!("question:{query} \n \n passage:{text}");
                 Ok(self.tok.encode(s, true).map_err(err)?.get_ids().to_vec())
