@@ -15,11 +15,19 @@ import answer_focus_calibration_run as cal_run
 import answer_focus_wide_pool as wide
 
 OUT = ROOT / 'local-benchmarks/answer-focus-challengers'
+# Round-2 models (gte/Ettin) write here, never to OUT: writing to OUT would change this file's own
+# hash under frozen()'s assert, which would then flag round-1's real, already-completed
+# input-identity.json as drifted the next time qwen/nemotron are (re)run from OUT.
+OUT2 = ROOT / 'local-benchmarks/answer-focus-challengers-round2'
 SOURCE = ROOT / 'local-benchmarks/answer-focus-calibration'
 MODELS = {
     'qwen': ('Qwen/Qwen3-Reranker-0.6B', 'e61197ed45024b0ed8a2d74b80b4d909f1255473'),
     'nemotron': ('nvidia/llama-nemotron-rerank-1b-v2', '828765652b05bd439c9789d2a6d093db1caa1443'),
+    'gte': ('Alibaba-NLP/gte-reranker-modernbert-base', 'f7481e6055501a30fb19d090657df9ec1f79ab2c'),
+    'ettin150': ('cross-encoder/ettin-reranker-150m-v1', '025501c4e0f9bbeb4c5b198318e0089ff061cc14'),
+    'ettin400': ('cross-encoder/ettin-reranker-400m-v1', '5dca36282a5d85f368d2544002513a29159b4c9e'),
 }
+CROSS_ENCODER_MODELS = ('gte', 'ettin150', 'ettin400')
 INSTRUCTION = 'Given a web search query, retrieve relevant passages that answer the query'
 PREFIX = '<|im_start|>system\nJudge whether the Document meets the requirements based on the Query and the Instruct provided. Note that the answer can only be "yes" or "no".<|im_end|>\n<|im_start|>user\n'
 SUFFIX = '<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n'
@@ -49,13 +57,36 @@ def order(scores):
 
 class Scorer:
     def __init__(self, name):
+        self.torch, self.name = None, name
+        repo, revision = MODELS[name]
+        if name in CROSS_ENCODER_MODELS:
+            self._init_cross_encoder(repo, revision)
+        else:
+            self._init_causal_or_seqcls(name, repo, revision)
+
+    def _init_cross_encoder(self, repo, revision):
+        import torch
+        import sentence_transformers
+        from huggingface_hub import snapshot_download
+        torch.set_num_threads(4)
+        print(f'Downloading/loading pinned {repo}', flush=True)
+        folder = Path(snapshot_download(repo, revision=revision,
+            allow_patterns=['*.json', '*.safetensors', '*.py', 'README.md', 'LICENSE*', '*.txt']))
+        self.identity = {'repo': repo, 'revision': revision,
+            'sentence_transformers': sentence_transformers.__version__, 'dtype': 'float32', 'device': 'cpu',
+            'threads': 4, 'batch_size': 1, 'max_length': 512,
+            'files': {p.name: wide.digest(p) for p in sorted(folder.iterdir()) if p.is_file()}}
+        self.cross_encoder = sentence_transformers.CrossEncoder(str(folder), max_length=512, device='cpu',
+            local_files_only=True)
+        self.tokenizer = self.cross_encoder.tokenizer
+
+    def _init_causal_or_seqcls(self, name, repo, revision):
         import torch
         import transformers
         from huggingface_hub import snapshot_download
         from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSequenceClassification
-        self.torch, self.name = torch, name
+        self.torch = torch
         torch.set_num_threads(4)
-        repo, revision = MODELS[name]
         print(f'Downloading/loading pinned {repo}', flush=True)
         folder = Path(snapshot_download(repo, revision=revision,
             allow_patterns=['*.json', '*.safetensors', '*.py', 'README.md', 'LICENSE*', '*.txt']))
@@ -80,6 +111,20 @@ class Scorer:
             assert self.yes != self.no
 
     def score(self, query, text):
+        if self.name in CROSS_ENCODER_MODELS:
+            return self._score_cross_encoder(query, text)
+        return self._score_causal_or_seqcls(query, text)
+
+    def _score_cross_encoder(self, query, text):
+        n = len(self.tokenizer.encode(query, text, truncation=True, max_length=512))
+        t = time.perf_counter()
+        score = float(self.cross_encoder.predict([(query, text)], convert_to_numpy=True)[0])
+        import math
+        assert math.isfinite(score)
+        return {'score': score, 'tokens_before_truncation': n, 'truncated': n >= 512,
+                'seconds': time.perf_counter()-t}
+
+    def _score_causal_or_seqcls(self, query, text):
         torch, tok = self.torch, self.tokenizer
         if self.name == 'qwen':
             body = tok.encode(f'<Instruct>: {INSTRUCTION}\n<Query>: {query}\n<Document>: {text}', add_special_tokens=False)
@@ -102,25 +147,26 @@ class Scorer:
 
 
 def run(name):
+    out = OUT2 if name in CROSS_ENCODER_MODELS else OUT
     rows, corpus = source_rows(), wide.Corpus()
     paths = [Path(__file__), ROOT/'docs/ANSWER_FOCUS_CHALLENGERS_PROTOCOL.md',
              ROOT/'tool/answer_focus_wide_pool.py', ROOT/'tool/reranker_stage2.py',
              SOURCE/'identity.json', wide.GEN/'release/content.db', wide.GEN/'release/catalog.db',
              *sorted((SOURCE/'queries/test').glob('*.json'))]
-    frozen(OUT/'input-identity.json', {str(p.relative_to(ROOT)): wide.digest(p) for p in paths})
+    frozen(out/'input-identity.json', {str(p.relative_to(ROOT)): wide.digest(p) for p in paths})
     for r in rows:
         texts = [corpus.text(v, r['language']) for v in r['candidates']]
         digest = hashlib.sha256(json.dumps(texts, ensure_ascii=False).encode()).hexdigest()
         assert digest == r['text_sha256'], 'Corpus changed since cached BGE scoring'
     scorer = Scorer(name)
-    frozen(OUT/name/'identity.json', scorer.identity)
+    frozen(out/name/'identity.json', scorer.identity)
     smoke = [scorer.score('What is the capital of France?', t) for t in
              ('Paris is the capital of France.', 'Water freezes at zero degrees Celsius.')]
     assert smoke[0]['score'] > smoke[1]['score'], 'Runtime/template smoke check failed'
-    wide.write(OUT/name/'smoke.json', smoke)
+    wide.write(out/name/'smoke.json', smoke)
     print(f'{name} smoke passed; {sum(s["seconds"] for s in smoke):.1f}s for two pairs', flush=True)
     for r in rows:
-        p = OUT/name/(r['id']+'.json')
+        p = out/name/(r['id']+'.json')
         data = wide.read(p) if p.exists() else {'id': r['id'], 'candidates': r['candidates'], 'pairs': [], 'complete': False}
         assert data['id'] == r['id'] and data['candidates'] == r['candidates']
         for i in range(len(data['pairs']), 200):
