@@ -203,6 +203,64 @@ void main() {
     });
   });
 
+  group('choose (Aquila)', () {
+    test('Aquila preferred and fitting returns the Aquila int8 choice, using Apollos-sized headroom', () {
+      final c = choose(cpuMs: 200.0, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.aquila);
+      expect(c.model, FocusModel.aquila);
+      expect(c.variant, FocusVariant.int8);
+    });
+
+    test('Aquila preferred but not fitting at any k under its own (Apollos-sized) budget falls back to Ezra', () {
+      // _aquilaCpuFactor == _apollosCpuFactor (0.994), so Aquila's own fit boundary matches Apollos's real one:
+      // the same 4200ms device speed that already defeats Apollos's ladder (4200*0.994*10 ~= 41748ms) defeats
+      // Aquila's too -- unlike Priscilla's own much smaller placeholder factor, no inflated device speed is needed.
+      const verySlow = 4200.0;
+      final c = choose(cpuMs: verySlow, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.aquila);
+      expect(c.model, FocusModel.ezra);
+    });
+
+    test('Aquila preferred but not fitting falls back to the smallest Ezra k under On, not none', () {
+      const verySlow = 4200.0;
+      final c = choose(cpuMs: verySlow, gpu: false, mode: FocusMode.on, preferred: FocusModel.aquila);
+      expect(c.model, FocusModel.ezra);
+      expect(c.k, 10);
+    });
+
+    test('Aquila preferred and fitting wins even on a device with a working graphics chip, mirroring Apollos/Priscilla', () {
+      final c = choose(cpuMs: 200.0, gpu: true, mode: FocusMode.automatic, preferred: FocusModel.aquila);
+      expect(c.model, FocusModel.aquila);
+      expect(c.variant, FocusVariant.int8);
+    });
+
+    test('force overrides the budget fit check for Aquila too, mirroring Apollos and Priscilla', () {
+      const verySlow = 4200.0;
+      final c = choose(cpuMs: verySlow, gpu: false, mode: FocusMode.on, preferred: FocusModel.aquila, force: true);
+      expect(c.model, FocusModel.aquila);
+      expect(c.variant, FocusVariant.int8);
+      expect(c.k, 10);
+    });
+  });
+
+  group('adapt (Aquila)', () {
+    test('Aquila at k=10 (the floor) with a very slow median turns off under Automatic, same as Apollos/Priscilla would', () {
+      const start = FocusChoice(FocusModel.aquila, FocusVariant.int8, 10, 30000);
+      final r = adapt(start, [85000.0, 86000.0, 84000.0], FocusMode.automatic);
+      expect(r, FocusChoice.none);
+    });
+
+    test('Aquila at k=10 under On mode never turns off, same as Apollos/Priscilla', () {
+      const start = FocusChoice(FocusModel.aquila, FocusVariant.int8, 10, 30000);
+      final r = adapt(start, [85000.0, 86000.0, 84000.0], FocusMode.on);
+      expect(r, start);
+    });
+
+    test('Aquila steps down its own ladder the same shape as Apollos/Priscilla, not Ezra\'s', () {
+      const start = FocusChoice(FocusModel.aquila, FocusVariant.int8, 30, 2000);
+      final r = adapt(start, [45000.0, 46000.0, 44000.0], FocusMode.automatic);
+      expect(r.k, 15);
+    });
+  });
+
   group('resolveFallback', () {
     const ezraChoice = FocusChoice(FocusModel.ezra, FocusVariant.int8, 10, 1200);
     const apollosChoice = FocusChoice(FocusModel.apollos, FocusVariant.fp16, 10, 800);
@@ -274,6 +332,17 @@ void main() {
             FocusModel.priscilla: (installable: true, installed: false),
           });
       expect(r, priscillaChoice, reason: 'Apollos being installed must not protect it when the preference and fresh result are both Priscilla');
+    });
+
+    test('an explicit Ezra preference is never overridden to Apollos, Priscilla, or Aquila when all three are installed', () {
+      const aquilaChoice = FocusChoice(FocusModel.aquila, FocusVariant.int8, 10, 600);
+      final r = resolveFallback(preference: FocusModel.ezra, fresh: aquilaChoice, before: ezraChoice,
+          others: {
+            FocusModel.apollos: (installable: false, installed: true),
+            FocusModel.priscilla: (installable: false, installed: true),
+            FocusModel.aquila: (installable: true, installed: true),
+          });
+      expect(r.model, FocusModel.ezra);
     });
   });
 
