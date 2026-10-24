@@ -175,11 +175,13 @@ class AppController extends ChangeNotifier {
   /// Offered once, on a device that has never had a model explicitly chosen: a single notice covering both the
   /// base data and Priscilla (the new default -- see focusModelPreference) together, rather than two separate
   /// prompts. Stops being offered once dismissed (shares `focus_declined` with offerAnswerFocus: the two notices
-  /// are mutually exclusive, never both shown, so one dismiss pref is enough) or once something is installed.
+  /// are mutually exclusive, never both shown, so one dismiss pref is enough) or once a Priscilla pack is already
+  /// on disk. Checks `_installedVariant` (disk presence), not `focusInstalled` (which depends on a persisted
+  /// `focusChoice` that a reader with no trial run yet -- the exact case this notice targets -- never has).
   bool get offerPriscillaDefaultSetup =>
       _root != null &&
       user.pref('focus_model_preference') == null &&
-      !focusInstalled &&
+      _installedVariant(FocusModel.priscilla) == FocusVariant.none &&
       user.pref('focus_declined') != '1';
 
   /// Offered once everything required is installed, the trial chose a model and the reader has not said "not now".

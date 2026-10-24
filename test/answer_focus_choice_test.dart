@@ -394,4 +394,13 @@ void main() {
     final c = FocusChoice.fromJson(old);
     expect(c!.model, FocusModel.ezra);
   });
+
+  test('a device too slow for Priscilla still falls back under the new default, same as an explicit Priscilla pick would', () {
+    // Using the real choose() function directly (not AppController), confirm: with preference == FocusModel.priscilla
+    // (now the unset-pref default from app_controller.dart's focusModelPreference) and a device trial too slow at
+    // every k under kApollosBudgetMs, choose() still falls back to Ezra exactly as it does for an explicit pick --
+    // proves Task 1 introduced no special-casing of "default" vs "explicit" inside choose() itself.
+    final choice = choose(cpuMs: 200000, gpu: false, preferred: FocusModel.priscilla, mode: FocusMode.automatic);
+    expect(choice.model, FocusModel.ezra);
+  });
 }
