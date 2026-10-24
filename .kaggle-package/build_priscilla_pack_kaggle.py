@@ -253,7 +253,7 @@ def build(pid, source, kind, verification):
         "files": files,
     })
     check_graph(dst / "model.onnx")
-    # ZIP_STORED avoids spending a long time compressing several GB of weights.
+    # ZIP_STORED avoids spending time compressing weights that are already dense floating-point/int8 data.
     with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_STORED,
                          allowZip64=True) as bundle:
         for p in sorted(dst.rglob("*")):
