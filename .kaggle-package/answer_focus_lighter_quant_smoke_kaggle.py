@@ -17,14 +17,24 @@ Turn on a GPU accelerator. Paste this whole file into a cell, set ACTION near th
 or 'ettin400', run the cell (repeat for each model -- output persists across cell runs in the same session).
 
 REQUIRED SETUP CELL, every time the kernel starts or restarts (pip installs do NOT survive a kernel restart
-on Kaggle -- only files already written to /kaggle/working/ do, so this must be re-run after every restart):
-  !pip install -q -U "transformers>=5.0" "optimum[onnxruntime]>=2.0"
-Both pins matter and were each confirmed necessary on Kaggle 2026-10-23: Ettin's repos need transformers>=5.0
-(below that, AutoProcessor fails with "Unrecognized processing class" / "TokenizersBackend does not exist");
-an unpinned `pip install optimum[onnxruntime]` can resolve to a pre-2.0 release whose ONNX export code still
-imports transformers.file_utils.FLAX_WEIGHTS_NAME, which transformers v5 removed (v5 dropped TensorFlow/Flax
-support entirely) -- that import fails with "cannot import name 'FLAX_WEIGHTS_NAME' from 'transformers.utils'"
-the moment ORTModelForSequenceClassification is imported. optimum>=2.0 is the version line that supports
+on Kaggle -- only files already written to /kaggle/working/ do, so this must be re-run after every restart).
+Install in TWO separate commands, OPTIMUM FIRST THEN TRANSFORMERS LAST, not one combined pin and not
+transformers-first -- `pip install -U "transformers>=5.0" "optimum[onnxruntime]>=2.0"` together hits
+ResolutionImpossible (confirmed on Kaggle 2026-10-23: optimum's onnxruntime extra has its own transformers
+upper bound that conflicts with a loose >=5.0 in the same resolver pass), and installing transformers THEN
+optimum risks optimum's own installer silently downgrading transformers back below 5.0 to satisfy its own
+bound (the last `pip install` touching a shared dependency wins). Installing optimum first, then
+transformers>=5.0 as the LAST command, makes transformers' pin the one that sticks:
+  !pip install -q -U "optimum[onnxruntime]>=2.0"
+  !pip install -q -U "transformers>=5.0"
+The smoke check also re-verifies the live transformers.__version__ at runtime regardless (see
+assert_transformers_ok() below) rather than trusting the install order alone.
+Both pins matter and were each confirmed necessary: Ettin's repos need transformers>=5.0 (below that,
+AutoProcessor fails with "Unrecognized processing class" / "TokenizersBackend does not exist"); an unpinned
+`pip install optimum[onnxruntime]` can resolve to a pre-2.0 release whose ONNX export code still imports
+transformers.file_utils.FLAX_WEIGHTS_NAME, which transformers v5 removed (v5 dropped TensorFlow/Flax support
+entirely) -- that import fails with "cannot import name 'FLAX_WEIGHTS_NAME' from 'transformers.utils'" the
+moment ORTModelForSequenceClassification is imported. optimum>=2.0 is the version line that supports
 transformers v5.
 
 Download /kaggle/working/quant-smoke/<model>.json for each model afterward (the project's existing
@@ -109,8 +119,19 @@ def score_int8(folder, pairs):
     return scores
 
 
+def assert_transformers_ok():
+    import transformers
+    from packaging.version import Version
+    v = Version(transformers.__version__)
+    assert v >= Version('5.0'), (
+        f'transformers {transformers.__version__} < 5.0 -- Ettin needs >=5.0. Re-run, in this exact order: '
+        f'`pip install -U "optimum[onnxruntime]>=2.0"` THEN `pip install -U "transformers>=5.0"` last, so '
+        f'the transformers pin is the one that sticks (optimum would otherwise downgrade it back).')
+
+
 def run(name):
     assert DATA.exists(), f'Expected dataset at {DATA} -- attach the same challengers dataset Task 2 used'
+    assert_transformers_ok()
     pairs = smoke_pairs()
     fp32_scores, folder = score_fp32(name, pairs)
     print(f'{name} fp32 scores: {fp32_scores}', flush=True)

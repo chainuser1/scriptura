@@ -136,6 +136,14 @@ class Scorer:
 
 def run(name):
     assert DATA.exists(), f'Expected dataset at {DATA} -- attach the Kaggle dataset with content.db/catalog.db/test-queries'
+    if name in ('ettin150', 'ettin400'):
+        import transformers
+        from packaging.version import Version
+        v = Version(transformers.__version__)
+        assert v >= Version('5.0'), (
+            f'transformers {transformers.__version__} < 5.0 -- Ettin needs >=5.0. Re-run '
+            f'`pip install -U "transformers>=5.0"` in a setup cell (pip installs do not survive a kernel '
+            f'restart on Kaggle, so this must be re-run after every restart, not just once).')
     rows, corpus = source_rows(), Corpus()
     for r in rows:
         texts = [corpus.text(v, r['language']) for v in r['candidates']]
