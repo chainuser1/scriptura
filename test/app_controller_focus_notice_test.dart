@@ -106,4 +106,16 @@ void main() {
     expect(controller.overrideAccepted(FocusModel.apollos), isFalse,
         reason: 'a fresh Apollos pick after this detour must re-warn, even for a legacy-key reader');
   });
+
+  test('with no preference ever set, the default Answer focus model is Priscilla, not Ezra', () {
+    final controller = AppController.fixed();
+    expect(controller.user.pref('focus_model_preference'), isNull);
+    expect(controller.focusModelPreference, FocusModel.priscilla);
+  });
+
+  test('an explicit Ezra pick is remembered and never silently moved to Priscilla', () {
+    final controller = AppController.fixed();
+    controller.setFocusModelPreference(FocusModel.ezra);
+    expect(controller.focusModelPreference, FocusModel.ezra);
+  });
 }

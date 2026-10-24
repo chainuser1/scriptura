@@ -35,6 +35,7 @@ void main() {
 
   test('a normal trial probes the graphics chip and is marked pending while it runs', () async {
     final (app, svc) = setup();
+    app.setFocusModelPreference(FocusModel.ezra); // only Ezra has an fp16 tier; Priscilla (now the default) does not
     await app.measureDevice();
     expect(svc.requests.single.body!['probe_gpu'], isNot(false));
     expect(app.focusChoice!.variant, FocusVariant.fp16);
@@ -81,6 +82,7 @@ void main() {
       // though a fresh FocusChoice (new k/predictedMs) was computed -- guards against reverting to `c != before`.
       final svc = FakeSearchService((r, id) async => SearchResponse(mode: 'device_trial', raw: {'cpu_ms': 1839.0, 'gpu': false}));
       final app = AppController.fixed(search: svc, user: UserStore.memory());
+      app.setFocusModelPreference(FocusModel.ezra);
       app.user.setPref('answer_focus_choice', const FocusChoice(FocusModel.ezra, FocusVariant.int8, 10, 1269.0).toJson());
       final changed = await app.measureDevice();
       expect(app.focusChoice!.model, FocusModel.ezra);
@@ -172,15 +174,18 @@ void main() {
 
   group('the trial is re-run when the preference it ran under is not the current one (C2)', () {
     test('an upgrading user with an old Ezra choice and no recorded trial preference is due a trial, and stays on Ezra', () async {
-      // Ezra is the default preference -- no auto-migration to Apollos. An old Ezra choice from before this field
-      // existed is still due a trial (so focusTrialPreference gets recorded), but correctly lands back on Ezra.
+      // An upgrading user who had already explicitly chosen Ezra (not merely never chosen -- that reader is now
+      // Priscilla's own default case, see app_controller_focus_notice_test.dart). An old Ezra choice from before
+      // this field existed is still due a trial (so focusTrialPreference gets recorded), but correctly lands back
+      // on the explicitly-chosen Ezra, not the new unset-pref default.
       final svc = FakeSearchService((r, id) async => SearchResponse(mode: 'device_trial', raw: {'cpu_ms': 200.0, 'gpu': r.body?['probe_gpu'] != false}));
       final app = AppController.fixed(search: svc, user: UserStore.memory());
+      app.setFocusModelPreference(FocusModel.ezra);
       app.user.setPref('answer_focus_choice', const FocusChoice(FocusModel.ezra, FocusVariant.fp16, 10, 1200).toJson());
       expect(app.focusTrialPreference, isNull);
       expect(app.focusTrialDue, isTrue, reason: 'the Ezra choice was never evaluated under a recorded trial preference');
       await app.measureDevice();
-      expect(app.focusChoice!.model, FocusModel.ezra, reason: 'Ezra is the default; no auto-migration to Apollos');
+      expect(app.focusChoice!.model, FocusModel.ezra, reason: 'an explicit Ezra preference is never auto-migrated');
       expect(app.focusTrialPreference, FocusModel.ezra);
       expect(app.focusTrialDue, isFalse);
     });
@@ -188,6 +193,7 @@ void main() {
     test('changing the preference without a finished trial leaves one due; a failed trial records nothing', () async {
       final svc = FakeSearchService((r, id) async => throw Exception('engine busy'));
       final app = AppController.fixed(search: svc, user: UserStore.memory());
+      app.setFocusModelPreference(FocusModel.ezra);
       app.user.setPref('answer_focus_choice', const FocusChoice(FocusModel.ezra, FocusVariant.fp16, 10, 800).toJson());
       app.user.setPref('focus_trial_preference', 'ezra');
       expect(app.focusTrialDue, isFalse);

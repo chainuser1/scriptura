@@ -138,10 +138,12 @@ class AppController extends ChangeNotifier {
     return FocusVariant.none;
   }
 
-  /// Which model Answer focus should use: the reader's explicit choice, or Ezra by default when none has
-  /// been made yet (Settings' Apollos/Ezra picker writes this). Ezra is the safe, well-tested default;
-  /// Apollos is opt-in and marked experimental.
-  FocusModel get focusModelPreference => FocusModel.values.byName(user.pref('focus_model_preference') ?? 'ezra');
+  /// Which model Answer focus should use: the reader's explicit choice (Settings' picker writes this), or
+  /// Priscilla by default when none has been made yet. Owner's choice (2026-10-24): Priscilla measured fast
+  /// and good quality over real use this session, so it became the default rather than Ezra -- the device
+  /// trial and warn-and-override dialog still protect a device that does not fit it, exactly as for any other
+  /// non-Ezra pick (see [choose]/[resolveFallback] in answer_focus.dart).
+  FocusModel get focusModelPreference => FocusModel.values.byName(user.pref('focus_model_preference') ?? 'priscilla');
 
   void setFocusModelPreference(FocusModel m) {
     user.setPref('focus_model_preference', m.name);
