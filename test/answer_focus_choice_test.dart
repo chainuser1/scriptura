@@ -128,8 +128,16 @@ void main() {
       expect(c.k, 10);
     });
 
-    test('a graphics chip still wins Ezra fp16 even when Priscilla is preferred (Priscilla has no GPU tier)', () {
+    test('Priscilla preferred and fitting wins even on a device with a working graphics chip (Priscilla has no '
+        'GPU tier of its own, but mirrors Apollos: an explicit non-Ezra preference beats the generic Ezra fp16/GPU '
+        'default, the same way Apollos\'s own branch already does)', () {
       final c = choose(cpuMs: 50.0, gpu: true, mode: FocusMode.automatic, preferred: FocusModel.priscilla);
+      expect(c.model, FocusModel.priscilla);
+      expect(c.variant, FocusVariant.int8);
+    });
+
+    test('Priscilla preferred but not fitting falls back to Ezra fp16 when a graphics chip is available', () {
+      final c = choose(cpuMs: 100000.0, gpu: true, mode: FocusMode.automatic, preferred: FocusModel.priscilla);
       expect(c.model, FocusModel.ezra);
       expect(c.variant, FocusVariant.fp16);
     });
