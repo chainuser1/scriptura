@@ -3,8 +3,9 @@
 ONNX files into its OWN zip (gte.zip, ettin150.zip, ettin400.zip), then wraps all three individual zips into
 one outer zip -- so you can grab a single model's results without unpacking everything else. Prints a
 clickable download link for the outer zip right in the cell's own output -- the Output pane can be
-unreliable for a fresh file in the same session, so this does not depend on it. Leaves the original files
-untouched so you can keep re-running models afterward if needed.
+unreliable for a fresh file in the same session, so this does not depend on it. Leaves the original
+quant-smoke/ model outputs untouched so you can keep re-running models afterward if needed; only this
+script's own staging folder and previously-written zip are cleared and rebuilt fresh each run.
 
 Set INCLUDE_ONNX_MODELS = False below to skip the (potentially large) exported .onnx model files and zip
 only each model's JSON report -- usually all you actually need to see the pass/fail numbers.
@@ -18,7 +19,15 @@ INCLUDE_ONNX_MODELS = True  # set False to zip only the *.json reports, skipping
 OUT = Path('/kaggle/working')
 SRC = OUT / 'quant-smoke'
 STAGE = OUT / 'quant-smoke-results'
-STAGE.mkdir(exist_ok=True)
+
+# Clean slate every run: a stale staging dir or leftover zip from a previous run could otherwise mix old
+# and new files together, or make shutil.make_archive fail outright on a pre-existing output path.
+if STAGE.exists():
+    shutil.rmtree(STAGE)
+STAGE.mkdir()
+outer_zip_path = OUT / 'quant-smoke-results.zip'
+if outer_zip_path.exists():
+    outer_zip_path.unlink()
 
 individual_zips = []
 for name in ('gte', 'ettin150', 'ettin400'):
