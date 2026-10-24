@@ -153,10 +153,10 @@ void main() {
     expect(app.focusChoice!.model, FocusModel.priscilla);
   });
 
-  testWidgets('accepting the Apollos override does not suppress Priscilla\'s own warning on a later pick', (tester) async {
-    // 4200ms is slow enough to defeat Apollos's own real cost factor but not Priscilla's placeholder one (see
-    // Task 1's own finding) -- this test needs a device slow enough to defeat BOTH, same as Priscilla's own
-    // "does not fit" tests above.
+  testWidgets('switching from an overridden Apollos to Priscilla on a slow device still shows Priscilla\'s own '
+      'warning (end-to-end flow; the override store\'s actual per-model isolation is unit-tested directly in '
+      'app_controller_focus_notice_test.dart, since switching models here always resets the other model\'s flag '
+      'by design -- this widget test cannot isolate that on its own, only prove the whole flow still works)', (tester) async {
     final (app, _) = await settings(tester, cpuMs: 100000.0);
     await tester.ensureVisible(find.text('Apollos'));
     await tester.tap(find.text('Apollos'));
@@ -201,7 +201,7 @@ void main() {
     await tester.tap(find.text('Priscilla'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Priscilla'), findsWidgets);
-    expect(find.textContaining('experimental'), findsOneWidget);
+    expect(find.textContaining('than Ezra'), findsOneWidget, reason: 'a phrase only in Priscilla\'s own copy, not Apollos\'s near-identical text');
   });
 
   testWidgets('the whole model picker is disabled while the engine is not ready', (tester) async {

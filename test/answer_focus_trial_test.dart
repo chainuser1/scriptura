@@ -119,7 +119,11 @@ void main() {
           reason: "keep()'s noise protection must still apply within Apollos, composed on top of resolveFallback");
     });
 
-    test('an installed Priscilla int8 pack is not orphaned by a noisy trial, mirroring Apollos\'s own protection', () async {
+    test('an installed Priscilla int8 pack is not orphaned when preferred and its own ladder still fits '
+        '(keep()\'s variant-level noise protection, exercised for Apollos\'s own int8/fp16 split above, has '
+        'nothing to protect for Priscilla: it has no fp16 tier, so every fitting trial already lands on int8 '
+        'regardless -- this test instead confirms resolveFallback correctly keeps the installed pack\'s model '
+        'selected through measureDevice\'s real composition, not a synthetic keep() scenario that cannot occur)', () async {
       final root = Directory.systemTemp.createTempSync('scriptura-priscilla-');
       addTearDown(() => root.deleteSync(recursive: true));
       _markInstalled(root, PackKind.priscillaInt8);
