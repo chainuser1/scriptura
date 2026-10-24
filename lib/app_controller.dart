@@ -92,6 +92,7 @@ class AppController extends ChangeNotifier {
   PackStore get focusApollosFp16Packs => PackStore(Directory('${_root!.path}/scriptura'), PackKind.apollosFp16);
   PackStore get focusApollosInt8Packs => PackStore(Directory('${_root!.path}/scriptura'), PackKind.apollosInt8);
   PackStore get focusPriscillaInt8Packs => PackStore(Directory('${_root!.path}/scriptura'), PackKind.priscillaInt8);
+  PackStore get focusAquilaInt8Packs => PackStore(Directory('${_root!.path}/scriptura'), PackKind.aquilaInt8);
 
   /// Answer focus setting (Settings › Advanced): Automatic, On or Off.
   FocusMode get focusMode => FocusMode.parse(user.pref('answer_focus'));
@@ -105,6 +106,7 @@ class AppController extends ChangeNotifier {
         (FocusModel.apollos, FocusVariant.int8) => 'apollos-int8',
         (FocusModel.apollos, FocusVariant.fp16) => 'apollos-fp16',
         (FocusModel.priscilla, FocusVariant.int8) => 'priscilla-int8',
+        (FocusModel.aquila, FocusVariant.int8) => 'aquila-int8',
         _ => null,
       };
 
@@ -117,6 +119,7 @@ class AppController extends ChangeNotifier {
       (FocusModel.apollos, FocusVariant.int8) => focusApollosInt8Packs.active(),
       (FocusModel.apollos, FocusVariant.fp16) => focusApollosFp16Packs.active(),
       (FocusModel.priscilla, FocusVariant.int8) => focusPriscillaInt8Packs.active(),
+      (FocusModel.aquila, FocusVariant.int8) => focusAquilaInt8Packs.active(),
       _ => null,
     };
   }
@@ -128,6 +131,7 @@ class AppController extends ChangeNotifier {
       FocusModel.ezra => (focusInt8Packs, focusFp16Packs),
       FocusModel.apollos => (focusApollosInt8Packs, focusApollosFp16Packs),
       FocusModel.priscilla => (focusPriscillaInt8Packs, null),
+      FocusModel.aquila => (focusAquilaInt8Packs, null),
     };
     if (int8Store.active() != null) return FocusVariant.int8;
     if (fp16Store?.active() != null) return FocusVariant.fp16;
@@ -534,6 +538,7 @@ class AppController extends ChangeNotifier {
         'apollos-int8': 6,
         'apollos-fp16': 6,
         'priscilla-int8': 6,
+        'aquila-int8': 6,
       };
       final sorted = [...packs]..sort((a, b) => (order[a.kind] ?? 9).compareTo(order[b.kind] ?? 9));
       for (final p in sorted) {
@@ -587,6 +592,9 @@ class AppController extends ChangeNotifier {
             await _startEngine();
           case 'priscilla-int8':
             await focusPriscillaInt8Packs.adoptVerified(dir);
+            await _startEngine();
+          case 'aquila-int8':
+            await focusAquilaInt8Packs.adoptVerified(dir);
             await _startEngine();
           default:
             throw PackException('unknown_kind', 'This host offers a pack this version cannot install (${p.kind}).');
@@ -687,7 +695,7 @@ class AppController extends ChangeNotifier {
             'entities' => 'names of people and places',
             'answers' => 'study questions',
             'topics' => 'topic index',
-            'answer-focus-int8' || 'answer-focus-fp16' || 'apollos-fp16' || 'apollos-int8' || 'priscilla-int8' => 'Answer focus',
+            'answer-focus-int8' || 'answer-focus-fp16' || 'apollos-fp16' || 'apollos-int8' || 'priscilla-int8' || 'aquila-int8' => 'Answer focus',
             _ => 'word-level index',
           };
       var current = wanted.first;

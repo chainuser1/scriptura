@@ -72,4 +72,28 @@ void main() {
     expect(controller.overrideAccepted(FocusModel.priscilla), isTrue);
     expect(controller.overrideAccepted(FocusModel.apollos), isFalse);
   });
+
+  test('accepting the Apollos override does not also suppress Aquila\'s own warning', () {
+    final controller = AppController.fixed();
+    controller.acceptOverride(FocusModel.apollos);
+    expect(controller.overrideAccepted(FocusModel.apollos), isTrue);
+    expect(controller.overrideAccepted(FocusModel.aquila), isFalse);
+  });
+
+  test('accepting the Aquila override does not also suppress Apollos\'s or Priscilla\'s own warning', () {
+    final controller = AppController.fixed();
+    controller.acceptOverride(FocusModel.aquila);
+    expect(controller.overrideAccepted(FocusModel.aquila), isTrue);
+    expect(controller.overrideAccepted(FocusModel.apollos), isFalse);
+    expect(controller.overrideAccepted(FocusModel.priscilla), isFalse);
+  });
+
+  test('a detour through Aquila still clears a previously accepted Priscilla override, '
+      'so switching back to Priscilla re-warns', () {
+    final controller = AppController.fixed();
+    controller.acceptOverride(FocusModel.priscilla);
+    expect(controller.overrideAccepted(FocusModel.priscilla), isTrue);
+    controller.setFocusModelPreference(FocusModel.aquila);
+    expect(controller.overrideAccepted(FocusModel.priscilla), isFalse);
+  });
 }
