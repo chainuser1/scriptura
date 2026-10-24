@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -13,6 +14,7 @@ import 'package:scriptures_reader_mobile/data/trails/trail_models.dart';
 import 'package:scriptures_reader_mobile/data/user/user_store.dart';
 import 'package:scriptures_reader_mobile/main.dart';
 import 'package:scriptures_reader_mobile/services/engine/answer_focus.dart';
+import 'package:scriptures_reader_mobile/services/engine/engine_pack.dart';
 import 'package:scriptures_reader_mobile/services/engine/search_models.dart';
 import 'package:scriptures_reader_mobile/services/engine/search_service.dart';
 
@@ -54,6 +56,119 @@ void main() {
   });
 
   group('home', () {
+    testWidgets('a late slow trial shows one explanation and acknowledges without an override', (tester) async {
+      final response = Completer<SearchResponse>();
+      final svc = FakeSearchService((r, id) => response.future);
+      final app = await boot(tester, search: svc);
+      expect(find.text('Answer focus adjusted'), findsNothing);
+      app.focusTrial = app.measureDevice();
+      await tester.pump();
+      expect(find.text('Answer focus adjusted'), findsNothing);
+      response.complete(SearchResponse(mode: 'device_trial', raw: {'cpu_ms': 40000, 'gpu': true}));
+      await app.focusTrial;
+      await tester.pumpAndSettle();
+      expect(find.text('Answer focus adjusted'), findsOneWidget);
+      expect(find.textContaining('Ezra was selected'), findsOneWidget);
+      expect(find.textContaining('needs to be downloaded'), findsOneWidget);
+      await tester.tap(find.text('Got it'));
+      await tester.pumpAndSettle();
+      app.setLanguage('english');
+      await tester.pumpAndSettle();
+      expect(find.text('Answer focus adjusted'), findsNothing);
+      expect(app.overrideAccepted(FocusModel.priscilla), isFalse);
+      expect(svc.requests, hasLength(1));
+      await openSection(tester, 'Settings');
+      await tester.scrollUntilVisible(find.byType(SegmentedButton<FocusModel>), 400,
+          scrollable: find.descendant(of: find.byType(ListView), matching: find.byType(Scrollable)).first);
+      final picker = tester.widget<SegmentedButton<FocusModel>>(find.byType(SegmentedButton<FocusModel>));
+      expect(picker.selected, {FocusModel.ezra});
+    });
+
+    testWidgets('fallback waits for Home and does not claim a none choice is running', (tester) async {
+      final response = Completer<SearchResponse>();
+      final app = await boot(tester, search: FakeSearchService((r, id) => response.future));
+      app.focusTrial = app.measureDevice();
+      await openSection(tester, 'Settings');
+      response.complete(SearchResponse(mode: 'device_trial', raw: {'cpu_ms': 40000, 'gpu': false}));
+      await app.focusTrial;
+      await tester.pumpAndSettle();
+      expect(find.text('Answer focus adjusted'), findsNothing);
+      await openSection(tester, 'Home');
+      expect(find.text('Answer focus adjusted'), findsOneWidget);
+      expect(find.textContaining('Answer focus is not active'), findsOneWidget);
+      expect(find.textContaining('Ezra was selected'), findsNothing);
+    });
+
+    testWidgets('fallback waits until another route closes', (tester) async {
+      final app = await boot(tester, search: FakeSearchService((r, id) async =>
+          SearchResponse(mode: 'device_trial', raw: {'cpu_ms': 40000, 'gpu': true})));
+      final context = tester.element(find.text('Start here'));
+      final dialog = showDialog<void>(context: context, builder: (context) => AlertDialog(
+        title: const Text('Another dialog'),
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))],
+      ));
+      await tester.pumpAndSettle();
+      app.focusTrial = app.measureDevice();
+      await app.focusTrial;
+      await tester.pumpAndSettle();
+      expect(find.text('Answer focus adjusted'), findsNothing);
+      await tester.tap(find.text('Close'));
+      await dialog;
+      await tester.pumpAndSettle();
+      expect(find.text('Answer focus adjusted'), findsOneWidget);
+    });
+
+    testWidgets('navigation away before the dialog callback leaves the warning for Home', (tester) async {
+      final app = await boot(tester, search: FakeSearchService((r, id) async =>
+          SearchResponse(mode: 'device_trial', raw: {'cpu_ms': 40000, 'gpu': true})));
+      app.focusTrial = app.measureDevice();
+      await app.focusTrial;
+      WidgetsBinding.instance.addPostFrameCallback((_) => app.nav.go(Dest.settings));
+      await tester.pumpAndSettle();
+      expect(find.text('Answer focus adjusted'), findsNothing);
+      await openSection(tester, 'Home');
+      expect(find.text('Answer focus adjusted'), findsOneWidget);
+    });
+
+    testWidgets('disposing Home during a trial does not open a dialog', (tester) async {
+      final response = Completer<SearchResponse>();
+      final app = await boot(tester, search: FakeSearchService((r, id) => response.future));
+      app.focusTrial = app.measureDevice();
+      await tester.pumpWidget(const SizedBox.shrink());
+      response.complete(SearchResponse(mode: 'device_trial', raw: {'cpu_ms': 40000, 'gpu': true}));
+      await app.focusTrial;
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('Answer focus adjusted'), findsNothing);
+    });
+
+    testWidgets('fallback explains an installed Ezra pack and Settings selects Ezra', (tester) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final root = Directory.systemTemp.createTempSync();
+      addTearDown(() => root.deleteSync(recursive: true));
+      final response = Completer<SearchResponse>();
+      final app = AppController.fixed(root: root, repository: fixtureRepository(),
+          search: FakeSearchService((r, id) => response.future));
+      await tester.pumpWidget(ScripturesReaderApp(app: app));
+      app.focusTrial = app.measureDevice();
+      const kind = PackKind.focusFp16;
+      final pack = Directory('${root.path}/scriptura/${kind.dirName}')..createSync(recursive: true);
+      File('${pack.path}/install.json').writeAsStringSync(jsonEncode({'format': kind.format, 'files': <String, dynamic>{}}));
+      response.complete(SearchResponse(mode: 'device_trial', raw: {'cpu_ms': 40000, 'gpu': true}));
+      await app.focusTrial;
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Ezra is installed and has been selected'), findsOneWidget);
+      expect(find.textContaining('needs to be downloaded'), findsNothing);
+      await tester.tap(find.text('Got it'));
+      await tester.pumpAndSettle();
+      await openSection(tester, 'Settings');
+      await tester.scrollUntilVisible(find.byType(SegmentedButton<FocusModel>), 400,
+          scrollable: find.descendant(of: find.byType(ListView), matching: find.byType(Scrollable)).first);
+      expect(tester.widget<SegmentedButton<FocusModel>>(find.byType(SegmentedButton<FocusModel>)).selected, {FocusModel.ezra});
+    });
+
     testWidgets('offers the ask box, starter questions and the guide', (tester) async {
       await boot(tester, search: FakeSearchService((r, i) async => semantic([1])));
       expect(find.textContaining('Ask a question'), findsWidgets);

@@ -7,6 +7,7 @@ import '../../app/theme.dart';
 import '../../app/verse_tools.dart';
 import '../../app_controller.dart';
 import '../../data/content/content_repository.dart';
+import '../../services/engine/answer_focus.dart';
 import '../guide/guide_screen.dart';
 import '../trails/starter_trails.dart';
 
@@ -20,6 +21,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final _ask = TextEditingController();
+  bool _fallbackDialogPending = false;
 
   AppController get app => widget.app;
   ContentRepository get repo => app.repository!;
@@ -56,11 +58,51 @@ class _HomeScreenState extends State<HomeScreen> {
     return null;
   }
 
+  void _explainFocusFallback() {
+    if (_fallbackDialogPending || !app.focusFellBackFromDefault || app.nav.dest != Dest.home ||
+        ModalRoute.of(context)?.isCurrent != true) {
+      return;
+    }
+    _fallbackDialogPending = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      if (!app.focusFellBackFromDefault || app.nav.dest != Dest.home || ModalRoute.of(context)?.isCurrent != true) {
+        _fallbackDialogPending = false;
+        return;
+      }
+      final explanation = app.focusChoice!.variant == FocusVariant.none
+          ? 'Answer focus is not active. You can still read and search.'
+          : app.focusInstalled
+              ? 'Ezra is installed and has been selected instead.'
+              : 'Ezra was selected instead and needs to be downloaded in Settings before Answer focus can run.';
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => PopScope(
+          canPop: false,
+          child: AlertDialog(
+            title: const Text('Answer focus adjusted'),
+            content: Text('Priscilla, the default Answer focus model, was too slow in this device check. $explanation'),
+            actions: [TextButton(
+              onPressed: () {
+                app.acknowledgeFocusFallback();
+                Navigator.of(context).pop();
+              },
+              child: const Text('Got it'),
+            )],
+          ),
+        ),
+      );
+      _fallbackDialogPending = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: Listenable.merge([app, app.user]),
+      listenable: Listenable.merge([app, app.user, app.nav]),
       builder: (context, _) {
+        _explainFocusFallback();
         final t = Theme.of(context).textTheme;
         final scheme = Theme.of(context).colorScheme;
         final pos = app.user.position;
