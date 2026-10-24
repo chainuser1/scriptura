@@ -1,7 +1,7 @@
 """Self-contained Kaggle/GPU quantization smoke check for gte-reranker-modernbert-base and the two Ettin
 reranker sizes (round 2 of docs/ANSWER_FOCUS_CHALLENGERS_PROTOCOL.md's successors). Scores a small fixed set
-of smoke pairs in fp32, dynamically quantizes each model to int8 via optimum.onnxruntime, re-scores the same
-pairs, and reports whether the scores agree within tolerance.
+of smoke pairs in fp32, dynamically quantizes each model to int8, re-scores the same pairs, and reports
+whether the scores agree within tolerance.
 
 Why this matters: Apollos's (Nemotron's) FIRST int8 attempt had a real sign-flip bug from dynamic
 quantization -- not a hypothetical risk, a bug that actually shipped and was caught, requiring a pivot to
@@ -11,27 +11,24 @@ quantization is the right thing to try FIRST here -- but "generally friendlier" 
 guarantee, and this script's whole job is checking that expectation against real numbers rather than
 assuming it.
 
+NOT using optimum.onnxruntime, by design: confirmed on Kaggle 2026-10-23 that optimum-onnx 0.1.0 requires
+`transformers<4.58.0`, while Ettin's tokenizer requires `transformers>=5.0` (TokenizersBackend did not exist
+before v5) -- these two cannot both be satisfied in one environment, so optimum's ORTModelForSequenceClassification
+/ORTQuantizer path is unusable here for Ettin specifically. Instead this exports via plain torch.onnx.export
+(same pattern tool/export_onnx.py already uses in this repo) and quantizes via onnxruntime.quantization's
+quantize_dynamic directly -- neither needs optimum at all, so this works under transformers>=5.0 throughout
+(gte doesn't strictly need >=5.0, but using the same path for all three models keeps this script simple and
+is harmless for gte).
+
 Upload as a Kaggle Notebook with the SAME 'challengers' dataset Task 2's script used attached
   (/kaggle/input/<dataset>/content.db, catalog.db, test-queries/*.json)
 Turn on a GPU accelerator. Paste this whole file into a cell, set ACTION near the bottom to 'gte', 'ettin150'
 or 'ettin400', run the cell (repeat for each model -- output persists across cell runs in the same session).
 
 REQUIRED SETUP CELL, every time the kernel starts or restarts (pip installs do NOT survive a kernel restart
-on Kaggle -- only files already written to /kaggle/working/ do, so this must be re-run after every restart).
-Pin transformers EXACTLY to 5.0.0, not an unbounded >=5.0 -- confirmed on Kaggle 2026-10-23: optimum[onnxruntime]
-2.3.0's ONNX export code hits TWO DIFFERENT missing-symbol ImportErrors against transformers 5.20.2
-(first `FLAX_WEIGHTS_NAME`, then after a narrower transformers pin attempt, `is_offline_mode`, both from
-transformers.utils) -- consistent with optimum's own installer warning elsewhere that it "requires
-transformers<5.1". 5.0.0 is the only 5.0.x release that exists (transformers jumps straight from 5.0.0 to
-5.1.0 -- there are no 5.0.x patch releases), so it is the one concrete version to try that might satisfy
-both Ettin's >=5.0 floor and optimum's <5.1 ceiling at once:
-  !pip install -q -U "optimum[onnxruntime]>=2.0"
-  !pip install -q -U "transformers==5.0.0"
-The smoke check also re-verifies the live transformers.__version__ at runtime regardless (see
-assert_transformers_ok() below) rather than trusting the install order alone -- but note
-assert_transformers_ok() checks >=5.0, not ==5.0.0, so it will not itself catch a transformers version that
-drifted past 5.0.0 the way it caught one that was too low; watch the quantization step's own error output,
-not just this assertion, if 5.0.0 does not fully resolve the optimum incompatibility either.
+on Kaggle -- only files already written to /kaggle/working/ do, so this must be re-run after every restart):
+  !pip install -q -U "transformers>=5.0"
+No optimum install needed at all for this script.
 
 Download /kaggle/working/quant-smoke/<model>.json for each model afterward (the project's existing
 zip_working_output.py pattern works here too -- point it at the quant-smoke folder instead).
@@ -95,44 +92,48 @@ def score_fp32(name, pairs):
     return [float(s) for s in ce.predict(pairs, convert_to_numpy=True)], folder
 
 
-def score_int8(folder, pairs):
-    from optimum.onnxruntime import ORTModelForSequenceClassification, ORTQuantizer
-    from optimum.onnxruntime.configuration import AutoQuantizationConfig
-    from transformers import AutoTokenizer
-    onnx_dir = OUT / 'onnx-export'
-    onnx_dir.mkdir(exist_ok=True)
-    model = ORTModelForSequenceClassification.from_pretrained(folder, export=True)
-    tokenizer = AutoTokenizer.from_pretrained(folder)
-    quantizer = ORTQuantizer.from_pretrained(model)
-    qconfig = AutoQuantizationConfig.avx512_vnni(is_static=False, per_channel=False)  # dynamic quantization
-    quantizer.quantize(save_dir=onnx_dir, quantization_config=qconfig)
-    quantized = ORTModelForSequenceClassification.from_pretrained(onnx_dir, file_name='model_quantized.onnx')
+def export_onnx(name, folder, pairs):
+    """Manual torch.onnx.export -- no optimum, same pattern tool/export_onnx.py already uses in this repo.
+    Traces with one real pair from `pairs` so dynamic axes cover realistic shapes, same spirit as
+    export_onnx.py tracing with real example sentences rather than a dummy fixed-size input."""
+    import torch
+    from transformers import AutoModelForSequenceClassification, AutoTokenizer
+    model = AutoModelForSequenceClassification.from_pretrained(folder, local_files_only=True).eval()
+    tokenizer = AutoTokenizer.from_pretrained(folder, local_files_only=True)
+    query, text = pairs[0]
+    example = tokenizer(query, text, return_tensors='pt', truncation=True, max_length=512)
+    onnx_dir = OUT / 'onnx-export' / name
+    onnx_dir.mkdir(parents=True, exist_ok=True)
+    fp32_path = onnx_dir / 'model_fp32.onnx'
+    prog = torch.onnx.export(
+        model, (example['input_ids'], example['attention_mask']), dynamo=True,
+        input_names=['input_ids', 'attention_mask'], output_names=['logits'],
+        dynamic_shapes={'input_ids': {0: 'batch', 1: 'seq'}, 'attention_mask': {0: 'batch', 1: 'seq'}})
+    prog.save(str(fp32_path))
+    return fp32_path, tokenizer
+
+
+def score_int8(name, folder, pairs):
+    import onnxruntime as ort
+    from onnxruntime.quantization import QuantType, quantize_dynamic
+    fp32_path, tokenizer = export_onnx(name, folder, pairs)
+    int8_path = fp32_path.with_name('model_int8.onnx')
+    quantize_dynamic(str(fp32_path), str(int8_path), weight_type=QuantType.QInt8)
+    sess = ort.InferenceSession(str(int8_path), providers=['CPUExecutionProvider'])
     scores = []
     for query, text in pairs:
-        inputs = tokenizer(query, text, return_tensors='pt', truncation=True, max_length=512)
-        logits = quantized(**inputs).logits
+        inputs = tokenizer(query, text, return_tensors='np', truncation=True, max_length=512)
+        logits = sess.run(['logits'], {'input_ids': inputs['input_ids'], 'attention_mask': inputs['attention_mask']})[0]
         scores.append(float(logits.reshape(-1)[0]))
     return scores
 
 
-def assert_transformers_ok():
-    import transformers
-    from packaging.version import Version
-    v = Version(transformers.__version__)
-    assert v >= Version('5.0'), (
-        f'transformers {transformers.__version__} < 5.0 -- Ettin needs >=5.0. Re-run, in this exact order: '
-        f'`pip install -U "optimum[onnxruntime]>=2.0"` THEN `pip install -U "transformers>=5.0"` last, so '
-        f'the transformers pin is the one that sticks (optimum would otherwise downgrade it back).')
-
-
 def run(name):
     assert DATA.exists(), f'Expected dataset at {DATA} -- attach the same challengers dataset Task 2 used'
-    if name in ('ettin150', 'ettin400'):
-        assert_transformers_ok()  # gte's repo works fine below 5.0 too; only Ettin actually needs the floor
     pairs = smoke_pairs()
     fp32_scores, folder = score_fp32(name, pairs)
     print(f'{name} fp32 scores: {fp32_scores}', flush=True)
-    int8_scores = score_int8(folder, pairs)
+    int8_scores = score_int8(name, folder, pairs)
     print(f'{name} int8 scores: {int8_scores}', flush=True)
     max_abs_diff = max(abs(a - b) for a, b in zip(fp32_scores, int8_scores))
     within_tolerance = max_abs_diff < 0.05  # same tolerance class as Apollos's own weight-only verification
