@@ -83,30 +83,38 @@ void main() {
       expect(apollos.k, 10);
     });
 
-    test('forceApollos overrides the budget fit check: Apollos is used even when it would not otherwise fit', () {
+    test('force overrides the budget fit check: Apollos is used even when it would not otherwise fit', () {
       // The reader explicitly chose to try Apollos anyway after being warned it may not fit their device.
       const verySlow = 4200.0;
-      final c = choose(cpuMs: verySlow, gpu: false, mode: FocusMode.on, preferred: FocusModel.apollos, forceApollos: true);
+      final c = choose(cpuMs: verySlow, gpu: false, mode: FocusMode.on, preferred: FocusModel.apollos, force: true);
       expect(c.model, FocusModel.apollos);
       expect(c.variant, FocusVariant.int8);
       expect(c.k, 10); // the smallest tier, since it's already known to be slow here
     });
 
-    test('forceApollos has no effect when Apollos already fits on its own', () {
+    test('force has no effect when Apollos already fits on its own', () {
       const fast = 200.0;
-      final forced = choose(cpuMs: fast, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.apollos, forceApollos: true);
+      final forced = choose(cpuMs: fast, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.apollos, force: true);
       final natural = choose(cpuMs: fast, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.apollos);
       expect(forced, natural);
     });
 
-    test('forceApollos is ignored when Ezra is the actual preference', () {
-      final c = choose(cpuMs: laptop, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.ezra, forceApollos: true);
+    test('force is ignored when Ezra is the actual preference', () {
+      final c = choose(cpuMs: laptop, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.ezra, force: true);
       expect(c.model, FocusModel.ezra);
     });
 
-    test('forceApollos does nothing when Answer focus is off', () {
-      final c = choose(cpuMs: laptop, gpu: false, mode: FocusMode.off, preferred: FocusModel.apollos, forceApollos: true);
+    test('force does nothing when Answer focus is off', () {
+      final c = choose(cpuMs: laptop, gpu: false, mode: FocusMode.off, preferred: FocusModel.apollos, force: true);
       expect(c.variant, FocusVariant.none);
+    });
+
+    test('force also overrides the budget fit check for Priscilla, mirroring Apollos', () {
+      const extremelySlow = 100000.0;
+      final c = choose(cpuMs: extremelySlow, gpu: false, mode: FocusMode.on, preferred: FocusModel.priscilla, force: true);
+      expect(c.model, FocusModel.priscilla);
+      expect(c.variant, FocusVariant.int8);
+      expect(c.k, 10);
     });
   });
 

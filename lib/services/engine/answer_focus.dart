@@ -90,15 +90,15 @@ class FocusChoice {
 /// tier is temporarily unavailable (a real pack defect, not a device limitation) -- Apollos only ever offers int8/CPU
 /// for now, even on a GPU-capable device, until that pack is fixed.
 ///
-/// [forceApollos]: the reader was warned Apollos likely won't fit this device and chose to try it anyway. Skips the
-/// budget-fit check entirely and uses Apollos's smallest tier (already known to be slow here) -- never applies when
-/// [preferred] is Ezra, and never brings Answer focus back from Off.
+/// [force]: the reader was warned [preferred] likely won't fit this device and chose to try it anyway. Skips the
+/// budget-fit check entirely and uses that model's smallest tier (already known to be slow here) -- never applies
+/// when [preferred] is Ezra, and never brings Answer focus back from Off.
 FocusChoice choose({
   required double cpuMs,
   required bool gpu,
   required FocusMode mode,
   required FocusModel preferred,
-  bool forceApollos = false,
+  bool force = false,
 }) {
   if (mode == FocusMode.off) return FocusChoice.none;
   final cpu10 = cpuMs * _cpuFactor * 10;
@@ -111,7 +111,7 @@ FocusChoice choose({
       final ms = cpuMs * _apollosCpuFactor * k;
       if (ms <= kApollosBudgetMs) return FocusChoice(FocusModel.apollos, FocusVariant.int8, k, ms);
     }
-    if (forceApollos) return FocusChoice(FocusModel.apollos, FocusVariant.int8, 10, cpuMs * _apollosCpuFactor * 10);
+    if (force) return FocusChoice(FocusModel.apollos, FocusVariant.int8, 10, cpuMs * _apollosCpuFactor * 10);
   }
   if (preferred == FocusModel.priscilla) {
     // Priscilla has no GPU/fp16 tier of its own (not a temporary pack defect like Apollos's -- see Global
@@ -125,6 +125,7 @@ FocusChoice choose({
       final ms = cpuMs * _priscillaCpuFactor * k;
       if (ms <= kApollosBudgetMs) return FocusChoice(FocusModel.priscilla, FocusVariant.int8, k, ms);
     }
+    if (force) return FocusChoice(FocusModel.priscilla, FocusVariant.int8, 10, cpuMs * _priscillaCpuFactor * 10);
   }
   if (gpu) return FocusChoice(FocusModel.ezra, FocusVariant.fp16, 10, cpu10); // first searches measure the real graphics time
   for (final k in _ks) {
