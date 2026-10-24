@@ -35,6 +35,11 @@ void main() {
     expect(PackKind.priscillaInt8.dirName, 'priscilla-int8');
   });
 
+  test('aquilaInt8 pack kind has the expected format and directory name', () {
+    expect(PackKind.aquilaInt8.format, 'aquila-int8-v1');
+    expect(PackKind.aquilaInt8.dirName, 'aquila-int8');
+  });
+
   group('PackStore.adoptVerified', () {
     late Directory tmp;
     late Directory staged;
