@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 /// Answer focus: which model this device uses (if any) and how many search results it reorders. Chosen from the
-/// engine's device trial before anything is downloaded, then adjusted from the real times of the first searches.
+/// engine's device trial, then adjusted from the real times of the first searches.
 
 /// The reader's setting (Settings › Advanced). Stored as pref `answer_focus`.
 enum FocusMode {

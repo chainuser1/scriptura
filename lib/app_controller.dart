@@ -138,14 +138,23 @@ class AppController extends ChangeNotifier {
     return FocusVariant.none;
   }
 
-  /// Which model Answer focus should use: the reader's explicit choice, or Priscilla on a fresh install.
-  /// With no explicit choice but any model already installed, keep the legacy Ezra default so an upgrading
-  /// reader is not silently moved to an undownloaded model.
+  /// The explicit Settings choice wins. A fresh install starts with Priscilla and remembers its automatic
+  /// trial's resolved model across downloads/restarts. Unmarked existing installs retain the legacy Ezra default.
   FocusModel get focusModelPreference {
     final saved = user.pref('focus_model_preference');
     if (saved != null) return FocusModel.values.byName(saved);
+    final automatic = user.pref('focus_automatic_model');
+    if (automatic != null) return FocusModel.values.byName(automatic);
     final nothingInstalled = FocusModel.values.every((m) => _installedVariant(m) == FocusVariant.none);
     return nothingInstalled ? FocusModel.priscilla : FocusModel.ezra;
+  }
+
+  // Capture the fresh-install intent before a download or trial can change the installed-pack fallback.
+  void _rememberAutomaticDefault() {
+    if (user.pref('focus_model_preference') == null && user.pref('focus_automatic_model') == null &&
+        focusMode != FocusMode.off && focusModelPreference == FocusModel.priscilla) {
+      user.setPref('focus_automatic_model', FocusModel.priscilla.name);
+    }
   }
 
   void setFocusModelPreference(FocusModel m) {
@@ -171,7 +180,31 @@ class AppController extends ChangeNotifier {
 
   /// A trial is due at start when none has run, or the persisted choice was not computed under the current
   /// preference (an upgrade from before Apollos, or a picker change whose trial never finished).
-  bool get focusTrialDue => focusChoice == null || focusTrialPreference != focusModelPreference;
+  bool get focusTrialDue {
+    if (focusChoice == null) return true;
+    // An automatic fallback is a completed decision, not an explicit preference change needing another trial.
+    if (user.pref('focus_model_preference') == null && focusTrialPreference != null &&
+        user.pref('focus_automatic_model') == focusChoice!.model.name) {
+      return false;
+    }
+    return focusTrialPreference != focusModelPreference;
+  }
+
+  /// A successful fresh-default trial needs one explanation, including when no variant fits.
+  bool get focusFellBackFromDefault =>
+      user.pref('focus_model_preference') == null &&
+      focusMode != FocusMode.off &&
+      focusTrialPreference == FocusModel.priscilla &&
+      focusChoice != null &&
+      user.pref('focus_automatic_model') == focusChoice!.model.name &&
+      (focusChoice!.model != FocusModel.priscilla || focusChoice!.variant == FocusVariant.none) &&
+      user.pref('home_fallback_seen_priscilla') != '1';
+
+  /// Acknowledgement does not force a model or start another trial (unlike [acceptOverride]).
+  void acknowledgeFocusFallback() {
+    user.setPref('home_fallback_seen_priscilla', '1');
+    notifyListeners();
+  }
 
   bool get focusInstalled => _focusPack() != null;
 
@@ -246,20 +279,28 @@ class AppController extends ChangeNotifier {
   /// installed variant is still protected from flip-flopping on routine trial noise.
   /// Returns whether the chosen model or variant changed (i.e. whether the engine needs to restart).
   Future<bool> measureDevice() async {
+    _rememberAutomaticDefault();
+    final preference = focusModelPreference;
+    final explicitPreference = user.pref('focus_model_preference');
+    final mode = focusMode;
+    final force = overrideAccepted(preference);
+    final automatic = explicitPreference == null && user.pref('focus_automatic_model') != null;
     final before = focusChoice;
     final probeGpu = user.pref('focus_trial_pending') != '1' && user.pref('focus_gpu_failed') != '1';
     user.setPref('focus_trial_pending', '1');
     try {
       final r = await _search.search(SearchRequest.raw('device_trial', {if (!probeGpu) 'probe_gpu': false}));
+      // A picker/mode change while the trial ran belongs to the reader; this result is stale.
+      if (user.pref('focus_model_preference') != explicitPreference || focusMode != mode) return false;
       final fresh = choose(
         cpuMs: (r.raw['cpu_ms'] as num).toDouble(),
         gpu: probeGpu && r.raw['gpu'] == true,
-        mode: focusMode,
-        preferred: focusModelPreference,
-        force: overrideAccepted(focusModelPreference),
+        mode: mode,
+        preferred: preference,
+        force: force,
       );
       final resolved = resolveFallback(
-        preference: focusModelPreference,
+        preference: preference,
         fresh: fresh,
         before: before,
         others: {
@@ -271,7 +312,8 @@ class AppController extends ChangeNotifier {
       // must not be masked by it, so it only sees `before` when `before` was already on the resolved model.
       final c = keep(before?.model == resolved.model ? before : null, resolved, installed: _installedVariant(resolved.model));
       user.setPref('answer_focus_choice', c.toJson());
-      user.setPref('focus_trial_preference', focusModelPreference.name);
+      user.setPref('focus_trial_preference', preference.name);
+      if (automatic && mode != FocusMode.off) user.setPref('focus_automatic_model', c.model.name);
       _focusTimes.clear();
       notifyListeners();
       return c.model != before?.model || c.variant != before?.variant;
@@ -330,15 +372,22 @@ class AppController extends ChangeNotifier {
   ActiveRelease? get activeRelease => _root == null ? null : releases.active();
 
   void _loadContent() {
+    // First setup may replace a temporary UserStore after Continue. Carry only focus setup state forward;
+    // a previously saved database's preferences always win over the temporary store.
+    final focusPrefs = {
+      for (final key in const ['focus_automatic_model', 'focus_model_preference', 'answer_focus',
+        'answer_focus_choice', 'focus_trial_preference', 'home_fallback_seen_priscilla'])
+        if (_user?.pref(key) case final String value) key: value,
+    };
     _repository = null;
     _content?.dispose();
     _content = null;
+    final release = activeRelease;
+    if (release == null) return;
     if (_root != null) {
       _user?.dispose();
       _user = null;
     }
-    final release = activeRelease;
-    if (release == null) return;
     ContentDatabase? content;
     try {
       content = ContentDatabase.open(release.path('content.db'));
@@ -358,6 +407,10 @@ class AppController extends ChangeNotifier {
       }
     } on ContentException {
       content?.dispose();
+    } finally {
+      for (final entry in focusPrefs.entries) {
+        if (user.pref(entry.key) == null) user.setPref(entry.key, entry.value);
+      }
     }
   }
 
@@ -680,6 +733,7 @@ class AppController extends ChangeNotifier {
   Future<void> ensureData({String? address, bool includeOptional = false, bool includeFocus = false}) async {
     final base = address ?? kDefaultDataAddress;
     if (setupBusy || base.isEmpty) return;
+    if (includeFocus) _rememberAutomaticDefault();
     lastRunIncludedOptional = includeOptional;
     lastRunIncludedFocus = includeFocus;
     final pretrialFocusKind = focusChoice == null

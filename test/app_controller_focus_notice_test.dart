@@ -1,5 +1,6 @@
 // Pref round-trip for the model-generic override-accepted flag, plus the fresh-install default-setup notice
 // (offerPriscillaDefaultSetup, which needs a real root directory to check installed-pack state): no engine.
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -8,7 +9,9 @@ import 'package:scriptures_reader_mobile/app_controller.dart';
 import 'package:scriptures_reader_mobile/data/user/user_store.dart';
 import 'package:scriptures_reader_mobile/services/engine/answer_focus.dart';
 import 'package:scriptures_reader_mobile/services/engine/engine_pack.dart';
+import 'package:scriptures_reader_mobile/services/engine/search_models.dart';
 
+import 'fakes/fake_search_service.dart';
 import 'fakes/recording_install_controller.dart';
 
 /// Writes a minimal (zero-file) install marker so [PackStore.active] reports this pack kind installed, without
@@ -18,7 +21,207 @@ void _markInstalled(Directory root, PackKind kind) {
   File('${dir.path}/install.json').writeAsStringSync(jsonEncode({'format': kind.format, 'files': <String, dynamic>{}}));
 }
 
+void _markContentInstalled(Directory root) {
+  final dir = Directory('${root.path}/scriptura/content/mini')..createSync(recursive: true);
+  File('test/fixtures/content_v2_mini.db').copySync('${dir.path}/content.db');
+  File('test/fixtures/catalog_mini.db').copySync('${dir.path}/catalog.db');
+  File('${root.path}/scriptura/active.json').writeAsStringSync(jsonEncode({
+    'release': 'mini',
+    'files': {for (final name in ['content.db', 'catalog.db']) name: {'bytes': File('${dir.path}/$name').lengthSync()}},
+  }));
+}
+
 void main() {
+  group('automatic default lifecycle', () {
+    test('slow fresh trial explains the fallback once without forcing another trial', () async {
+      final root = Directory.systemTemp.createTempSync();
+      addTearDown(() => root.deleteSync(recursive: true));
+      final path = '${root.path}/user.db';
+      final user = UserStore.open(path, contract: '');
+      final svc = FakeSearchService((r, id) async =>
+          SearchResponse(mode: 'device_trial', raw: {'cpu_ms': 40000, 'gpu': true}));
+      final app = AppController.fixed(root: root, user: user, search: svc);
+      expect(app.focusFellBackFromDefault, isFalse);
+      await app.measureDevice();
+      expect(app.focusFellBackFromDefault, isTrue);
+      expect(app.focusTrialPreference, FocusModel.priscilla);
+      expect(app.focusModelPreference, FocusModel.ezra);
+      expect(app.focusTrialDue, isFalse);
+      expect(app.offerPriscillaDefaultSetup, isFalse);
+      _markInstalled(root, PackKind.focusFp16);
+      expect(app.focusModelPreference, FocusModel.ezra);
+      app.acknowledgeFocusFallback();
+      expect(app.focusFellBackFromDefault, isFalse);
+      expect(app.overrideAccepted(FocusModel.priscilla), isFalse);
+      expect(svc.requests, hasLength(1));
+      user.dispose();
+      final reopened = UserStore.open(path, contract: '');
+      addTearDown(reopened.dispose);
+      final restarted = AppController.fixed(root: root, user: reopened);
+      expect(restarted.focusModelPreference, FocusModel.ezra);
+      expect(restarted.focusTrialDue, isFalse);
+      expect(restarted.focusFellBackFromDefault, isFalse);
+    });
+
+    test('fast fresh trial survives Priscilla installation and restart', () async {
+      final root = Directory.systemTemp.createTempSync();
+      addTearDown(() => root.deleteSync(recursive: true));
+      final path = '${root.path}/user.db';
+      final user = UserStore.open(path, contract: '');
+      final response = Completer<SearchResponse>();
+      final app = AppController.fixed(root: root, user: user,
+          search: FakeSearchService((r, id) => response.future));
+      final trial = app.measureDevice();
+      _markInstalled(root, PackKind.priscillaInt8);
+      response.complete(SearchResponse(mode: 'device_trial', raw: {'cpu_ms': 200, 'gpu': false}));
+      await trial;
+      expect(app.focusChoice!.model, FocusModel.priscilla);
+      expect(app.focusModelPreference, FocusModel.priscilla);
+      expect(app.focusTrialPreference, FocusModel.priscilla);
+      expect(app.focusTrialDue, isFalse);
+      expect(app.focusFellBackFromDefault, isFalse);
+      user.dispose();
+      final reopened = UserStore.open(path, contract: '');
+      addTearDown(reopened.dispose);
+      final restarted = AppController.fixed(root: root, user: reopened);
+      expect(restarted.focusModelPreference, FocusModel.priscilla);
+      expect(restarted.focusTrialDue, isFalse);
+    });
+
+    test('Continue preserves the default before the trial starts', () async {
+      final root = Directory.systemTemp.createTempSync();
+      addTearDown(() => root.deleteSync(recursive: true));
+      final app = RecordingInstallController(root: root, user: UserStore.memory(),
+          search: FakeSearchService((r, id) async =>
+              SearchResponse(mode: 'device_trial', raw: {'cpu_ms': 200, 'gpu': false})));
+      _markContentInstalled(root);
+      for (final kind in [PackKind.engine, PackKind.entities, PackKind.answers]) {
+        _markInstalled(root, kind);
+      }
+      expect(app.missingData.difference({'colbert'}), isEmpty);
+      await app.ensureData(includeFocus: true);
+      _markInstalled(root, PackKind.priscillaInt8);
+      await app.measureDevice();
+      expect(app.focusModelPreference, FocusModel.priscilla);
+      expect(app.focusChoice!.model, FocusModel.priscilla);
+    });
+
+    test('Continue intent survives content opening a disk UserStore and restart', () async {
+      final root = Directory.systemTemp.createTempSync();
+      addTearDown(() => root.deleteSync(recursive: true));
+      final app = RecordingInstallController(root: root, user: UserStore.memory());
+      await app.ensureData(includeFocus: true);
+      _markContentInstalled(root);
+      _markInstalled(root, PackKind.priscillaInt8);
+      await app.load();
+      expect(app.repository, isNotNull);
+      expect(app.focusModelPreference, FocusModel.priscilla);
+      expect(app.user.pref('focus_model_preference'), isNull);
+      await app.close();
+      final restarted = AppController(root: root, environment: const {});
+      await restarted.load();
+      expect(restarted.focusModelPreference, FocusModel.priscilla);
+      await restarted.close();
+    });
+
+    test('disk explicit preference wins over temporary fresh-install intent', () async {
+      final root = Directory.systemTemp.createTempSync();
+      addTearDown(() => root.deleteSync(recursive: true));
+      final app = RecordingInstallController(root: root, user: UserStore.memory());
+      await app.ensureData(includeFocus: true);
+      _markContentInstalled(root);
+      final saved = UserStore.open('${root.path}/scriptura/user.db', contract: '');
+      saved.setPref('focus_model_preference', 'aquila');
+      saved.dispose();
+      await app.load();
+      expect(app.focusModelPreference, FocusModel.aquila);
+      expect(app.focusFellBackFromDefault, isFalse);
+      await app.close();
+    });
+
+    test('completed fallback and acknowledgement survive UserStore replacement', () async {
+      final root = Directory.systemTemp.createTempSync();
+      addTearDown(() => root.deleteSync(recursive: true));
+      final app = AppController.fixed(root: root, search: FakeSearchService((r, id) async =>
+          SearchResponse(mode: 'device_trial', raw: {'cpu_ms': 40000, 'gpu': false})));
+      await app.measureDevice();
+      app.acknowledgeFocusFallback();
+      _markContentInstalled(root);
+      await app.load();
+      expect(app.focusChoice, FocusChoice.none);
+      expect(app.focusModelPreference, FocusModel.ezra);
+      expect(app.focusTrialPreference, FocusModel.priscilla);
+      expect(app.focusTrialDue, isFalse);
+      expect(app.focusFellBackFromDefault, isFalse);
+      await app.close();
+    });
+
+    test('a running trial writes its captured preference to the replacement UserStore', () async {
+      final root = Directory.systemTemp.createTempSync();
+      addTearDown(() => root.deleteSync(recursive: true));
+      final response = Completer<SearchResponse>();
+      final app = AppController.fixed(root: root, search: FakeSearchService((r, id) => response.future));
+      final trial = app.measureDevice();
+      _markContentInstalled(root);
+      _markInstalled(root, PackKind.priscillaInt8);
+      await app.load();
+      response.complete(SearchResponse(mode: 'device_trial', raw: {'cpu_ms': 200, 'gpu': false}));
+      await trial;
+      expect(app.focusChoice!.model, FocusModel.priscilla);
+      expect(app.focusTrialPreference, FocusModel.priscilla);
+      expect(app.focusTrialDue, isFalse);
+      await app.close();
+    });
+
+    test('turning Off while a trial runs discards its result and warning', () async {
+      final response = Completer<SearchResponse>();
+      final app = AppController.fixed(search: FakeSearchService((r, id) => response.future));
+      final trial = app.measureDevice();
+      await app.setFocusMode(FocusMode.off);
+      response.complete(SearchResponse(mode: 'device_trial', raw: {'cpu_ms': 40000, 'gpu': true}));
+      await trial;
+      expect(app.focusChoice, isNull);
+      expect(app.focusFellBackFromDefault, isFalse);
+    });
+
+    test('runtime adaptation after a fitting trial is not a trial fallback notice', () async {
+      final app = AppController.fixed(search: FakeSearchService((r, id) async =>
+          SearchResponse(mode: 'device_trial', raw: {'cpu_ms': 200, 'gpu': false})));
+      await app.measureDevice();
+      for (var i = 0; i < 9; i++) {
+        app.recordFocusTime(100000);
+      }
+      expect(app.focusChoice, FocusChoice.none);
+      expect(app.focusFellBackFromDefault, isFalse);
+    });
+
+    test('an explicit pick during the trial is preserved', () async {
+      final response = Completer<SearchResponse>();
+      final app = AppController.fixed(search: FakeSearchService((r, id) => response.future));
+      final trial = app.measureDevice();
+      app.setFocusModelPreference(FocusModel.aquila);
+      response.complete(SearchResponse(mode: 'device_trial', raw: {'cpu_ms': 200, 'gpu': false}));
+      await trial;
+      expect(app.focusModelPreference, FocusModel.aquila);
+      expect(app.focusChoice, isNull);
+      expect(app.focusTrialDue, isTrue);
+      expect(app.focusFellBackFromDefault, isFalse);
+    });
+
+    test('explicit preferences, Off and failed trials do not produce a default warning', () async {
+      for (final scenario in ['explicit', 'off', 'failed']) {
+        final app = AppController.fixed(search: FakeSearchService((r, id) async {
+          if (scenario == 'failed') throw StateError('trial failed');
+          return SearchResponse(mode: 'device_trial', raw: {'cpu_ms': 40000, 'gpu': false});
+        }));
+        if (scenario == 'explicit') app.setFocusModelPreference(FocusModel.priscilla);
+        if (scenario == 'off') app.user.setPref('answer_focus', 'off');
+        await app.measureDevice();
+        expect(app.focusFellBackFromDefault, isFalse, reason: scenario);
+      }
+    });
+  });
+
   test('ensureData requests the preferred model pack before any trial has run', () async {
     final root = Directory.systemTemp.createTempSync();
     addTearDown(() => root.deleteSync(recursive: true));
@@ -245,6 +448,8 @@ void main() {
     expect(controller.user.pref('focus_model_preference'), isNull);
     expect(controller.focusModelPreference, FocusModel.ezra);
     expect(controller.focusTrialDue, isFalse);
+    expect(controller.offerPriscillaDefaultSetup, isFalse);
+    expect(controller.focusFellBackFromDefault, isFalse);
   });
 
   test('an explicit Ezra pick is remembered and never silently moved to Priscilla', () {
@@ -254,24 +459,31 @@ void main() {
   });
 
   test('offerPriscillaDefaultSetup is true when no model has ever been chosen and nothing is installed', () {
-    final controller = AppController.fixed(root: Directory.systemTemp.createTempSync(), user: UserStore.memory());
+    final root = Directory.systemTemp.createTempSync();
+    addTearDown(() => root.deleteSync(recursive: true));
+    final controller = AppController.fixed(root: root, user: UserStore.memory());
     expect(controller.offerPriscillaDefaultSetup, isTrue);
   });
 
   test('offerPriscillaDefaultSetup is false once the reader has explicitly chosen a model', () {
-    final controller = AppController.fixed(root: Directory.systemTemp.createTempSync(), user: UserStore.memory());
+    final root = Directory.systemTemp.createTempSync();
+    addTearDown(() => root.deleteSync(recursive: true));
+    final controller = AppController.fixed(root: root, user: UserStore.memory());
     controller.setFocusModelPreference(FocusModel.ezra);
     expect(controller.offerPriscillaDefaultSetup, isFalse);
   });
 
   test('offerPriscillaDefaultSetup is false after the reader dismisses it, even though the pref is still unset', () {
-    final controller = AppController.fixed(root: Directory.systemTemp.createTempSync(), user: UserStore.memory());
+    final root = Directory.systemTemp.createTempSync();
+    addTearDown(() => root.deleteSync(recursive: true));
+    final controller = AppController.fixed(root: root, user: UserStore.memory());
     controller.declineAnswerFocus(); // existing one-shot dismiss, reused rather than a new pref
     expect(controller.offerPriscillaDefaultSetup, isFalse);
   });
 
   test('offerPriscillaDefaultSetup is false once Priscilla is actually installed, even with the pref still unset', () {
     final root = Directory.systemTemp.createTempSync();
+    addTearDown(() => root.deleteSync(recursive: true));
     _markInstalled(root, PackKind.priscillaInt8);
     final controller = AppController.fixed(root: root, user: UserStore.memory());
     expect(controller.offerPriscillaDefaultSetup, isFalse);
@@ -286,13 +498,17 @@ void main() {
   });
 
   test('offerPriscillaDefaultSetup is false while Answer focus is off', () {
-    final controller = AppController.fixed(root: Directory.systemTemp.createTempSync(), user: UserStore.memory());
+    final root = Directory.systemTemp.createTempSync();
+    addTearDown(() => root.deleteSync(recursive: true));
+    final controller = AppController.fixed(root: root, user: UserStore.memory());
     controller.user.setPref('answer_focus', 'off');
     expect(controller.offerPriscillaDefaultSetup, isFalse);
   });
 
   test('offerPriscillaDefaultSetup is false after a completed trial chose no focus model', () {
-    final controller = AppController.fixed(root: Directory.systemTemp.createTempSync(), user: UserStore.memory());
+    final root = Directory.systemTemp.createTempSync();
+    addTearDown(() => root.deleteSync(recursive: true));
+    final controller = AppController.fixed(root: root, user: UserStore.memory());
     controller.user.setPref(
       'answer_focus_choice',
       const FocusChoice(FocusModel.priscilla, FocusVariant.none, 0, 200).toJson(),
