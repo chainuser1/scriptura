@@ -368,6 +368,7 @@ class _AnswerFocusTile extends StatelessWidget {
       (FocusModel.ezra, FocusVariant.fp16) => 'about 1 GB',
       (FocusModel.ezra, FocusVariant.int8) => 'about 400 MB',
       (FocusModel.priscilla, FocusVariant.int8) => 'about 450 MB',
+      (FocusModel.aquila, FocusVariant.int8) => 'about 1.2 GB',
       _ => 'a download',
     };
     return 'This device will use the ${c.variant == FocusVariant.fp16 ? 'graphics chip' : 'processor'}. Not downloaded yet ($size, best on Wi-Fi).';
@@ -445,7 +446,12 @@ class _ModelPickerState extends State<_ModelPicker> {
   }
 
   Future<void> _warn(FocusModel model) async {
-    final name = switch (model) { FocusModel.apollos => 'Apollos', FocusModel.priscilla => 'Priscilla', FocusModel.ezra => 'Ezra' };
+    final name = switch (model) {
+      FocusModel.apollos => 'Apollos',
+      FocusModel.priscilla => 'Priscilla',
+      FocusModel.aquila => 'Aquila',
+      FocusModel.ezra => 'Ezra',
+    };
     final proceed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -479,6 +485,7 @@ class _ModelPickerState extends State<_ModelPicker> {
             ButtonSegment(value: FocusModel.ezra, label: Text('Ezra')),
             ButtonSegment(value: FocusModel.apollos, label: Text('Apollos')),
             ButtonSegment(value: FocusModel.priscilla, label: Text('Priscilla')),
+            ButtonSegment(value: FocusModel.aquila, label: Text('Aquila')),
           ],
           selected: {app.focusModelPreference},
           // Same gate as Measure again: a pick the engine cannot trial would leave the old model running.
@@ -501,6 +508,8 @@ class _ModelPickerState extends State<_ModelPicker> {
           FocusModel.apollos => 'Apollos: looks harder for the exact answer, but is slower and experimental -- a good fit if you '
               'don\'t mind waiting a bit longer for more refined results.',
           FocusModel.priscilla => 'Priscilla: looks harder for the exact answer than Ezra, but is slower and experimental -- a good '
+              'fit if you don\'t mind waiting a bit longer for more refined results.',
+          FocusModel.aquila => 'Aquila: looks harder for the exact answer than Ezra, but is slower and experimental -- a good '
               'fit if you don\'t mind waiting a bit longer for more refined results.',
         },
         style: t.bodySmall,

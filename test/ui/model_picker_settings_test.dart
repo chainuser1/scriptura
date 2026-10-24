@@ -204,6 +204,84 @@ void main() {
     expect(find.textContaining('than Ezra'), findsOneWidget, reason: 'a phrase only in Priscilla\'s own copy, not Apollos\'s near-identical text');
   });
 
+  testWidgets('Ezra, Apollos, Priscilla, and Aquila are all visible and enabled', (tester) async {
+    await settings(tester);
+    expect(find.text('Ezra'), findsOneWidget);
+    expect(find.text('Apollos'), findsOneWidget);
+    expect(find.text('Priscilla'), findsOneWidget);
+    expect(find.text('Aquila'), findsOneWidget);
+    final picker = tester.widget<SegmentedButton<FocusModel>>(find.byType(SegmentedButton<FocusModel>).last);
+    expect(picker.segments.firstWhere((s) => s.value == FocusModel.aquila).enabled, isTrue);
+  });
+
+  testWidgets('choosing Aquila on a device it fits just switches, no dialog', (tester) async {
+    final (app, _) = await settings(tester, cpuMs: 200.0);
+    await tester.ensureVisible(find.text('Aquila'));
+    await tester.tap(find.text('Aquila'));
+    await tester.pumpAndSettle();
+    expect(app.focusModelPreference, FocusModel.aquila);
+    expect(app.focusChoice!.model, FocusModel.aquila);
+    expect(find.byType(AlertDialog), findsNothing);
+  });
+
+  testWidgets('choosing Aquila on a device it does not fit warns, and "Use Ezra instead" falls back', (tester) async {
+    final (app, _) = await settings(tester, cpuMs: 4200.0);
+    await tester.ensureVisible(find.text('Aquila'));
+    await tester.tap(find.text('Aquila'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('may not be fast enough'), findsOneWidget);
+    await tester.tap(find.text('Use Ezra instead'));
+    await tester.pumpAndSettle();
+    expect(app.focusModelPreference, FocusModel.ezra);
+    expect(app.overrideAccepted(FocusModel.aquila), isFalse);
+  });
+
+  testWidgets('choosing Aquila on a device it does not fit, then "Try Aquila anyway" keeps Aquila', (tester) async {
+    final (app, _) = await settings(tester, cpuMs: 4200.0);
+    await tester.ensureVisible(find.text('Aquila'));
+    await tester.tap(find.text('Aquila'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('may not be fast enough'), findsOneWidget);
+    await tester.tap(find.text('Try Aquila anyway'));
+    await tester.pumpAndSettle();
+    expect(app.focusModelPreference, FocusModel.aquila);
+    expect(app.overrideAccepted(FocusModel.aquila), isTrue);
+    expect(app.focusChoice!.model, FocusModel.aquila);
+  });
+
+  testWidgets('switching directly from Aquila to Apollos works without going through Ezra first', (tester) async {
+    final (app, _) = await settings(tester, cpuMs: 200.0);
+    await tester.ensureVisible(find.text('Aquila'));
+    await tester.tap(find.text('Aquila'));
+    await tester.pumpAndSettle();
+    expect(app.focusModelPreference, FocusModel.aquila);
+    await tester.ensureVisible(find.text('Apollos'));
+    await tester.tap(find.text('Apollos'));
+    await tester.pumpAndSettle();
+    expect(app.focusModelPreference, FocusModel.apollos);
+  });
+
+  testWidgets('switching directly from Priscilla to Aquila works without going through Ezra first', (tester) async {
+    final (app, _) = await settings(tester, cpuMs: 200.0);
+    await tester.ensureVisible(find.text('Priscilla'));
+    await tester.tap(find.text('Priscilla'));
+    await tester.pumpAndSettle();
+    expect(app.focusModelPreference, FocusModel.priscilla);
+    await tester.ensureVisible(find.text('Aquila'));
+    await tester.tap(find.text('Aquila'));
+    await tester.pumpAndSettle();
+    expect(app.focusModelPreference, FocusModel.aquila);
+    expect(find.byType(AlertDialog), findsNothing);
+  });
+
+  testWidgets('Aquila has its own description text', (tester) async {
+    final (app, _) = await settings(tester, cpuMs: 200.0);
+    await tester.ensureVisible(find.text('Aquila'));
+    await tester.tap(find.text('Aquila'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Aquila'), findsWidgets);
+  });
+
   testWidgets('the whole model picker is disabled while the engine is not ready', (tester) async {
     final app = await boot(tester); // no search service: the engine is unavailable
     expect(app.engineState, isNot(EngineState.ready));
