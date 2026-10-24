@@ -110,6 +110,31 @@ void main() {
     });
   });
 
+  group('choose (Priscilla)', () {
+    test('Priscilla preferred and fitting returns the Priscilla int8 choice', () {
+      final c = choose(cpuMs: 50.0, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.priscilla);
+      expect(c.model, FocusModel.priscilla);
+      expect(c.variant, FocusVariant.int8);
+    });
+
+    test('Priscilla preferred but not fitting at any k falls back the same way Ezra itself would under Automatic', () {
+      final c = choose(cpuMs: 100000.0, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.priscilla);
+      expect(c, FocusChoice.none);
+    });
+
+    test('Priscilla preferred but not fitting falls back to the smallest Ezra k under On, not none', () {
+      final c = choose(cpuMs: 100000.0, gpu: false, mode: FocusMode.on, preferred: FocusModel.priscilla);
+      expect(c.model, FocusModel.ezra);
+      expect(c.k, 10);
+    });
+
+    test('a graphics chip still wins Ezra fp16 even when Priscilla is preferred (Priscilla has no GPU tier)', () {
+      final c = choose(cpuMs: 50.0, gpu: true, mode: FocusMode.automatic, preferred: FocusModel.priscilla);
+      expect(c.model, FocusModel.ezra);
+      expect(c.variant, FocusVariant.fp16);
+    });
+  });
+
   group('adapt (after install, from measured times)', () {
     const start = FocusChoice(FocusModel.ezra, FocusVariant.int8, 30, 1200);
 
@@ -130,6 +155,20 @@ void main() {
 
     test('needs a few searches before judging', () {
       expect(adapt(start, [5000], FocusMode.automatic), start);
+    });
+  });
+
+  group('adapt (Priscilla)', () {
+    test('Priscilla at k=10 (the floor) with a very slow median turns off under Automatic, same as Ezra would', () {
+      const start = FocusChoice(FocusModel.priscilla, FocusVariant.int8, 10, 1000);
+      final r = adapt(start, [4000.0, 4100.0, 3900.0], FocusMode.automatic);
+      expect(r, FocusChoice.none);
+    });
+
+    test('Priscilla at k=10 under On mode never turns off, same as Ezra', () {
+      const start = FocusChoice(FocusModel.priscilla, FocusVariant.int8, 10, 1000);
+      final r = adapt(start, [4000.0, 4100.0, 3900.0], FocusMode.on);
+      expect(r, start);
     });
   });
 
@@ -173,5 +212,11 @@ void main() {
     expect(FocusChoice.fromJson('{"variant":"int8","k":10,"predicted_ms":1269.0}')?.model, FocusModel.ezra);
     expect(FocusMode.parse(null), FocusMode.automatic);
     expect(FocusMode.parse('off'), FocusMode.off);
+  });
+
+  test('a pre-existing persisted choice (saved before Priscilla existed) still decodes correctly', () {
+    final old = '{"model":"ezra","variant":"int8","k":10,"predicted_ms":1200.0}';
+    final c = FocusChoice.fromJson(old);
+    expect(c!.model, FocusModel.ezra);
   });
 }
