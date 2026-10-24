@@ -1,11 +1,20 @@
 // Pref round-trip for the model-generic override-accepted flag, plus the fresh-install default-setup notice
 // (offerPriscillaDefaultSetup, which needs a real root directory to check installed-pack state): no engine.
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scriptures_reader_mobile/app_controller.dart';
 import 'package:scriptures_reader_mobile/data/user/user_store.dart';
 import 'package:scriptures_reader_mobile/services/engine/answer_focus.dart';
+import 'package:scriptures_reader_mobile/services/engine/engine_pack.dart';
+
+/// Writes a minimal (zero-file) install marker so [PackStore.active] reports this pack kind installed, without
+/// any native engine or real pack content (same helper test/answer_focus_trial_test.dart defines).
+void _markInstalled(Directory root, PackKind kind) {
+  final dir = Directory('${root.path}/scriptura/${kind.dirName}')..createSync(recursive: true);
+  File('${dir.path}/install.json').writeAsStringSync(jsonEncode({'format': kind.format, 'files': <String, dynamic>{}}));
+}
 
 void main() {
   test('accepting the Apollos override is persisted', () {
@@ -137,6 +146,13 @@ void main() {
   test('offerPriscillaDefaultSetup is false after the reader dismisses it, even though the pref is still unset', () {
     final controller = AppController.fixed(root: Directory.systemTemp.createTempSync(), user: UserStore.memory());
     controller.declineAnswerFocus(); // existing one-shot dismiss, reused rather than a new pref
+    expect(controller.offerPriscillaDefaultSetup, isFalse);
+  });
+
+  test('offerPriscillaDefaultSetup is false once Priscilla is actually installed, even with the pref still unset', () {
+    final root = Directory.systemTemp.createTempSync();
+    _markInstalled(root, PackKind.priscillaInt8);
+    final controller = AppController.fixed(root: root, user: UserStore.memory());
     expect(controller.offerPriscillaDefaultSetup, isFalse);
   });
 }
