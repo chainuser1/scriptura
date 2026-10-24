@@ -1,11 +1,13 @@
 """Paste into a new Kaggle notebook cell and run once, after gte/ettin150/ettin400 have all finished in
-/kaggle/working/quant-smoke/ (per the quantization smoke-check script). Zips the three *.json reports plus
-the onnx-export/ ONNX model files into one archive and prints a clickable download link right in the cell's
-own output -- the Output pane can be unreliable for a fresh file in the same session, so this does not
-depend on it. Leaves the original files untouched so you can keep re-running models afterward if needed.
+/kaggle/working/quant-smoke/ (per the quantization smoke-check script). Zips each model's report + exported
+ONNX files into its OWN zip (gte.zip, ettin150.zip, ettin400.zip), then wraps all three individual zips into
+one outer zip -- so you can grab a single model's results without unpacking everything else. Prints a
+clickable download link for the outer zip right in the cell's own output -- the Output pane can be
+unreliable for a fresh file in the same session, so this does not depend on it. Leaves the original files
+untouched so you can keep re-running models afterward if needed.
 
 Set INCLUDE_ONNX_MODELS = False below to skip the (potentially large) exported .onnx model files and zip
-only the JSON reports -- usually all you actually need to see the pass/fail numbers.
+only each model's JSON report -- usually all you actually need to see the pass/fail numbers.
 """
 import shutil
 from pathlib import Path
@@ -18,22 +20,27 @@ SRC = OUT / 'quant-smoke'
 STAGE = OUT / 'quant-smoke-results'
 STAGE.mkdir(exist_ok=True)
 
+individual_zips = []
 for name in ('gte', 'ettin150', 'ettin400'):
     report = SRC / f'{name}.json'
-    if report.exists():
-        shutil.copy2(report, STAGE / f'{name}.json')
-        print(f'staged {name}.json')
-    else:
-        print(f'skipped {name}.json (not found -- did it finish running?)')
+    if not report.exists():
+        print(f'skipped {name} (not found -- did it finish running?)')
+        continue
+    model_stage = STAGE / name
+    model_stage.mkdir(exist_ok=True)
+    shutil.copy2(report, model_stage / f'{name}.json')
+    if INCLUDE_ONNX_MODELS:
+        onnx_src = SRC / 'onnx-export' / name
+        if onnx_src.exists():
+            shutil.copytree(onnx_src, model_stage / 'onnx-export', dirs_exist_ok=True)
+    model_zip = Path(shutil.make_archive(str(STAGE / name), 'zip', root_dir=model_stage))
+    individual_zips.append(model_zip)
+    print(f'wrote {model_zip} ({model_zip.stat().st_size / 1e6:.1f} MB)')
 
-if INCLUDE_ONNX_MODELS:
-    onnx_src = SRC / 'onnx-export'
-    if onnx_src.exists():
-        shutil.copytree(onnx_src, STAGE / 'onnx-export', dirs_exist_ok=True)
-        print('staged onnx-export/')
-    else:
-        print('skipped onnx-export/ (not found)')
-
-zip_path = Path(shutil.make_archive(str(OUT / 'quant-smoke-results'), 'zip', root_dir=STAGE))
-print(f'wrote {zip_path} ({zip_path.stat().st_size / 1e6:.1f} MB)')
-display(FileLink(str(zip_path.relative_to(OUT))))  # clickable link in the cell output, below this print
+outer_stage = STAGE / '_outer'
+outer_stage.mkdir(exist_ok=True)
+for z in individual_zips:
+    shutil.copy2(z, outer_stage / z.name)
+outer_zip = Path(shutil.make_archive(str(OUT / 'quant-smoke-results'), 'zip', root_dir=outer_stage))
+print(f'wrote {outer_zip} ({outer_zip.stat().st_size / 1e6:.1f} MB) containing {len(individual_zips)} model zip(s)')
+display(FileLink(str(outer_zip.relative_to(OUT))))  # clickable link in the cell output, below this print
