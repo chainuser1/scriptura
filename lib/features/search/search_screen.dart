@@ -140,7 +140,7 @@ class _SearchScreenState extends State<SearchScreen> {
     final choice = app.focusChoice;
     if (!_service.hasFocus || choice == null || choice.k == 0 || passages.length < 2) return passages;
     final top = passages.take(choice.k).toList();
-    final budget = choice.model == FocusModel.apollos ? kApollosBudgetMs : kFocusBudgetMs;
+    final budget = focusBudgetMs(choice.model);
     try {
       final r = await _service
           .search(SearchRequest.raw('focus', {'query': query, 'texts': [for (final p in top) p.text]}), requestId: id)

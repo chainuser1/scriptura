@@ -96,4 +96,14 @@ void main() {
     controller.setFocusModelPreference(FocusModel.aquila);
     expect(controller.overrideAccepted(FocusModel.priscilla), isFalse);
   });
+
+  test('a detour through Aquila clears an Apollos override accepted under the legacy, pre-generalization key too '
+      '(a real shipped reader may only have that key set, never the per-model one)', () {
+    final controller = AppController.fixed();
+    controller.user.setPref('apollos_override_accepted', '1');
+    expect(controller.overrideAccepted(FocusModel.apollos), isTrue);
+    controller.setFocusModelPreference(FocusModel.aquila);
+    expect(controller.overrideAccepted(FocusModel.apollos), isFalse,
+        reason: 'a fresh Apollos pick after this detour must re-warn, even for a legacy-key reader');
+  });
 }
