@@ -344,6 +344,39 @@ void main() {
           });
       expect(r.model, FocusModel.ezra);
     });
+
+    test('a previous Aquila choice is kept against a noisy Ezra trial even when Apollos and Priscilla are also '
+        'installed (proves the three-model others map does not let a sibling model\'s installed state leak in)', () {
+      const aquilaChoice = FocusChoice(FocusModel.aquila, FocusVariant.int8, 10, 600);
+      final r = resolveFallback(preference: FocusModel.aquila, fresh: ezraChoice, before: aquilaChoice,
+          others: {
+            FocusModel.apollos: (installable: false, installed: true),
+            FocusModel.priscilla: (installable: false, installed: true),
+            FocusModel.aquila: (installable: false, installed: true),
+          });
+      expect(r.model, FocusModel.aquila);
+    });
+
+    test('preferring Aquila does not let Apollos\'s or Priscilla\'s installed state protect a stale Aquila `before` '
+        'when Aquila itself is not installed (the three models\' installed state must not cross-contaminate)', () {
+      const aquilaChoice = FocusChoice(FocusModel.aquila, FocusVariant.int8, 10, 600);
+      final r = resolveFallback(preference: FocusModel.aquila, fresh: ezraChoice, before: aquilaChoice,
+          others: {
+            FocusModel.apollos: (installable: false, installed: true),
+            FocusModel.priscilla: (installable: false, installed: true),
+            FocusModel.aquila: (installable: false, installed: false),
+          });
+      expect(r.model, FocusModel.ezra);
+    });
+  });
+
+  group('focusBudgetMs', () {
+    test('Apollos, Priscilla, and Aquila all share the long Apollos budget, not Ezra\'s short one', () {
+      expect(focusBudgetMs(FocusModel.apollos), kApollosBudgetMs);
+      expect(focusBudgetMs(FocusModel.priscilla), kApollosBudgetMs);
+      expect(focusBudgetMs(FocusModel.aquila), kApollosBudgetMs);
+      expect(focusBudgetMs(FocusModel.ezra), kFocusBudgetMs);
+    });
   });
 
   test('choices survive being saved', () {

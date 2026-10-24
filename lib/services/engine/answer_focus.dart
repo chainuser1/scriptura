@@ -165,16 +165,21 @@ FocusChoice choose({
 
 /// Models that share Apollos's own longer budget and candidate ladder (see kApollosBudgetMs) rather than
 /// Ezra's -- a named, reusable set rather than an inline boolean, so a future model joining this tier does
-/// not require touching every place that already checks it.
-const _apollosSizedModels = {FocusModel.apollos, FocusModel.priscilla, FocusModel.aquila};
+/// not require touching every place that already checks it. Public: search_screen.dart's own timeout check
+/// must use this too, not a second, easy-to-forget copy of "is this model Apollos-sized".
+const apollosSizedModels = {FocusModel.apollos, FocusModel.priscilla, FocusModel.aquila};
+
+/// The search-timeout/adapt budget for [model]: Apollos's own longer budget for Apollos-sized models
+/// (see apollosSizedModels), Ezra's shorter one otherwise.
+double focusBudgetMs(FocusModel model) => apollosSizedModels.contains(model) ? kApollosBudgetMs : kFocusBudgetMs;
 
 /// After install: with at least three measured searches, fewer candidates when the median is over budget; at 10 and
 /// still over twice the budget, Automatic turns Answer focus off (On keeps it). Apollos, Priscilla, and Aquila all
-/// use the longer budget and ladder (see _apollosSizedModels) -- Ezra's own are not big enough for their real size.
+/// use the longer budget and ladder (see apollosSizedModels) -- Ezra's own are not big enough for their real size.
 FocusChoice adapt(FocusChoice c, List<double> recentMs, FocusMode mode) {
   if (c.variant == FocusVariant.none || recentMs.length < 3) return c;
-  final apollosSized = _apollosSizedModels.contains(c.model);
-  final budget = apollosSized ? kApollosBudgetMs : kFocusBudgetMs;
+  final apollosSized = apollosSizedModels.contains(c.model);
+  final budget = focusBudgetMs(c.model);
   final ks = apollosSized ? _apollosKs : _ks;
   final sorted = [...recentMs]..sort();
   final median = sorted[sorted.length ~/ 2];

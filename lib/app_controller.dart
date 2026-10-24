@@ -147,7 +147,12 @@ class AppController extends ChangeNotifier {
     user.setPref('focus_model_preference', m.name);
     // A fresh pick of m (even via a detour through a third model) re-warns every OTHER non-Ezra model.
     for (final other in FocusModel.values) {
-      if (other != m && other != FocusModel.ezra) user.setPref('override_accepted_${other.name}', '0');
+      if (other != m && other != FocusModel.ezra) {
+        user.setPref('override_accepted_${other.name}', '0');
+        // Apollos's own pre-generalization key (see overrideAccepted) would otherwise keep protecting a stale
+        // Apollos override forever, since it is never written to '0' by the per-model key above.
+        if (other == FocusModel.apollos) user.setPref('apollos_override_accepted', '0');
+      }
     }
     notifyListeners();
   }

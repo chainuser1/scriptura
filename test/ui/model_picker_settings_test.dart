@@ -274,12 +274,37 @@ void main() {
     expect(find.byType(AlertDialog), findsNothing);
   });
 
+  testWidgets('switching directly from Apollos to Aquila works without going through Ezra first', (tester) async {
+    final (app, _) = await settings(tester, cpuMs: 200.0);
+    await tester.ensureVisible(find.text('Apollos'));
+    await tester.tap(find.text('Apollos'));
+    await tester.pumpAndSettle();
+    expect(app.focusModelPreference, FocusModel.apollos);
+    await tester.ensureVisible(find.text('Aquila'));
+    await tester.tap(find.text('Aquila'));
+    await tester.pumpAndSettle();
+    expect(app.focusModelPreference, FocusModel.aquila);
+    expect(find.byType(AlertDialog), findsNothing);
+  });
+
+  testWidgets('switching directly from Aquila to Priscilla works without going through Ezra first', (tester) async {
+    final (app, _) = await settings(tester, cpuMs: 200.0);
+    await tester.ensureVisible(find.text('Aquila'));
+    await tester.tap(find.text('Aquila'));
+    await tester.pumpAndSettle();
+    expect(app.focusModelPreference, FocusModel.aquila);
+    await tester.ensureVisible(find.text('Priscilla'));
+    await tester.tap(find.text('Priscilla'));
+    await tester.pumpAndSettle();
+    expect(app.focusModelPreference, FocusModel.priscilla);
+  });
+
   testWidgets('Aquila has its own description text', (tester) async {
     final (app, _) = await settings(tester, cpuMs: 200.0);
     await tester.ensureVisible(find.text('Aquila'));
     await tester.tap(find.text('Aquila'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Aquila'), findsWidgets);
+    expect(find.textContaining('Aquila: looks harder for the exact answer than Ezra'), findsOneWidget);
   });
 
   testWidgets('the whole model picker is disabled while the engine is not ready', (tester) async {
