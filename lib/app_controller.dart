@@ -681,7 +681,7 @@ class AppController extends ChangeNotifier {
             'entities' => 'names of people and places',
             'answers' => 'study questions',
             'topics' => 'topic index',
-            'answer-focus-int8' || 'answer-focus-fp16' || 'apollos-fp16' || 'apollos-int8' => 'Answer focus',
+            'answer-focus-int8' || 'answer-focus-fp16' || 'apollos-fp16' || 'apollos-int8' || 'priscilla-int8' => 'Answer focus',
             _ => 'word-level index',
           };
       var current = wanted.first;
