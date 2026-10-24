@@ -111,35 +111,45 @@ void main() {
   });
 
   group('choose (Priscilla)', () {
-    test('Priscilla preferred and fitting returns the Priscilla int8 choice', () {
-      final c = choose(cpuMs: 50.0, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.priscilla);
+    test('Priscilla preferred and fitting returns the Priscilla int8 choice, using Apollos-sized headroom', () {
+      final c = choose(cpuMs: 600.0, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.priscilla);
       expect(c.model, FocusModel.priscilla);
       expect(c.variant, FocusVariant.int8);
     });
 
-    test('Priscilla preferred but not fitting at any k falls back the same way Ezra itself would under Automatic', () {
-      final c = choose(cpuMs: 100000.0, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.priscilla);
-      expect(c, FocusChoice.none);
+    test('Priscilla preferred but not fitting at any k under its own (Apollos-sized) budget falls back to Ezra', () {
+      // _priscillaCpuFactor (0.069, Ezra's unmeasured placeholder) is far smaller than _apollosCpuFactor (0.994,
+      // measured) -- the same 4200ms device speed that defeats Apollos's own ladder does NOT defeat Priscilla's
+      // (4200*0.069*10 ~= 2898ms, well under kApollosBudgetMs). This needs a genuinely much slower device to
+      // actually exceed kApollosBudgetMs even at Priscilla's own, much smaller, per-candidate cost.
+      const extremelySlow = 100000.0; // 100000*0.069*10 ~= 69000ms > kApollosBudgetMs (40000ms) at every _apollosKs tier
+      final c = choose(cpuMs: extremelySlow, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.priscilla);
+      expect(c.model, FocusModel.ezra);
     });
 
     test('Priscilla preferred but not fitting falls back to the smallest Ezra k under On, not none', () {
-      final c = choose(cpuMs: 100000.0, gpu: false, mode: FocusMode.on, preferred: FocusModel.priscilla);
+      const extremelySlow = 100000.0;
+      final c = choose(cpuMs: extremelySlow, gpu: false, mode: FocusMode.on, preferred: FocusModel.priscilla);
       expect(c.model, FocusModel.ezra);
       expect(c.k, 10);
     });
 
-    test('Priscilla preferred and fitting wins even on a device with a working graphics chip (Priscilla has no '
-        'GPU tier of its own, but mirrors Apollos: an explicit non-Ezra preference beats the generic Ezra fp16/GPU '
-        'default, the same way Apollos\'s own branch already does)', () {
-      final c = choose(cpuMs: 50.0, gpu: true, mode: FocusMode.automatic, preferred: FocusModel.priscilla);
+    test('Priscilla preferred and fitting wins even on a device with a working graphics chip, mirroring Apollos', () {
+      final c = choose(cpuMs: 600.0, gpu: true, mode: FocusMode.automatic, preferred: FocusModel.priscilla);
       expect(c.model, FocusModel.priscilla);
       expect(c.variant, FocusVariant.int8);
     });
 
-    test('Priscilla preferred but not fitting falls back to Ezra fp16 when a graphics chip is available', () {
-      final c = choose(cpuMs: 100000.0, gpu: true, mode: FocusMode.automatic, preferred: FocusModel.priscilla);
-      expect(c.model, FocusModel.ezra);
-      expect(c.variant, FocusVariant.fp16);
+    test('Priscilla and Apollos can diverge: a device that fits one may not fit the other, since each has its own '
+        'cost factor against the shared Apollos-sized budget/ladder', () {
+      // _priscillaCpuFactor (0.069, Ezra's unmeasured value) is far smaller than _apollosCpuFactor (0.994, measured),
+      // so at a speed where Apollos's own ladder is already exceeded, Priscilla (reusing the same ceiling with a much
+      // smaller placeholder factor) still fits -- proving the two are independently evaluated, not coupled.
+      const apollosDoesNotFitHere = 4200.0;
+      final apollos = choose(cpuMs: apollosDoesNotFitHere, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.apollos);
+      final priscilla = choose(cpuMs: apollosDoesNotFitHere, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.priscilla);
+      expect(apollos.model, FocusModel.ezra, reason: 'Apollos genuinely does not fit at this speed');
+      expect(priscilla.model, FocusModel.priscilla, reason: 'Priscilla, with its own (much smaller placeholder) cost factor, still fits the same budget ceiling');
     });
   });
 
@@ -167,16 +177,22 @@ void main() {
   });
 
   group('adapt (Priscilla)', () {
-    test('Priscilla at k=10 (the floor) with a very slow median turns off under Automatic, same as Ezra would', () {
-      const start = FocusChoice(FocusModel.priscilla, FocusVariant.int8, 10, 1000);
-      final r = adapt(start, [4000.0, 4100.0, 3900.0], FocusMode.automatic);
+    test('Priscilla at k=10 (the floor) with a very slow median turns off under Automatic, same as Apollos would', () {
+      const start = FocusChoice(FocusModel.priscilla, FocusVariant.int8, 10, 30000);
+      final r = adapt(start, [85000.0, 86000.0, 84000.0], FocusMode.automatic); // >= 2x kApollosBudgetMs
       expect(r, FocusChoice.none);
     });
 
-    test('Priscilla at k=10 under On mode never turns off, same as Ezra', () {
-      const start = FocusChoice(FocusModel.priscilla, FocusVariant.int8, 10, 1000);
-      final r = adapt(start, [4000.0, 4100.0, 3900.0], FocusMode.on);
+    test('Priscilla at k=10 under On mode never turns off, same as Apollos', () {
+      const start = FocusChoice(FocusModel.priscilla, FocusVariant.int8, 10, 30000);
+      final r = adapt(start, [85000.0, 86000.0, 84000.0], FocusMode.on);
       expect(r, start);
+    });
+
+    test('Priscilla steps down its own ladder the same shape as Apollos, not Ezra\'s', () {
+      const start = FocusChoice(FocusModel.priscilla, FocusVariant.int8, 30, 2000);
+      final r = adapt(start, [45000.0, 46000.0, 44000.0], FocusMode.automatic); // over kApollosBudgetMs, under 2x
+      expect(r.k, 15); // _apollosKs[1], matching the same step-down shape Apollos's own ladder test uses
     });
   });
 
@@ -240,6 +256,17 @@ void main() {
             FocusModel.priscilla: (installable: true, installed: true),
           });
       expect(r, apollosChoice, reason: "Apollos's own installed state protects it; Priscilla's state must not interfere");
+    });
+
+    test('preferring Priscilla does not let Apollos\'s installed state protect a stale Apollos `before` '
+        'when Priscilla itself is not installed (the two models\' installed state must not cross-contaminate)', () {
+      const priscillaChoice = FocusChoice(FocusModel.priscilla, FocusVariant.int8, 10, 600);
+      final r = resolveFallback(preference: FocusModel.priscilla, fresh: priscillaChoice, before: apollosChoice,
+          others: {
+            FocusModel.apollos: (installable: false, installed: true),
+            FocusModel.priscilla: (installable: true, installed: false),
+          });
+      expect(r, priscillaChoice, reason: 'Apollos being installed must not protect it when the preference and fresh result are both Priscilla');
     });
   });
 

@@ -117,10 +117,13 @@ FocusChoice choose({
     // Priscilla has no GPU/fp16 tier of its own (not a temporary pack defect like Apollos's -- see Global
     // Constraints), but mirrors Apollos's own branch above: an explicit non-Ezra preference beats the generic
     // Ezra fp16/GPU default below when it fits, rather than a GPU device silently ignoring the reader's pick.
-    // Priscilla reuses Ezra's own budget and candidate ladder (kFocusBudgetMs, _ks), just its own cost factor.
-    for (final k in _ks) {
+    // Priscilla reuses Apollos's own budget and candidate ladder (kApollosBudgetMs, _apollosKs), not Ezra's: a
+    // tight Ezra-shaped budget was rationing Priscilla to too few candidates for its real size, hurting search
+    // quality -- Apollos's generous headroom is the better (if still unmeasured) guess for a model Priscilla's
+    // weight class, same reasoning kApollosBudgetMs's own comment already gives for Apollos itself.
+    for (final k in _apollosKs) {
       final ms = cpuMs * _priscillaCpuFactor * k;
-      if (ms <= kFocusBudgetMs) return FocusChoice(FocusModel.priscilla, FocusVariant.int8, k, ms);
+      if (ms <= kApollosBudgetMs) return FocusChoice(FocusModel.priscilla, FocusVariant.int8, k, ms);
     }
   }
   if (gpu) return FocusChoice(FocusModel.ezra, FocusVariant.fp16, 10, cpu10); // first searches measure the real graphics time
@@ -132,12 +135,13 @@ FocusChoice choose({
 }
 
 /// After install: with at least three measured searches, fewer candidates when the median is over budget; at 10 and
-/// still over twice the budget, Automatic turns Answer focus off (On keeps it). Apollos uses its own, much longer
-/// budget and ladder (see kApollosBudgetMs) -- Ezra's are not big enough for Apollos's real per-candidate cost.
+/// still over twice the budget, Automatic turns Answer focus off (On keeps it). Apollos and Priscilla both use the
+/// longer budget and ladder (see kApollosBudgetMs) -- Ezra's own are not big enough for either model's real size.
 FocusChoice adapt(FocusChoice c, List<double> recentMs, FocusMode mode) {
   if (c.variant == FocusVariant.none || recentMs.length < 3) return c;
-  final budget = c.model == FocusModel.apollos ? kApollosBudgetMs : kFocusBudgetMs;
-  final ks = c.model == FocusModel.apollos ? _apollosKs : _ks;
+  final apollosSized = c.model == FocusModel.apollos || c.model == FocusModel.priscilla;
+  final budget = apollosSized ? kApollosBudgetMs : kFocusBudgetMs;
+  final ks = apollosSized ? _apollosKs : _ks;
   final sorted = [...recentMs]..sort();
   final median = sorted[sorted.length ~/ 2];
   if (median <= budget) return c;
