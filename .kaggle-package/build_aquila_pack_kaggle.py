@@ -204,11 +204,14 @@ def quantize_dynamic_int8(fp32):
 
 
 def quantize_weight_only(fp32):
-    """Per-column weight-only INT8 (DequantizeLinear) for the largest eligible 2D MatMul weights,
-    mirroring the real, already-shipped approach used for Apollos's and Priscilla's own packs when
-    dynamic quantization did not clear real verification. Converts the largest tensors first so
-    fewer conversions still yield meaningful savings; stops increasing coverage once verification
-    (called by main()) passes, same search-by-fraction shape those packs' own scripts used."""
+    """Per-column weight-only INT8 (DequantizeLinear) for every eligible 2D MatMul weight (>= 8192
+    elements, traced back through Transpose/Identity/Reshape/Cast), mirroring the real, already-shipped
+    approach used for Apollos's and Priscilla's own packs when dynamic quantization did not clear real
+    verification. Unlike those packs' own scripts (which searched a shrinking fraction of candidates
+    until verification passed), this converts all eligible tensors in a single pass -- simpler, and this
+    plan's own main() only calls this once, after dynamic quantization has already failed, rather than
+    search a range itself. If a future real run needs a smaller fraction to pass tolerance, add that
+    search back in rather than assume this single-pass version already does it."""
     import numpy as np
     import onnx
     from onnx import helper, numpy_helper
@@ -313,7 +316,13 @@ def build(pid, source, kind, changes, verification):
     import transformers
     from huggingface_hub import hf_hub_download
 
-    license_path = hf_hub_download(MODEL, "LICENSE", revision=REVISION)
+    # The upstream repo (confirmed at this pinned revision) ships no standalone LICENSE file -- only a
+    # "license: apache-2.0" model-card metadata field. Fetch the real, canonical Apache 2.0 text directly
+    # rather than substituting a notice, same policy already used for Priscilla's own upstream (gte), whose
+    # repo also had no standalone LICENSE file at its pinned revision.
+    import urllib.request
+    with urllib.request.urlopen("https://www.apache.org/licenses/LICENSE-2.0.txt") as response:
+        license_text = response.read().decode("utf-8")
     readme_path = hf_hub_download(MODEL, "README.md", revision=REVISION)
     dst = ROOT / pid
     archive = ROOT / f"{pid}.zip"
@@ -324,7 +333,7 @@ def build(pid, source, kind, changes, verification):
     for asset in (OUT / "tokenizer").iterdir():
         if asset.is_file():
             shutil.copy2(asset, dst / asset.name)
-    shutil.copy2(license_path, dst / "LICENSE")
+    (dst / "LICENSE").write_text(license_text, encoding="utf-8")
     shutil.copy2(readme_path, dst / "UPSTREAM_README.md")
     (dst / "CONVERSION_NOTICE.txt").write_text(
         f"Aquila uses {MODEL} by cross-encoder (The Lighton AI / Answer.AI Ettin team).\nRevision: {REVISION}\n"
@@ -354,23 +363,35 @@ def build(pid, source, kind, changes, verification):
 
 
 def main():
+    # transformers>=5.0 is required: Ettin's tokenizer needs TokenizersBackend, which did not exist before
+    # v5, and sentence-transformers' own dependency range (>=4.41,<6) alone would NOT force an upgrade --
+    # confirmed this session: an environment pinned at transformers<5 hits a real AutoProcessor resolution
+    # error loading this exact model.
     subprocess.check_call([
         sys.executable, "-m", "pip", "install", "--quiet",
-        "onnx", "onnxscript", "onnxruntime", "sentence-transformers",
+        "onnx", "onnxscript", "onnxruntime", "sentence-transformers", "transformers>=5.0",
     ])
     import torch
 
     torch.set_num_threads(THREADS)
     OUT.mkdir(parents=True, exist_ok=True)
     fp32, references = export_fp32()
-    verify(fp32, references, "fp32")
+    fp32_report = verify(fp32, references, "fp32")
+    if fp32_report["status"] != "passed":
+        raise RuntimeError(
+            f"FP32 ONNX export failed real verification against PyTorch references "
+            f"(max_absolute_difference={fp32_report['max_absolute_difference']:.4f} > "
+            f"tolerance {TOLERANCES['fp32']}). The export itself is wrong -- do not proceed to "
+            "quantization, which would misleadingly blame a passing int8 check or a failing one "
+            "on the wrong stage."
+        )
 
     dynamic_changes = ("Dynamic INT8 quantization of constant MatMul weights; "
                         "other tensors may remain floating point.")
     int8 = quantize_dynamic_int8(fp32)
     report = verify(int8, references, "int8")
     if report["status"] == "passed":
-        build("aquila-int8-v1", int8, "int8", dynamic_changes, report)
+        build("aquila-int8-v1", int8, "int8-dynamic", dynamic_changes, report)
         print("DONE (dynamic INT8 passed real verification). Download aquila-int8-v1.zip from the output panel.", flush=True)
         return
 
@@ -386,8 +407,11 @@ def main():
             f"(weight-only max_absolute_difference={report['max_absolute_difference']:.4f} "
             f"> tolerance {TOLERANCES['int8']}). Do not ship an unverified pack."
         )
-    build("aquila-int8-weight-only-v1", weight_only, "int8", weight_only_changes, report)
-    print("DONE (weight-only INT8 passed real verification). Download aquila-int8-weight-only-v1.zip from the output panel.", flush=True)
+    # Same pack id as the dynamic-int8 branch (matching Priscilla's own real precedent: the pack id never
+    # changes between quantization approaches, only the manifest's "weights" label does) -- PackKind.aquilaInt8
+    # and generated-artifacts/aquila-int8-v1/ expect exactly this id regardless of which branch actually ran.
+    build("aquila-int8-v1", weight_only, "int8-weight-only", weight_only_changes, report)
+    print("DONE (weight-only INT8 passed real verification). Download aquila-int8-v1.zip from the output panel.", flush=True)
 
 
 if __name__ == "__main__":
