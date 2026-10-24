@@ -1,3 +1,5 @@
+ACTION = 'gte'  # <-- SET THIS FIRST: 'gte', 'ettin150', or 'ettin400' -- then run the whole cell
+
 """Self-contained Kaggle/GPU version of tool/answer_focus_challengers.py's round-2 models. Scores the same 10
 test questions x 200 candidates with gte-reranker-modernbert-base and two Ettin reranker sizes, on GPU, with no
 dependency on the main repo. Mirrors answer_focus_challengers_kaggle.py's structure exactly.
@@ -32,8 +34,6 @@ In a Kaggle notebook cell: paste this whole file, set ACTION = 'gte' near the bo
 ACTION to 'ettin150' then 'ettin400' and re-run for each (output from earlier passes is kept -- /kaggle/working
 persists across cell runs in the same session).
 """
-ACTION = 'gte'  # <-- SET THIS FIRST: 'gte', 'ettin150', or 'ettin400' -- then run the whole cell
-
 import bisect
 import hashlib
 import json

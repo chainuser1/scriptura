@@ -1,3 +1,5 @@
+ACTION = 'gte'  # <-- SET THIS FIRST: 'gte', 'ettin150', or 'ettin400' -- then run the whole cell
+
 """Self-contained Kaggle/GPU quantization smoke check for gte-reranker-modernbert-base and the two Ettin
 reranker sizes (round 2 of docs/ANSWER_FOCUS_CHALLENGERS_PROTOCOL.md's successors). Scores a small fixed set
 of smoke pairs in fp32, dynamically quantizes each model to int8, re-scores the same pairs, and reports
@@ -33,8 +35,6 @@ No optimum install needed at all for this script.
 Download /kaggle/working/quant-smoke/<model>.json for each model afterward (the project's existing
 zip_working_output.py pattern works here too -- point it at the quant-smoke folder instead).
 """
-ACTION = 'gte'  # <-- SET THIS FIRST: 'gte', 'ettin150', or 'ettin400' -- then run the whole cell
-
 import bisect
 import json
 import sqlite3
