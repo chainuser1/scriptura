@@ -475,16 +475,18 @@ class _ModelPickerState extends State<_ModelPicker> {
           segments: const [
             ButtonSegment(value: FocusModel.ezra, label: Text('Ezra')),
             ButtonSegment(value: FocusModel.apollos, label: Text('Apollos')),
+            ButtonSegment(value: FocusModel.priscilla, label: Text('Priscilla')),
           ],
           selected: {app.focusModelPreference},
           // Same gate as Measure again: a pick the engine cannot trial would leave the old model running.
           onSelectionChanged: app.engineState == EngineState.ready && !_checking
               ? (s) {
-                  if (s.first == FocusModel.ezra) {
-                    app.setFocusModelPreference(FocusModel.ezra);
-                    app.remeasure();
-                  } else {
+                  if (s.first == FocusModel.apollos) {
                     _selectApollos();
+                  } else {
+                    // Ezra and Priscilla both just switch and remeasure -- neither has a warning dialog.
+                    app.setFocusModelPreference(s.first);
+                    app.remeasure();
                   }
                 }
               : null,
@@ -492,10 +494,13 @@ class _ModelPickerState extends State<_ModelPicker> {
       ),
       const SizedBox(height: 4),
       Text(
-        app.focusModelPreference == FocusModel.ezra
-            ? 'Ezra: a steady, well-tested choice that works on every device.'
-            : 'Apollos: looks harder for the exact answer, but is slower and experimental -- a good fit if you '
-                'don\'t mind waiting a bit longer for more refined results.',
+        switch (app.focusModelPreference) {
+          FocusModel.ezra => 'Ezra: a steady, well-tested choice that works on every device.',
+          FocusModel.apollos => 'Apollos: looks harder for the exact answer, but is slower and experimental -- a good fit if you '
+              'don\'t mind waiting a bit longer for more refined results.',
+          FocusModel.priscilla => 'Priscilla: a lighter model that\'s quick on most devices -- a good middle ground between '
+              'Ezra\'s speed and Apollos\'s deeper search.',
+        },
         style: t.bodySmall,
       ),
     ]);

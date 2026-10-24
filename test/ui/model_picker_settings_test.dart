@@ -108,6 +108,59 @@ void main() {
     expect(app.focusChoice!.model, FocusModel.apollos);
   });
 
+  testWidgets('Ezra, Apollos, and Priscilla are all visible and enabled', (tester) async {
+    await settings(tester);
+    expect(find.text('Ezra'), findsOneWidget);
+    expect(find.text('Apollos'), findsOneWidget);
+    expect(find.text('Priscilla'), findsOneWidget);
+    final picker = tester.widget<SegmentedButton<FocusModel>>(find.byType(SegmentedButton<FocusModel>).last);
+    expect(picker.segments.firstWhere((s) => s.value == FocusModel.priscilla).enabled, isTrue);
+  });
+
+  testWidgets('choosing Priscilla just switches, no dialog, even on a slow device', (tester) async {
+    // Unlike Apollos, Priscilla never warns -- use the same very slow cpuMs the Apollos warning test uses, to
+    // prove the absence of a dialog is not an artifact of an easy device.
+    final (app, _) = await settings(tester, cpuMs: 4200.0);
+    await tester.ensureVisible(find.text('Priscilla'));
+    await tester.tap(find.text('Priscilla'));
+    await tester.pumpAndSettle();
+    expect(app.focusModelPreference, FocusModel.priscilla);
+    expect(find.byType(AlertDialog), findsNothing);
+  });
+
+  testWidgets('switching directly from Priscilla to Apollos works without going through Ezra first', (tester) async {
+    final (app, _) = await settings(tester, cpuMs: 200.0);
+    await tester.ensureVisible(find.text('Priscilla'));
+    await tester.tap(find.text('Priscilla'));
+    await tester.pumpAndSettle();
+    expect(app.focusModelPreference, FocusModel.priscilla);
+    await tester.ensureVisible(find.text('Apollos'));
+    await tester.tap(find.text('Apollos'));
+    await tester.pumpAndSettle();
+    expect(app.focusModelPreference, FocusModel.apollos);
+  });
+
+  testWidgets('switching directly from Apollos to Priscilla works without going through Ezra first', (tester) async {
+    final (app, _) = await settings(tester, cpuMs: 200.0);
+    await tester.ensureVisible(find.text('Apollos'));
+    await tester.tap(find.text('Apollos'));
+    await tester.pumpAndSettle();
+    expect(app.focusModelPreference, FocusModel.apollos);
+    await tester.ensureVisible(find.text('Priscilla'));
+    await tester.tap(find.text('Priscilla'));
+    await tester.pumpAndSettle();
+    expect(app.focusModelPreference, FocusModel.priscilla);
+    expect(find.byType(AlertDialog), findsNothing);
+  });
+
+  testWidgets('Priscilla has its own description text', (tester) async {
+    final (app, _) = await settings(tester, cpuMs: 200.0);
+    await tester.ensureVisible(find.text('Priscilla'));
+    await tester.tap(find.text('Priscilla'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining("a good middle ground between Ezra's speed and Apollos's deeper search"), findsOneWidget);
+  });
+
   testWidgets('the whole model picker is disabled while the engine is not ready', (tester) async {
     final app = await boot(tester); // no search service: the engine is unavailable
     expect(app.engineState, isNot(EngineState.ready));
