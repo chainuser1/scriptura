@@ -15,8 +15,8 @@ enum FocusMode {
 /// Which pack: `answer-focus-int8-v1` (CPU) or `answer-focus-fp16-v1` (graphics chip).
 enum FocusVariant { none, int8, fp16 }
 
-/// Which model: Ezra (always available) or Apollos. Ezra is also the "nothing chosen yet" placeholder.
-enum FocusModel { ezra, apollos }
+/// Which model: Ezra (always available), Apollos, or Priscilla. Ezra is also the "nothing chosen yet" placeholder.
+enum FocusModel { ezra, apollos, priscilla }
 
 /// A search should not wait longer than this for Answer focus (Ezra).
 const kFocusBudgetMs = 1500.0;
@@ -46,6 +46,12 @@ const _apollosKs = [30, 15, 10];
 /// candidate as Ezra's much smaller model -- it does not: this is ~14x Ezra's `_cpuFactor`.
 /// `adapt()`'s step-down logic still corrects this further from real search times, same as for Ezra.
 const _apollosCpuFactor = 0.994;
+
+/// UNMEASURED placeholder: reuses Ezra's `_cpuFactor` (0.069), calibrated for Ezra's model size, not
+/// Priscilla's. Real per-candidate cost for Priscilla has not been measured against a phone-class device
+/// trial yet -- only a desktop's raw ms/candidate (see docs/superpowers/specs/2026-10-24-priscilla-app-wiring-design.md).
+/// Replace once real device data comes in, same as `_apollosCpuFactor` itself once was.
+const _priscillaCpuFactor = _cpuFactor;
 
 class FocusChoice {
   const FocusChoice(this.model, this.variant, this.k, this.predictedMs);
@@ -108,6 +114,15 @@ FocusChoice choose({
     if (forceApollos) return FocusChoice(FocusModel.apollos, FocusVariant.int8, 10, cpuMs * _apollosCpuFactor * 10);
   }
   if (gpu) return FocusChoice(FocusModel.ezra, FocusVariant.fp16, 10, cpu10); // first searches measure the real graphics time
+  if (preferred == FocusModel.priscilla) {
+    // Priscilla has no GPU/fp16 tier at all (not a temporary pack defect like Apollos's -- see Global
+    // Constraints), so a working graphics chip above already won Ezra's fp16 before this is ever reached.
+    // Priscilla reuses Ezra's own budget and candidate ladder (kFocusBudgetMs, _ks), just its own cost factor.
+    for (final k in _ks) {
+      final ms = cpuMs * _priscillaCpuFactor * k;
+      if (ms <= kFocusBudgetMs) return FocusChoice(FocusModel.priscilla, FocusVariant.int8, k, ms);
+    }
+  }
   for (final k in _ks) {
     final ms = cpuMs * _cpuFactor * k;
     if (ms <= kFocusBudgetMs) return FocusChoice(FocusModel.ezra, FocusVariant.int8, k, ms);
