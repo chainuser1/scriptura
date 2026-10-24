@@ -25,6 +25,14 @@ class SearchScreen extends StatefulWidget {
   State<SearchScreen> createState() => _SearchScreenState();
 }
 
+/// One displayed result card: [passages] in canonical (verse-number) order for display, [anchor] the member that
+/// was actually highest-ranked, for per-card actions (see [_SearchScreenState._groupAdjacent]).
+class _Group {
+  _Group(this.passages, this.anchor);
+  final List<Passage> passages;
+  final Passage anchor;
+}
+
 class _SearchScreenState extends State<SearchScreen> {
   final _text = TextEditingController();
   SearchMode _mode = SearchMode.meaning;
@@ -173,6 +181,43 @@ class _SearchScreenState extends State<SearchScreen> {
       } on Object {
         // a verse missing from the repository is skipped, never shown blank
       }
+    }
+    return out;
+  }
+
+  /// Groups canonically adjacent verses (same book+chapter, consecutive verse numbers) into one displayed range,
+  /// e.g. "Proverbs 3:5" and "Proverbs 3:6" both ranking highly becomes one "Proverbs 3:5-6" card. [passages] is
+  /// already rank-ordered and stays in that order: each returned group appears at its highest-ranked (first-
+  /// occurring) member's position. [_Group.passages] is in canonical (verse-number) order for display;
+  /// [_Group.anchor] is the member that was actually highest-ranked (for actions like "open"/"similar"/"trail"),
+  /// which is not always the lowest verse number -- a later verse in the range can outrank an earlier one.
+  /// Reranking can separate canonically adjacent verses in the list, so this scans every pair, not just neighbors.
+  List<_Group> _groupAdjacent(List<Passage> passages) {
+    final byVerseId = {for (final p in passages) p.verseId: p};
+    final grouped = <int>{};
+    final out = <_Group>[];
+    for (final p in passages) {
+      if (grouped.contains(p.verseId)) continue;
+      final group = [p];
+      grouped.add(p.verseId);
+      // extend in both directions while the neighbor is both present in this result set and canonically adjacent
+      var before = p;
+      while (true) {
+        final prev = byVerseId[before.verseId - 1];
+        if (prev == null || prev.bookId != before.bookId || prev.chapter != before.chapter || grouped.contains(prev.verseId)) break;
+        group.insert(0, prev);
+        grouped.add(prev.verseId);
+        before = prev;
+      }
+      var after = p;
+      while (true) {
+        final next = byVerseId[after.verseId + 1];
+        if (next == null || next.bookId != after.bookId || next.chapter != after.chapter || grouped.contains(next.verseId)) break;
+        group.add(next);
+        grouped.add(next.verseId);
+        after = next;
+      }
+      out.add(_Group(group, p));
     }
     return out;
   }
@@ -495,14 +540,18 @@ class _SearchScreenState extends State<SearchScreen> {
     }
     final phrase = r.mode == 'phrase' ? _lastQuery : null;
     final wide = MediaQuery.sizeOf(context).width >= kSplitBreakpoint;
-    for (final p in _passages) {
+    for (final group in _groupAdjacent(_passages)) {
+      final p = group.anchor; // every action targets the group's highest-ranked verse, not necessarily the first
       final selected = _selected?.verseId == p.verseId;
       yield ListTile(
         key: ValueKey('hit-${p.verseId}'),
         selected: selected && wide,
         selectedTileColor: t.colorScheme.primaryContainer.withValues(alpha: 0.45),
-        title: Text(p.reference, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: _snippet(context, p.text, phrase),
+        title: Text(citationFor(group.passages), style: const TextStyle(fontWeight: FontWeight.w600)),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [for (final m in group.passages) _snippet(context, m.text, phrase)],
+        ),
         onTap: () => wide ? setState(() => _selected = p) : _open(p),
         trailing: PopupMenuButton<String>(
           tooltip: 'More',
@@ -515,7 +564,7 @@ class _SearchScreenState extends State<SearchScreen> {
               case 'trail':
                 startTrail(context, app, seed: TrailSeed.verse(p.verseId), name: p.reference);
               case 'copy':
-                copyText(context, formatForCopy([p]), message: 'Copied with reference');
+                copyText(context, formatForCopy(group.passages), message: 'Copied with reference');
               case 'bookmark':
                 app.user.toggleBookmark(p.verseId);
             }
