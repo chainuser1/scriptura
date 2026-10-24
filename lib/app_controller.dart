@@ -141,7 +141,10 @@ class AppController extends ChangeNotifier {
 
   void setFocusModelPreference(FocusModel m) {
     user.setPref('focus_model_preference', m.name);
-    if (m != FocusModel.apollos) user.setPref('apollos_override_accepted', '0'); // a fresh Apollos pick (even via a detour) re-warns
+    // A fresh pick of m (even via a detour through a third model) re-warns every OTHER non-Ezra model.
+    for (final other in FocusModel.values) {
+      if (other != m && other != FocusModel.ezra) user.setPref('override_accepted_${other.name}', '0');
+    }
     notifyListeners();
   }
 
@@ -200,11 +203,11 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// The reader was warned Apollos likely doesn't fit this device (too slow in the trial) and chose to try it
-  /// anyway. Persists across restarts/re-trials so the choice to override sticks until they pick Ezra again.
-  bool get apollosOverrideAccepted => user.pref('apollos_override_accepted') == '1';
-  void acceptApollosOverride() {
-    user.setPref('apollos_override_accepted', '1');
+  /// The reader was warned [m] likely doesn't fit this device (too slow in the trial) and chose to try it anyway.
+  /// Persists across restarts/re-trials so the choice to override sticks until they pick a different model again.
+  bool overrideAccepted(FocusModel m) => user.pref('override_accepted_${m.name}') == '1';
+  void acceptOverride(FocusModel m) {
+    user.setPref('override_accepted_${m.name}', '1');
     notifyListeners();
     remeasure();
   }
@@ -226,7 +229,7 @@ class AppController extends ChangeNotifier {
         gpu: probeGpu && r.raw['gpu'] == true,
         mode: focusMode,
         preferred: focusModelPreference,
-        forceApollos: apollosOverrideAccepted,
+        force: overrideAccepted(focusModelPreference),
       );
       final resolved = resolveFallback(
         preference: focusModelPreference,
