@@ -367,6 +367,7 @@ class _AnswerFocusTile extends StatelessWidget {
       (FocusModel.apollos, FocusVariant.int8) => 'about 2 GB',
       (FocusModel.ezra, FocusVariant.fp16) => 'about 1 GB',
       (FocusModel.ezra, FocusVariant.int8) => 'about 400 MB',
+      (FocusModel.priscilla, FocusVariant.int8) => 'about 450 MB',
       _ => 'a download',
     };
     return 'This device will use the ${c.variant == FocusVariant.fp16 ? 'graphics chip' : 'processor'}. Not downloaded yet ($size, best on Wi-Fi).';
