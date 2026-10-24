@@ -1,6 +1,10 @@
-// Pref round-trip for the model-generic override-accepted flag: no engine, no filesystem.
+// Pref round-trip for the model-generic override-accepted flag, plus the fresh-install default-setup notice
+// (offerPriscillaDefaultSetup, which needs a real root directory to check installed-pack state): no engine.
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scriptures_reader_mobile/app_controller.dart';
+import 'package:scriptures_reader_mobile/data/user/user_store.dart';
 import 'package:scriptures_reader_mobile/services/engine/answer_focus.dart';
 
 void main() {
@@ -117,5 +121,22 @@ void main() {
     final controller = AppController.fixed();
     controller.setFocusModelPreference(FocusModel.ezra);
     expect(controller.focusModelPreference, FocusModel.ezra);
+  });
+
+  test('offerPriscillaDefaultSetup is true when no model has ever been chosen and nothing is installed', () {
+    final controller = AppController.fixed(root: Directory.systemTemp.createTempSync(), user: UserStore.memory());
+    expect(controller.offerPriscillaDefaultSetup, isTrue);
+  });
+
+  test('offerPriscillaDefaultSetup is false once the reader has explicitly chosen a model', () {
+    final controller = AppController.fixed(root: Directory.systemTemp.createTempSync(), user: UserStore.memory());
+    controller.setFocusModelPreference(FocusModel.ezra);
+    expect(controller.offerPriscillaDefaultSetup, isFalse);
+  });
+
+  test('offerPriscillaDefaultSetup is false after the reader dismisses it, even though the pref is still unset', () {
+    final controller = AppController.fixed(root: Directory.systemTemp.createTempSync(), user: UserStore.memory());
+    controller.declineAnswerFocus(); // existing one-shot dismiss, reused rather than a new pref
+    expect(controller.offerPriscillaDefaultSetup, isFalse);
   });
 }

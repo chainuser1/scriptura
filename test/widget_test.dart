@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -79,6 +80,36 @@ void main() {
       await boot(tester, search: UnavailableSearchService('The search data is not installed.'));
       expect(find.textContaining('The search data is not installed.'), findsWidgets);
       expect(find.text('Open Settings'), findsOneWidget);
+    });
+
+    // offerPriscillaDefaultSetup needs a real root (the getter checks _root/focusInstalled), which the shared
+    // boot() above does not provide -- these two tests build their own AppController directly instead.
+    testWidgets('a fresh install (no model ever chosen) shows one combined notice for base data and Priscilla', (tester) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final svc = FakeSearchService((r, i) async => semantic([1]));
+      final app = AppController.fixed(
+          repository: fixtureRepository(), search: svc, user: UserStore.memory(), root: Directory.systemTemp.createTempSync('scriptura-fresh-'));
+      await tester.pumpWidget(ScripturesReaderApp(app: app));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Priscilla'), findsOneWidget);
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+      expect(app.lastRunIncludedFocus, isTrue);
+    });
+
+    testWidgets('once the reader explicitly picks a model, the combined fresh-install notice never shows again', (tester) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final svc = FakeSearchService((r, i) async => semantic([1]));
+      final app = AppController.fixed(
+          repository: fixtureRepository(), search: svc, user: UserStore.memory(), root: Directory.systemTemp.createTempSync('scriptura-fresh-'))
+        ..setFocusModelPreference(FocusModel.ezra);
+      await tester.pumpWidget(ScripturesReaderApp(app: app));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Priscilla'), findsNothing);
     });
   });
 
