@@ -18,6 +18,18 @@ void main() {
     expect(cfg['volume_balance'], 0.75);
   });
 
+  test('the engine config uses the device\'s real core count, not a guessed constant', () {
+    final engine = InstalledPack(Directory('pack'), {
+      'encoder_file': 'encoder.onnx',
+      'profiles': <String, dynamic>{},
+      'default_profile': 'compass',
+      'fallback_without_thread': 'compass',
+      'identity': <String, dynamic>{},
+    });
+    final cfg = EnginePaths(libraryPath: 'engine.dll', engine: engine).config();
+    expect(cfg['threads'], Platform.numberOfProcessors);
+  });
+
   group('PackStore.adoptVerified', () {
     late Directory tmp;
     late Directory staged;

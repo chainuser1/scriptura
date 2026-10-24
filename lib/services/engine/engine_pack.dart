@@ -217,7 +217,10 @@ class EnginePaths {
       'default_profile': m['default_profile'],
       'fallback_without_thread': m['fallback_without_thread'],
       if (Platform.isAndroid) 'ort_library': 'libonnxruntime.so',
-      'threads': Platform.isAndroid ? 4 : 2,
+      // Apollos's int8 pack is batch_size=1 (fixed at export), so every candidate is its own session.run() --
+      // more intra-op threads per run is a real, free speedup there. The device's actual core count, not a
+      // guessed constant: most phones/laptops have well over the old hardcoded 4/2.
+      'threads': Platform.numberOfProcessors,
       'identity': m['identity'],
     };
   }
