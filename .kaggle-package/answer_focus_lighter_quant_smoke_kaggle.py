@@ -33,6 +33,8 @@ No optimum install needed at all for this script.
 Download /kaggle/working/quant-smoke/<model>.json for each model afterward (the project's existing
 zip_working_output.py pattern works here too -- point it at the quant-smoke folder instead).
 """
+ACTION = 'gte'  # <-- SET THIS FIRST: 'gte', 'ettin150', or 'ettin400' -- then run the whole cell
+
 import bisect
 import json
 import sqlite3
@@ -150,8 +152,6 @@ def main():
     else:
         run(ACTION)
 
-
-ACTION = 'gte'  # change to 'ettin150' then 'ettin400' for the remaining passes, then re-run this cell
 
 if __name__ == '__main__':
     main()
