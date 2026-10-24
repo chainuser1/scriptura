@@ -1,5 +1,6 @@
 // The real hosting folders served over HTTP (with Range) by a local server, downloaded, verified and installed by the
 // real AppController, then searched. Proves the published layout and the app agree. Skipped when not staged.
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -34,11 +35,26 @@ Future<HttpServer> serve(List<Directory> roots) async {
 void main() {
   final hosting = Directory('../scriptura/artifacts/hosting');
   final lib = File('engine/target/release/scripture_engine.dll');
-  final ready = File('${hosting.path}/bucket/index.json').existsSync() && lib.existsSync();
+  final roots = [Directory('${hosting.path}/bucket'), Directory('${hosting.path}/search-data')];
+  final index = File('${hosting.path}/bucket/index.json');
+  final missing = [
+    if (!lib.existsSync()) 'scripture_engine.dll',
+    if (!index.existsSync()) 'index.json',
+  ];
+  // An index can remain after the large archives have been removed. Only require packs this test downloads;
+  // Answer Focus is opt-in separately and is not requested here, even with includeOptional.
+  if (index.existsSync()) {
+    final packs = (jsonDecode(index.readAsStringSync()) as Map<String, dynamic>)['packs'] as List;
+    for (final pack in packs) {
+      if (!{'release', 'engine', 'entities', 'answers', 'colbert', 'topics'}.contains(pack['kind'])) continue;
+      final name = pack['archive']['name'] as String;
+      if (!roots.any((root) => File('${root.path}/$name').existsSync())) missing.add(name);
+    }
+  }
 
-  test('first run: the app fetches everything from the bucket layout by itself', skip: ready ? false : 'hosting not staged', () async {
+  test('first run: the app fetches everything from the bucket layout by itself', skip: missing.isEmpty ? false : 'hosting not staged: missing ${missing.join(', ')}', () async {
     // the bucket root = bucket/ (index.json, content zip) + the two pack zips that sit in search-data/
-    final server = await serve([Directory('${hosting.path}/bucket'), Directory('${hosting.path}/search-data')]);
+    final server = await serve(roots);
     addTearDown(() => server.close(force: true));
     final root = Directory.systemTemp.createTempSync('scriptura-dl-');
     addTearDown(() => root.deleteSync(recursive: true));
