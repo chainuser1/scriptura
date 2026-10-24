@@ -11,6 +11,13 @@ void main() {
     expect(controller.overrideAccepted(FocusModel.apollos), isTrue);
   });
 
+  test('an Apollos override accepted under the old, pre-generalization pref key still reads as accepted '
+      '(a real shipped release may have readers with this key already set)', () {
+    final controller = AppController.fixed();
+    controller.user.setPref('apollos_override_accepted', '1');
+    expect(controller.overrideAccepted(FocusModel.apollos), isTrue);
+  });
+
   test('accepting the Priscilla override is persisted', () {
     final controller = AppController.fixed();
     expect(controller.overrideAccepted(FocusModel.priscilla), isFalse);

@@ -148,16 +148,15 @@ void main() {
       expect(c.variant, FocusVariant.int8);
     });
 
-    test('Priscilla and Apollos can diverge: a device that fits one may not fit the other, since each has its own '
-        'cost factor against the shared Apollos-sized budget/ladder', () {
-      // _priscillaCpuFactor (0.069, Ezra's unmeasured value) is far smaller than _apollosCpuFactor (0.994, measured),
-      // so at a speed where Apollos's own ladder is already exceeded, Priscilla (reusing the same ceiling with a much
-      // smaller placeholder factor) still fits -- proving the two are independently evaluated, not coupled.
-      const apollosDoesNotFitHere = 4200.0;
+    test('Priscilla and Apollos are evaluated independently against the shared budget/ladder, each with its own '
+        'cost factor -- NOT a permanent guarantee that Priscilla always fits where Apollos doesn\'t: this is '
+        'incidental to their current real factors (Priscilla ~0.134, Apollos 0.994, cross-calibrated 2026-10-25) '
+        'and will need updating if either factor is re-measured and changes materially', () {
+      const apollosDoesNotFitHere = 4200.0; // 4200*0.994*10 = 41748 > kApollosBudgetMs; 4200*0.134*10 = 5628, still fits
       final apollos = choose(cpuMs: apollosDoesNotFitHere, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.apollos);
       final priscilla = choose(cpuMs: apollosDoesNotFitHere, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.priscilla);
       expect(apollos.model, FocusModel.ezra, reason: 'Apollos genuinely does not fit at this speed');
-      expect(priscilla.model, FocusModel.priscilla, reason: 'Priscilla, with its own (much smaller placeholder) cost factor, still fits the same budget ceiling');
+      expect(priscilla.model, FocusModel.priscilla, reason: 'Priscilla, with its own real (much smaller) cost factor, still fits the same budget ceiling here');
     });
   });
 

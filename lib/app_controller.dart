@@ -205,7 +205,10 @@ class AppController extends ChangeNotifier {
 
   /// The reader was warned [m] likely doesn't fit this device (too slow in the trial) and chose to try it anyway.
   /// Persists across restarts/re-trials so the choice to override sticks until they pick a different model again.
-  bool overrideAccepted(FocusModel m) => user.pref('override_accepted_${m.name}') == '1';
+  /// A reader upgrading from a shipped release before this was generalized may have the old Apollos-only pref
+  /// key (`apollos_override_accepted`) already set; honor it too, so they are not silently re-warned.
+  bool overrideAccepted(FocusModel m) =>
+      user.pref('override_accepted_${m.name}') == '1' || (m == FocusModel.apollos && user.pref('apollos_override_accepted') == '1');
   void acceptOverride(FocusModel m) {
     user.setPref('override_accepted_${m.name}', '1');
     notifyListeners();

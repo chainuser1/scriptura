@@ -47,11 +47,17 @@ const _apollosKs = [30, 15, 10];
 /// `adapt()`'s step-down logic still corrects this further from real search times, same as for Ezra.
 const _apollosCpuFactor = 0.994;
 
-/// UNMEASURED placeholder: reuses Ezra's `_cpuFactor` (0.069), calibrated for Ezra's model size, not
-/// Priscilla's. Real per-candidate cost for Priscilla has not been measured against a phone-class device
-/// trial yet -- only a desktop's raw ms/candidate (see docs/superpowers/specs/2026-10-24-priscilla-app-wiring-design.md).
-/// Replace once real device data comes in, same as `_apollosCpuFactor` itself once was.
-const _priscillaCpuFactor = _cpuFactor;
+/// Priscilla's own CPU cost-per-candidate constant, cross-calibrated against Apollos's real
+/// `_apollosCpuFactor` (2026-10-25): both models' real `Focus::score` timed on identical Windows desktop
+/// hardware, against their real, production-installed packs (k=10, 3 runs). Apollos: 394/451/435 ms per
+/// candidate (avg ~427). Priscilla: 51.6/68.2/54.5 ms per candidate (avg ~58) -- about 1/7th Apollos's real
+/// cost, not comparable to it at all, despite now sharing its budget/ladder. Ratio (priscilla_ms/apollos_ms)
+/// per run: 0.1308/0.1511/0.1254, avg ~0.135; `_apollosCpuFactor * 0.135` ~= 0.134. This replaces an earlier
+/// UNMEASURED placeholder that reused Ezra's own `_cpuFactor` (0.069) -- a real phone-class `device_trial`
+/// baseline was not available locally to measure this against Apollos's own original method directly, but
+/// this cross-calibration ties it to Apollos's real number rather than guessing again. Still not a
+/// phone-class measurement (see `_apollosCpuFactor`'s own); replace once that becomes available.
+const _priscillaCpuFactor = 0.134;
 
 class FocusChoice {
   const FocusChoice(this.model, this.variant, this.k, this.predictedMs);
@@ -85,10 +91,11 @@ class FocusChoice {
 }
 
 /// The choice from the device trial: a working graphics chip gets the graphics model; otherwise the CPU model with the
-/// most candidates that fit the budget. Automatic declines a device too slow for even 10; On uses 10 anyway. Apollos is
-/// used when preferred and it fits; otherwise (no Apollos candidate fits) the Ezra logic decides. Apollos's fp16/GPU
-/// tier is temporarily unavailable (a real pack defect, not a device limitation) -- Apollos only ever offers int8/CPU
-/// for now, even on a GPU-capable device, until that pack is fixed.
+/// most candidates that fit the budget. Automatic declines a device too slow for even 10; On uses 10 anyway. Apollos
+/// and Priscilla are each used when preferred and they fit; otherwise (no candidate fits) the Ezra logic decides.
+/// Neither has a GPU/fp16 tier available right now -- Apollos's is a real pack defect (temporary, not a device
+/// limitation); Priscilla's pack simply has none (see Global Constraints in its own design doc) -- so both only ever
+/// offer int8/CPU, even on a GPU-capable device, until Apollos's pack is fixed or Priscilla gains a GPU tier.
 ///
 /// [force]: the reader was warned [preferred] likely won't fit this device and chose to try it anyway. Skips the
 /// budget-fit check entirely and uses that model's smallest tier (already known to be slow here) -- never applies
