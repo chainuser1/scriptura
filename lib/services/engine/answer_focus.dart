@@ -15,8 +15,8 @@ enum FocusMode {
 /// Which pack: `answer-focus-int8-v1` (CPU) or `answer-focus-fp16-v1` (graphics chip).
 enum FocusVariant { none, int8, fp16 }
 
-/// Which model: Ezra (always available), Apollos, or Priscilla. Ezra is also the "nothing chosen yet" placeholder.
-enum FocusModel { ezra, apollos, priscilla }
+/// Which model: Ezra (always available), Apollos, Priscilla, or Aquila. Ezra is also the "nothing chosen yet" placeholder.
+enum FocusModel { ezra, apollos, priscilla, aquila }
 
 /// A search should not wait longer than this for Answer focus (Ezra).
 const kFocusBudgetMs = 1500.0;
@@ -58,6 +58,15 @@ const _apollosCpuFactor = 0.994;
 /// this cross-calibration ties it to Apollos's real number rather than guessing again. Still not a
 /// phone-class measurement (see `_apollosCpuFactor`'s own); replace once that becomes available.
 const _priscillaCpuFactor = 0.134;
+
+/// UNMEASURED placeholder, deliberately set equal to Apollos's own real, measured `_apollosCpuFactor`
+/// (0.994) rather than a fresh guess: Aquila, like Apollos, is a real ~400m-parameter-class model (not
+/// small like Ezra), and its shipped pack uses the same weight-only quantization approach Priscilla's own
+/// pack uses. This is the most defensible starting point available without a real Aquila-specific
+/// measurement -- strictly more honest than Priscilla's own original mistake (borrowing Ezra's much
+/// smaller factor for a much larger model). Replace once real device data for Aquila specifically exists,
+/// same as `_priscillaCpuFactor` itself still needs.
+const _aquilaCpuFactor = _apollosCpuFactor;
 
 class FocusChoice {
   const FocusChoice(this.model, this.variant, this.k, this.predictedMs);
@@ -134,6 +143,18 @@ FocusChoice choose({
     }
     if (force) return FocusChoice(FocusModel.priscilla, FocusVariant.int8, 10, cpuMs * _priscillaCpuFactor * 10);
   }
+  if (preferred == FocusModel.aquila) {
+    // Aquila has no GPU/fp16 tier of its own, same as Priscilla -- mirrors both branches above: an explicit
+    // non-Ezra preference beats the generic Ezra fp16/GPU default below when it fits. Aquila reuses Apollos's
+    // own budget and candidate ladder (kApollosBudgetMs, _apollosKs) and -- unlike Priscilla's original
+    // mistake -- starts out using Apollos's own real cost factor directly (_aquilaCpuFactor ==
+    // _apollosCpuFactor), never Ezra's, since Aquila like Apollos is a real ~400m-parameter-class model.
+    for (final k in _apollosKs) {
+      final ms = cpuMs * _aquilaCpuFactor * k;
+      if (ms <= kApollosBudgetMs) return FocusChoice(FocusModel.aquila, FocusVariant.int8, k, ms);
+    }
+    if (force) return FocusChoice(FocusModel.aquila, FocusVariant.int8, 10, cpuMs * _aquilaCpuFactor * 10);
+  }
   if (gpu) return FocusChoice(FocusModel.ezra, FocusVariant.fp16, 10, cpu10); // first searches measure the real graphics time
   for (final k in _ks) {
     final ms = cpuMs * _cpuFactor * k;
@@ -142,12 +163,17 @@ FocusChoice choose({
   return mode == FocusMode.on ? FocusChoice(FocusModel.ezra, FocusVariant.int8, 10, cpu10) : FocusChoice.none;
 }
 
+/// Models that share Apollos's own longer budget and candidate ladder (see kApollosBudgetMs) rather than
+/// Ezra's -- a named, reusable set rather than an inline boolean, so a future model joining this tier does
+/// not require touching every place that already checks it.
+const _apollosSizedModels = {FocusModel.apollos, FocusModel.priscilla, FocusModel.aquila};
+
 /// After install: with at least three measured searches, fewer candidates when the median is over budget; at 10 and
-/// still over twice the budget, Automatic turns Answer focus off (On keeps it). Apollos and Priscilla both use the
-/// longer budget and ladder (see kApollosBudgetMs) -- Ezra's own are not big enough for either model's real size.
+/// still over twice the budget, Automatic turns Answer focus off (On keeps it). Apollos, Priscilla, and Aquila all
+/// use the longer budget and ladder (see _apollosSizedModels) -- Ezra's own are not big enough for their real size.
 FocusChoice adapt(FocusChoice c, List<double> recentMs, FocusMode mode) {
   if (c.variant == FocusVariant.none || recentMs.length < 3) return c;
-  final apollosSized = c.model == FocusModel.apollos || c.model == FocusModel.priscilla;
+  final apollosSized = _apollosSizedModels.contains(c.model);
   final budget = apollosSized ? kApollosBudgetMs : kFocusBudgetMs;
   final ks = apollosSized ? _apollosKs : _ks;
   final sorted = [...recentMs]..sort();
