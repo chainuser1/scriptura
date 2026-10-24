@@ -35,9 +35,9 @@ void main() {
     expect(picker.segments.firstWhere((s) => s.value == FocusModel.apollos).enabled, isTrue);
   });
 
-  testWidgets('Ezra is the default preference', (tester) async {
+  testWidgets('Priscilla is the default preference', (tester) async {
     final (app, _) = await settings(tester);
-    expect(app.focusModelPreference, FocusModel.ezra);
+    expect(app.focusModelPreference, FocusModel.priscilla);
   });
 
   testWidgets('choosing Ezra sets the preference and remeasures', (tester) async {
@@ -120,6 +120,10 @@ void main() {
   testWidgets('choosing Priscilla on a device it fits just switches, no dialog', (tester) async {
     // cpuMs chosen so Priscilla's own (now Apollos-sized) ladder fits comfortably.
     final (app, _) = await settings(tester, cpuMs: 200.0);
+    // Priscilla is the default preference now, so start from Ezra explicitly: this test is about the
+    // transition into Priscilla, not about Priscilla already being selected on arrival.
+    await tester.tap(find.text('Ezra'));
+    await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Priscilla'));
     await tester.tap(find.text('Priscilla'));
     await tester.pumpAndSettle();
@@ -130,6 +134,8 @@ void main() {
 
   testWidgets('choosing Priscilla on a device it does not fit warns, and "Use Ezra instead" falls back', (tester) async {
     final (app, _) = await settings(tester, cpuMs: 100000.0);
+    await tester.tap(find.text('Ezra'));
+    await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Priscilla'));
     await tester.tap(find.text('Priscilla'));
     await tester.pumpAndSettle();
@@ -142,6 +148,8 @@ void main() {
 
   testWidgets('choosing Priscilla on a device it does not fit, then "Try Priscilla anyway" keeps Priscilla', (tester) async {
     final (app, _) = await settings(tester, cpuMs: 100000.0);
+    await tester.tap(find.text('Ezra'));
+    await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Priscilla'));
     await tester.tap(find.text('Priscilla'));
     await tester.pumpAndSettle();
@@ -318,6 +326,6 @@ void main() {
     expect(picker.onSelectionChanged, isNull);
     await tester.tap(find.text('Apollos'));
     await tester.pumpAndSettle();
-    expect(app.focusModelPreference, FocusModel.ezra, reason: 'a disabled picker does not change the preference');
+    expect(app.focusModelPreference, FocusModel.priscilla, reason: 'a disabled picker does not change the preference');
   });
 }
