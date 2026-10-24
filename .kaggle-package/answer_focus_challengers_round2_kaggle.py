@@ -19,6 +19,15 @@ Turn on a GPU accelerator (T4 x1 is enough) before running. Output lands in /kag
 and drop gte/, ettin150/, ettin400/ into local-benchmarks/answer-focus-challengers-round2/ locally, then run:
   .venv/Scripts/python.exe -I tool/answer_focus_challengers.py review
 
+REQUIRED SETUP CELL, every time the kernel starts or restarts (Kaggle's base image ships transformers
+4.57.6, below Ettin's floor; pip installs do NOT survive a kernel restart -- only files already written to
+/kaggle/working/ do, so this must be re-run after every restart, not just the first time):
+  !pip install -q -U "transformers>=5.0"
+Confirmed 2026-10-23: a restart without re-running this reverts to 4.57.6 and Ettin's AutoProcessor fails
+with "Unrecognized processing class" / "Tokenizer class TokenizersBackend does not exist" -- the same root
+cause documented for the local environment, just resurfacing on Kaggle after a restart. gte does not need
+this (its repo works fine on 4.57.6 too), but running the pin before gte as well is harmless.
+
 In a Kaggle notebook cell: paste this whole file, set ACTION = 'gte' near the bottom, run the cell; change
 ACTION to 'ettin150' then 'ettin400' and re-run for each (output from earlier passes is kept -- /kaggle/working
 persists across cell runs in the same session).

@@ -15,8 +15,17 @@ Upload as a Kaggle Notebook with the SAME 'challengers' dataset Task 2's script 
   (/kaggle/input/<dataset>/content.db, catalog.db, test-queries/*.json)
 Turn on a GPU accelerator. Paste this whole file into a cell, set ACTION near the bottom to 'gte', 'ettin150'
 or 'ettin400', run the cell (repeat for each model -- output persists across cell runs in the same session).
-Needs optimum[onnxruntime] in addition to what Task 2's script needed -- Kaggle notebooks can usually
-`!pip install -q optimum[onnxruntime]` in their own first cell before pasting this one.
+
+REQUIRED SETUP CELL, every time the kernel starts or restarts (pip installs do NOT survive a kernel restart
+on Kaggle -- only files already written to /kaggle/working/ do, so this must be re-run after every restart):
+  !pip install -q -U "transformers>=5.0" "optimum[onnxruntime]>=2.0"
+Both pins matter and were each confirmed necessary on Kaggle 2026-10-23: Ettin's repos need transformers>=5.0
+(below that, AutoProcessor fails with "Unrecognized processing class" / "TokenizersBackend does not exist");
+an unpinned `pip install optimum[onnxruntime]` can resolve to a pre-2.0 release whose ONNX export code still
+imports transformers.file_utils.FLAX_WEIGHTS_NAME, which transformers v5 removed (v5 dropped TensorFlow/Flax
+support entirely) -- that import fails with "cannot import name 'FLAX_WEIGHTS_NAME' from 'transformers.utils'"
+the moment ORTModelForSequenceClassification is imported. optimum>=2.0 is the version line that supports
+transformers v5.
 
 Download /kaggle/working/quant-smoke/<model>.json for each model afterward (the project's existing
 zip_working_output.py pattern works here too -- point it at the quant-smoke folder instead).
