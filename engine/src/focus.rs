@@ -19,7 +19,7 @@ const GPU_BATCH: usize = 10;
 const PAD_ID: u32 = 1;
 
 /// Which reranker model this [Focus] was opened for, since each tokenizes its input differently.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RerankerFamily {
     /// BAAI/bge-reranker-v2-m3: a tokenizer pair `(query, text)`.
     Ezra,
@@ -27,9 +27,10 @@ pub enum RerankerFamily {
     Apollos,
     /// Alibaba-NLP/gte-reranker-modernbert-base: a tokenizer pair `(query, text)`, same shape as Ezra but with
     /// ModernBERT's own special tokens (`[CLS]`/`[SEP]`/`[PAD]`, not Ezra's `<s>`/`</s>`). CPU-only for now: no
-    /// GPU tier is built for this family, so [Focus::batch] already falls through to 1 with no change needed —
-    /// a dynamic-batch ONNX export (if the pack ever uses one) is not an architectural constraint the way
-    /// Apollos's fixed batch_size=1 is, it is simply unused until a GPU tier exists.
+    /// GPU tier is built for this family, so [Focus::batch] already falls through to 1 with no change needed.
+    /// Like Apollos, the shipped pack is exported with a fixed batch dimension of 1 (manifest `batch_size: 1`;
+    /// see `.kaggle-package/build_priscilla_pack_kaggle.py`) — a future GPU tier would need its own export
+    /// with a dynamic batch axis before [Focus::batch] could return anything but 1 for this family.
     Priscilla,
 }
 

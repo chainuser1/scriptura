@@ -46,7 +46,7 @@ pub struct Config {
     /// "gpu" (graphics chip when it works, else CPU) or "cpu".
     #[serde(default)]
     pub focus_device: Option<String>,
-    /// Reranker family/tokenization: "ezra" or "apollos". Absent or unrecognized means Ezra (backward compatible).
+    /// Reranker family/tokenization: "ezra", "apollos" or "priscilla". Absent or unrecognized means Ezra (backward compatible).
     #[serde(default)]
     pub focus_family: Option<String>,
     /// profile id -> [echo, spark, thread, root]
@@ -68,6 +68,7 @@ fn one() -> usize {
 fn parse_family(s: Option<&str>) -> RerankerFamily {
     match s {
         Some("apollos") => RerankerFamily::Apollos,
+        Some("priscilla") => RerankerFamily::Priscilla,
         _ => RerankerFamily::Ezra,
     }
 }
@@ -580,4 +581,18 @@ impl Engine {
 
 fn lang(req: &Value) -> &str {
     req.get("language").and_then(Value::as_str).unwrap_or("english")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_family_recognizes_every_reranker_family_by_name() {
+        assert_eq!(parse_family(Some("apollos")), RerankerFamily::Apollos);
+        assert_eq!(parse_family(Some("priscilla")), RerankerFamily::Priscilla);
+        assert_eq!(parse_family(Some("ezra")), RerankerFamily::Ezra);
+        assert_eq!(parse_family(None), RerankerFamily::Ezra);
+        assert_eq!(parse_family(Some("not-a-real-family")), RerankerFamily::Ezra);
+    }
 }
