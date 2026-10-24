@@ -25,6 +25,12 @@ pub enum RerankerFamily {
     Ezra,
     /// nvidia/llama-nemotron-rerank-1b-v2: one concatenated string.
     Apollos,
+    /// Alibaba-NLP/gte-reranker-modernbert-base: a tokenizer pair `(query, text)`, same shape as Ezra but with
+    /// ModernBERT's own special tokens (`[CLS]`/`[SEP]`/`[PAD]`, not Ezra's `<s>`/`</s>`). CPU-only for now: no
+    /// GPU tier is built for this family, so [Focus::batch] already falls through to 1 with no change needed —
+    /// a dynamic-batch ONNX export (if the pack ever uses one) is not an architectural constraint the way
+    /// Apollos's fixed batch_size=1 is, it is simply unused until a GPU tier exists.
+    Priscilla,
 }
 
 pub struct Focus {
@@ -106,11 +112,13 @@ impl Focus {
         if self.gpu { "gpu" } else { "cpu" }
     }
 
-    /// Token ids for one (query, text) pair, tokenized the way [self.family] expects: Ezra as a tokenizer pair
-    /// (`<s> q </s></s> p </s>`), Apollos as one concatenated string. Truncated to the model limit either way.
+    /// Token ids for one (query, text) pair, tokenized the way [self.family] expects: Ezra and Priscilla as a
+    /// tokenizer pair (`<s> q </s></s> p </s>` for Ezra, `[CLS] q [SEP] p [SEP]` for Priscilla — same call, each
+    /// tokenizer.json supplies its own special tokens), Apollos as one concatenated string. Truncated to the
+    /// model limit either way.
     pub fn encode(&self, query: &str, text: &str) -> Result<Vec<u32>, String> {
         match self.family {
-            RerankerFamily::Ezra => Ok(self.tok.encode((query, text), true).map_err(err)?.get_ids().to_vec()),
+            RerankerFamily::Ezra | RerankerFamily::Priscilla => Ok(self.tok.encode((query, text), true).map_err(err)?.get_ids().to_vec()),
             RerankerFamily::Apollos => {
                 let s = format!("question:{query} \n \n passage:{text}");
                 Ok(self.tok.encode(s, true).map_err(err)?.get_ids().to_vec())
