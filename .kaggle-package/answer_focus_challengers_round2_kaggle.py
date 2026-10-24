@@ -32,6 +32,8 @@ In a Kaggle notebook cell: paste this whole file, set ACTION = 'gte' near the bo
 ACTION to 'ettin150' then 'ettin400' and re-run for each (output from earlier passes is kept -- /kaggle/working
 persists across cell runs in the same session).
 """
+ACTION = 'gte'  # <-- SET THIS FIRST: 'gte', 'ettin150', or 'ettin400' -- then run the whole cell
+
 import bisect
 import hashlib
 import json
@@ -177,10 +179,8 @@ def main():
     if len(sys.argv) == 2 and sys.argv[1] in MODELS:
         run(sys.argv[1])
     else:
-        run(ACTION)  # notebook cell: set ACTION = 'gte' / 'ettin150' / 'ettin400' above and re-run this cell
+        run(ACTION)
 
-
-ACTION = 'gte'  # change to 'ettin150' then 'ettin400' for the remaining passes, then re-run this cell
 
 if __name__ == '__main__':
     main()
