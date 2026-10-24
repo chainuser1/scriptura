@@ -248,11 +248,11 @@ void main() {
     }
 
     group('Answer focus', () {
-      // Fixture passages 2, 5, 6 and 7; focus scores put them in the opposite order.
+      // Fixture passages 2, 5, 6 and 8; focus scores put them in the opposite order.
       SearchResponse focused(List<double> scores, {double ms = 400}) => SearchResponse(mode: 'focus', raw: {'scores': scores, 'device': 'cpu', 'ms': ms});
 
       Future<AppController> withFocus(WidgetTester tester, Future<SearchResponse> Function(SearchRequest r) focus, {int k = 10}) async {
-        final svc = FakeSearchService((r, id) async => r.op == 'focus' ? focus(r) : r.op == 'phrase' ? SearchResponse(mode: 'phrase', hits: [Hit(2, 0)], total: 1) : semantic([2, 5, 6, 7]),
+        final svc = FakeSearchService((r, id) async => r.op == 'focus' ? focus(r) : r.op == 'phrase' ? SearchResponse(mode: 'phrase', hits: [Hit(2, 0)], total: 1) : semantic([2, 5, 6, 8]),
             hasFocus: true);
         final app = await inSearch(tester, svc);
         app.user.setPref('answer_focus_choice', FocusChoice(FocusModel.ezra, FocusVariant.int8, k, 300).toJson());
@@ -268,7 +268,7 @@ void main() {
           return focused([0.1, 0.2, 0.3, 0.4]);
         });
         await typeAndSubmit(tester, find.byType(TextField).first, 'how can I find peace');
-        expect(top(tester, 7), lessThan(top(tester, 6)));
+        expect(top(tester, 8), lessThan(top(tester, 6)));
         expect(top(tester, 6), lessThan(top(tester, 5)));
         expect(top(tester, 5), lessThan(top(tester, 2)));
         expect(sent.single.body!['query'], 'how can I find peace');
@@ -286,13 +286,13 @@ void main() {
         expect((sent.single.body!['texts'] as List), hasLength(2));
         expect(top(tester, 5), lessThan(top(tester, 2)));
         expect(top(tester, 2), lessThan(top(tester, 6)));
-        expect(top(tester, 6), lessThan(top(tester, 7)));
+        expect(top(tester, 6), lessThan(top(tester, 8)));
       });
 
       testWidgets('a failure shows today\'s order', (tester) async {
         await withFocus(tester, (r) async => throw SearchFailure('focus_failed', 'driver error'));
         await typeAndSubmit(tester, find.byType(TextField).first, 'peace');
-        expect(top(tester, 2), lessThan(top(tester, 7)));
+        expect(top(tester, 2), lessThan(top(tester, 8)));
         expect(find.textContaining('driver error'), findsNothing);
       });
 
@@ -303,7 +303,7 @@ void main() {
         await tester.pump(const Duration(seconds: 4));
         await tester.pumpAndSettle();
         expect(find.byKey(const ValueKey('hit-2')), findsOneWidget);
-        expect(top(tester, 2), lessThan(top(tester, 7)));
+        expect(top(tester, 2), lessThan(top(tester, 8)));
       });
 
       testWidgets('a newer search wins over an older one still being focused', (tester) async {
@@ -311,7 +311,7 @@ void main() {
         late AppController app;
         final svc = FakeSearchService((r, id) async {
           if (r.op == 'focus') return r.body!['query'] == 'first' ? slow.future : focused([0.1, 0.2, 0.3, 0.4]);
-          return r.query == 'first' ? semantic([3]) : semantic([2, 5, 6, 7]);
+          return r.query == 'first' ? semantic([3]) : semantic([2, 5, 6, 8]);
         }, hasFocus: true);
         app = await inSearch(tester, svc);
         app.user.setPref('answer_focus_choice', const FocusChoice(FocusModel.ezra, FocusVariant.int8, 10, 300).toJson());
@@ -322,7 +322,7 @@ void main() {
         slow.complete(focused([5.0]));
         await tester.pumpAndSettle();
         expect(find.byKey(const ValueKey('hit-3')), findsNothing);
-        expect(top(tester, 7), lessThan(top(tester, 2)));
+        expect(top(tester, 8), lessThan(top(tester, 2)));
       });
 
       testWidgets('exact-phrase results are never focused', (tester) async {
@@ -338,12 +338,12 @@ void main() {
       });
 
       testWidgets('without the pack, search is exactly today\'s', (tester) async {
-        final svc = FakeSearchService((r, id) async => semantic([2, 5, 6, 7]));
+        final svc = FakeSearchService((r, id) async => semantic([2, 5, 6, 8]));
         final app = await inSearch(tester, svc);
         app.user.setPref('answer_focus_choice', const FocusChoice(FocusModel.ezra, FocusVariant.int8, 10, 300).toJson());
         await typeAndSubmit(tester, find.byType(TextField).first, 'peace');
         expect(svc.requests.map((r) => r.op), ['search']);
-        expect(top(tester, 2), lessThan(top(tester, 7)));
+        expect(top(tester, 2), lessThan(top(tester, 8)));
       });
 
       testWidgets('the question trail starts from the focused top three', (tester) async {
@@ -351,7 +351,7 @@ void main() {
         await typeAndSubmit(tester, find.byType(TextField).first, 'how can I find peace');
         await tester.tap(find.text('Start a trail from this question'));
         await tester.pumpAndSettle();
-        expect(app.user.trailSeeds(app.user.pref('active_trail')!).map((s) => s.verseId), [7, 6, 5]);
+        expect(app.user.trailSeeds(app.user.pref('active_trail')!).map((s) => s.verseId), [8, 6, 5]);
       });
 
       testWidgets('searches that keep timing out make Automatic turn Answer focus off', (tester) async {
@@ -382,7 +382,7 @@ void main() {
     });
 
     testWidgets('a question starts a trail seeded with the question and its top answers', (tester) async {
-      final app = await inSearch(tester, FakeSearchService((r, id) async => semantic([2, 5, 6, 7])));
+      final app = await inSearch(tester, FakeSearchService((r, id) async => semantic([2, 5, 6, 8])));
       await typeAndSubmit(tester, find.byType(TextField).first, 'how can I find peace');
       await tester.tap(find.text('Start a trail from this question'));
       await tester.pumpAndSettle();
@@ -409,6 +409,48 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('hit-5')));
       await tester.pumpAndSettle();
       expect(find.text('Alpha Book 2:2'), findsWidgets);
+    });
+
+    group('adjacent results merge into one range', () {
+      testWidgets('two canonically adjacent verses show as one "1-2" card, not two separate hits', (tester) async {
+        await inSearch(tester, FakeSearchService((r, id) async => semantic([1, 2])));
+        await typeAndSubmit(tester, find.byType(TextField).first, 'trust');
+        expect(find.text('Alpha Book 1:1–2'), findsOneWidget); // one merged card in the results list
+        expect(find.text('Alpha Book 1:2'), findsNothing); // never its own separate list entry
+        // Also found in the live preview pane, which shows the whole chapter's surrounding context.
+        expect(find.textContaining('Synthetic English passage 1.'), findsWidgets);
+        expect(find.textContaining('Synthetic English passage 2.'), findsWidgets);
+      });
+
+      testWidgets('a chain of three adjacent verses merges into one "1-3" card', (tester) async {
+        await inSearch(tester, FakeSearchService((r, id) async => semantic([1, 2, 3])));
+        await typeAndSubmit(tester, find.byType(TextField).first, 'trust');
+        expect(find.text('Alpha Book 1:1–3'), findsOneWidget);
+      });
+
+      testWidgets('verses adjacent in id but in different chapters do not merge', (tester) async {
+        // verse 3 is Alpha Book 1:3; verse 4 is Alpha Book 2:1 -- numerically adjacent verseIds, different chapters.
+        await inSearch(tester, FakeSearchService((r, id) async => semantic([3, 4])));
+        await typeAndSubmit(tester, find.byType(TextField).first, 'trust');
+        expect(find.text('Alpha Book 1:3'), findsWidgets); // also the live preview pane's own heading
+        expect(find.text('Alpha Book 2:1'), findsWidgets);
+      });
+
+      testWidgets('non-adjacent verses in the results list still merge if canonically adjacent', (tester) async {
+        // Reranking can separate canonically adjacent verses in the list; merging must not depend on list order.
+        await inSearch(tester, FakeSearchService((r, id) async => semantic([2, 6, 1])));
+        await typeAndSubmit(tester, find.byType(TextField).first, 'trust');
+        expect(find.text('Alpha Book 1:1–2'), findsOneWidget);
+        expect(find.text('Beta Book 1:1'), findsOneWidget);
+      });
+
+      testWidgets('tapping a merged group opens the first (highest-ranked) verse', (tester) async {
+        await inSearch(tester, FakeSearchService((r, id) async => semantic([1, 2])));
+        await typeAndSubmit(tester, find.byType(TextField).first, 'trust');
+        await tester.tap(find.byKey(const ValueKey('hit-1')));
+        await tester.pumpAndSettle();
+        expect(find.text('Alpha Book 1:1'), findsWidgets); // the reader opened at the group's first verse
+      });
     });
 
     testWidgets('the search style chosen in Settings is sent with the next search', (tester) async {
@@ -513,7 +555,7 @@ void main() {
     });
 
     testWidgets('similar verses from a result run a similar request', (tester) async {
-      final svc = FakeSearchService((r, id) async => r.op == 'similar' ? semantic([6, 7]) : semantic([2]));
+      final svc = FakeSearchService((r, id) async => r.op == 'similar' ? semantic([6, 8]) : semantic([2]));
       await inSearch(tester, svc);
       await typeAndSubmit(tester, find.byType(TextField).first, 'faith');
       await tester.tap(find.byTooltip('More').first);
