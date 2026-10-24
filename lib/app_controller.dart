@@ -175,16 +175,14 @@ class AppController extends ChangeNotifier {
 
   bool get focusInstalled => _focusPack() != null;
 
-  /// Offered once, on a device that has never had a model explicitly chosen: a single notice covering both the
-  /// base data and Priscilla (the new default -- see focusModelPreference) together, rather than two separate
-  /// prompts. Stops being offered once dismissed (shares `focus_declined` with offerAnswerFocus: the two notices
-  /// are mutually exclusive, never both shown, so one dismiss pref is enough) or once a Priscilla pack is already
-  /// on disk. Checks `_installedVariant` (disk presence), not `focusInstalled` (which depends on a persisted
-  /// `focusChoice` that a reader with no trial run yet -- the exact case this notice targets -- never has).
+  /// Offered once, before a model has been chosen or installed. The notice shares `focus_declined` with
+  /// [offerAnswerFocus], since the two offers are mutually exclusive.
   bool get offerPriscillaDefaultSetup =>
       _root != null &&
       user.pref('focus_model_preference') == null &&
-      _installedVariant(FocusModel.priscilla) == FocusVariant.none &&
+      focusChoice == null &&
+      FocusModel.values.every((m) => _installedVariant(m) == FocusVariant.none) &&
+      focusMode != FocusMode.off &&
       user.pref('focus_declined') != '1';
 
   /// Offered once everything required is installed, the trial chose a model and the reader has not said "not now".
@@ -677,15 +675,29 @@ class AppController extends ChangeNotifier {
   ///
   /// The optional word-level index (about 3 GB) is only fetched with [includeOptional], which the user asks for: the
   /// app never starts a multi-gigabyte download they did not choose.
-  /// Answer focus is fetched only with [includeFocus] (the reader asked), and only the variant this device chose.
+  /// Answer focus is fetched only with [includeFocus] (the reader asked), using the completed trial choice or,
+  /// before the first trial, the preferred model's int8 pack.
   Future<void> ensureData({String? address, bool includeOptional = false, bool includeFocus = false}) async {
     final base = address ?? kDefaultDataAddress;
     if (setupBusy || base.isEmpty) return;
     lastRunIncludedOptional = includeOptional;
     lastRunIncludedFocus = includeFocus;
+    final pretrialFocusKind = focusChoice == null
+        ? switch (focusModelPreference) {
+            FocusModel.apollos => 'apollos-int8',
+            FocusModel.priscilla => 'priscilla-int8',
+            FocusModel.aquila => 'aquila-int8',
+            FocusModel.ezra => null,
+          }
+        : null;
     final missing = {
       ...(includeOptional ? missingData : (missingData..remove('colbert'))),
-      if (includeFocus && focusKind != null && !focusInstalled) focusKind!,
+      if (includeFocus && focusMode != FocusMode.off && focusKind != null && !focusInstalled) focusKind!,
+      if (includeFocus &&
+          focusMode != FocusMode.off &&
+          pretrialFocusKind != null &&
+          _installedVariant(focusModelPreference) == FocusVariant.none)
+        pretrialFocusKind,
     };
     // The topics pack is offered only when the host lists it; with everything else installed, look at most once a day.
     final topicsDue = _root != null && topicPacks.active() == null && user.pref('topics_checked_on') != _today();

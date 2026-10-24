@@ -17,6 +17,7 @@ import 'package:scriptures_reader_mobile/services/engine/search_models.dart';
 import 'package:scriptures_reader_mobile/services/engine/search_service.dart';
 
 import 'fakes/fake_search_service.dart';
+import 'fakes/recording_install_controller.dart';
 
 ContentRepository fixtureRepository() {
   final db = ContentDatabase.open('test/fixtures/content_v2_mini.db');
@@ -89,14 +90,15 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
       final svc = FakeSearchService((r, i) async => semantic([1]));
-      final app = AppController.fixed(
-          repository: fixtureRepository(), search: svc, user: UserStore.memory(), root: Directory.systemTemp.createTempSync('scriptura-fresh-'));
+      final root = Directory.systemTemp.createTempSync('scriptura-fresh-');
+      addTearDown(() => root.deleteSync(recursive: true));
+      final app = RecordingInstallController(repository: fixtureRepository(), search: svc, user: UserStore.memory(), root: root);
       await tester.pumpWidget(ScripturesReaderApp(app: app));
       await tester.pumpAndSettle();
       expect(find.textContaining('Priscilla'), findsOneWidget);
       await tester.tap(find.text('Continue'));
       await tester.pumpAndSettle();
-      expect(app.lastRunIncludedFocus, isTrue);
+      expect(app.requestedKinds, contains('priscilla-int8'));
     });
 
     testWidgets('once the reader explicitly picks a model, the combined fresh-install notice never shows again', (tester) async {

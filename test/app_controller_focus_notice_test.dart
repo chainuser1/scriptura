@@ -9,6 +9,8 @@ import 'package:scriptures_reader_mobile/data/user/user_store.dart';
 import 'package:scriptures_reader_mobile/services/engine/answer_focus.dart';
 import 'package:scriptures_reader_mobile/services/engine/engine_pack.dart';
 
+import 'fakes/recording_install_controller.dart';
+
 /// Writes a minimal (zero-file) install marker so [PackStore.active] reports this pack kind installed, without
 /// any native engine or real pack content (same helper test/answer_focus_trial_test.dart defines).
 void _markInstalled(Directory root, PackKind kind) {
@@ -17,6 +19,84 @@ void _markInstalled(Directory root, PackKind kind) {
 }
 
 void main() {
+  test('ensureData requests the preferred model pack before any trial has run', () async {
+    final root = Directory.systemTemp.createTempSync();
+    addTearDown(() => root.deleteSync(recursive: true));
+    final controller = RecordingInstallController(root: root, user: UserStore.memory());
+
+    expect(controller.focusChoice, isNull);
+    expect(controller.focusModelPreference, FocusModel.priscilla);
+    await controller.ensureData(includeFocus: true);
+
+    expect(controller.requestedKinds, contains('priscilla-int8'));
+  });
+
+  for (final entry in {
+    FocusModel.apollos: 'apollos-int8',
+    FocusModel.aquila: 'aquila-int8',
+  }.entries) {
+    test('ensureData requests ${entry.key.name} int8 before any trial has run', () async {
+      final root = Directory.systemTemp.createTempSync();
+      addTearDown(() => root.deleteSync(recursive: true));
+      final controller = RecordingInstallController(root: root, user: UserStore.memory())..setFocusModelPreference(entry.key);
+
+      await controller.ensureData(includeFocus: true);
+
+      expect(controller.requestedKinds, contains(entry.value));
+    });
+  }
+
+  test('ensureData does not request an already-installed preferred model again', () async {
+    final root = Directory.systemTemp.createTempSync();
+    addTearDown(() => root.deleteSync(recursive: true));
+    _markInstalled(root, PackKind.priscillaInt8);
+    final controller = RecordingInstallController(root: root, user: UserStore.memory())..setFocusModelPreference(FocusModel.priscilla);
+
+    await controller.ensureData(includeFocus: true);
+
+    expect(controller.requestedKinds, isNot(contains('priscilla-int8')));
+  });
+
+  test('ensureData honors a completed trial that chose no focus model', () async {
+    final root = Directory.systemTemp.createTempSync();
+    addTearDown(() => root.deleteSync(recursive: true));
+    final controller = RecordingInstallController(root: root, user: UserStore.memory());
+    controller.user.setPref(
+      'answer_focus_choice',
+      const FocusChoice(FocusModel.priscilla, FocusVariant.none, 0, 200).toJson(),
+    );
+
+    await controller.ensureData(includeFocus: true);
+
+    expect(controller.requestedKinds, isNot(contains('priscilla-int8')));
+  });
+
+  test('ensureData does not request the preferred model before a trial while Answer focus is off', () async {
+    final root = Directory.systemTemp.createTempSync();
+    addTearDown(() => root.deleteSync(recursive: true));
+    final controller = RecordingInstallController(root: root, user: UserStore.memory());
+    controller.user.setPref('answer_focus', 'off');
+
+    await controller.ensureData(includeFocus: true);
+
+    expect(controller.requestedKinds, isNot(contains('priscilla-int8')));
+  });
+
+  test('ensureData does not request a persisted trial choice while Answer focus is off', () async {
+    final root = Directory.systemTemp.createTempSync();
+    addTearDown(() => root.deleteSync(recursive: true));
+    final controller = RecordingInstallController(root: root, user: UserStore.memory());
+    controller.user.setPref(
+      'answer_focus_choice',
+      const FocusChoice(FocusModel.apollos, FocusVariant.int8, 10, 200).toJson(),
+    );
+    controller.user.setPref('answer_focus', 'off');
+
+    await controller.ensureData(includeFocus: true);
+
+    expect(controller.requestedKinds, isNot(contains('apollos-int8')));
+  });
+
   test('accepting the Apollos override is persisted', () {
     final controller = AppController.fixed();
     expect(controller.overrideAccepted(FocusModel.apollos), isFalse);
@@ -24,7 +104,8 @@ void main() {
     expect(controller.overrideAccepted(FocusModel.apollos), isTrue);
   });
 
-  test('an Apollos override accepted under the old, pre-generalization pref key still reads as accepted '
+  test(
+      'an Apollos override accepted under the old, pre-generalization pref key still reads as accepted '
       '(a real shipped release may have readers with this key already set)', () {
     final controller = AppController.fixed();
     controller.user.setPref('apollos_override_accepted', '1');
@@ -54,7 +135,8 @@ void main() {
     expect(controller.overrideAccepted(FocusModel.priscilla), isFalse);
   });
 
-  test('a detour through Priscilla still clears a previously accepted Apollos override, '
+  test(
+      'a detour through Priscilla still clears a previously accepted Apollos override, '
       'so switching back to Apollos re-warns', () {
     final controller = AppController.fixed();
     controller.acceptOverride(FocusModel.apollos);
@@ -63,7 +145,8 @@ void main() {
     expect(controller.overrideAccepted(FocusModel.apollos), isFalse, reason: 'a fresh Apollos pick after this detour must re-warn');
   });
 
-  test('a detour through Apollos still clears a previously accepted Priscilla override, '
+  test(
+      'a detour through Apollos still clears a previously accepted Priscilla override, '
       'so switching back to Priscilla re-warns', () {
     final controller = AppController.fixed();
     controller.acceptOverride(FocusModel.priscilla);
@@ -101,7 +184,8 @@ void main() {
     expect(controller.overrideAccepted(FocusModel.priscilla), isFalse);
   });
 
-  test('a detour through Aquila still clears a previously accepted Priscilla override, '
+  test(
+      'a detour through Aquila still clears a previously accepted Priscilla override, '
       'so switching back to Priscilla re-warns', () {
     final controller = AppController.fixed();
     controller.acceptOverride(FocusModel.priscilla);
@@ -110,7 +194,8 @@ void main() {
     expect(controller.overrideAccepted(FocusModel.priscilla), isFalse);
   });
 
-  test('a detour through Aquila clears an Apollos override accepted under the legacy, pre-generalization key too '
+  test(
+      'a detour through Aquila clears an Apollos override accepted under the legacy, pre-generalization key too '
       '(a real shipped reader may only have that key set, never the per-model one)', () {
     final controller = AppController.fixed();
     controller.user.setPref('apollos_override_accepted', '1');
@@ -189,6 +274,29 @@ void main() {
     final root = Directory.systemTemp.createTempSync();
     _markInstalled(root, PackKind.priscillaInt8);
     final controller = AppController.fixed(root: root, user: UserStore.memory());
+    expect(controller.offerPriscillaDefaultSetup, isFalse);
+  });
+
+  test('offerPriscillaDefaultSetup is false once any model is installed', () {
+    final root = Directory.systemTemp.createTempSync();
+    addTearDown(() => root.deleteSync(recursive: true));
+    _markInstalled(root, PackKind.apollosInt8);
+    final controller = AppController.fixed(root: root, user: UserStore.memory());
+    expect(controller.offerPriscillaDefaultSetup, isFalse);
+  });
+
+  test('offerPriscillaDefaultSetup is false while Answer focus is off', () {
+    final controller = AppController.fixed(root: Directory.systemTemp.createTempSync(), user: UserStore.memory());
+    controller.user.setPref('answer_focus', 'off');
+    expect(controller.offerPriscillaDefaultSetup, isFalse);
+  });
+
+  test('offerPriscillaDefaultSetup is false after a completed trial chose no focus model', () {
+    final controller = AppController.fixed(root: Directory.systemTemp.createTempSync(), user: UserStore.memory());
+    controller.user.setPref(
+      'answer_focus_choice',
+      const FocusChoice(FocusModel.priscilla, FocusVariant.none, 0, 200).toJson(),
+    );
     expect(controller.offerPriscillaDefaultSetup, isFalse);
   });
 }

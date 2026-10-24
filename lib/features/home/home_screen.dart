@@ -97,7 +97,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 12),
                     _Notice(
                       icon: Icons.center_focus_strong_outlined,
-                      text: 'Setting up search and Answer focus (Priscilla) -- about 1.9 GB total, best on Wi-Fi.',
+                      text: app.missingData.difference({'colbert'}).isEmpty
+                          ? 'Adding Answer focus (Priscilla). Best on Wi-Fi.'
+                          : 'Setting up scripture data, search, and Answer focus (Priscilla). Best on Wi-Fi.',
                       action: 'Continue',
                       onAction: () => app.ensureData(includeFocus: true),
                     ),
