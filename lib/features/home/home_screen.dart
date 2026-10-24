@@ -93,7 +93,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
                     ),
                   ),
-                  if (app.engineState == EngineState.unavailable) ...[
+                  if (app.offerPriscillaDefaultSetup && !app.setupBusy) ...[
+                    const SizedBox(height: 12),
+                    _Notice(
+                      icon: Icons.center_focus_strong_outlined,
+                      text: 'Setting up search and Answer focus (Priscilla) -- about 1.9 GB total, best on Wi-Fi.',
+                      action: 'Continue',
+                      onAction: () => app.ensureData(includeFocus: true),
+                    ),
+                  ] else if (app.engineState == EngineState.unavailable) ...[
                     const SizedBox(height: 12),
                     _Notice(
                       icon: Icons.info_outline,
