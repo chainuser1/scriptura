@@ -205,8 +205,9 @@ FocusChoice keep(FocusChoice? old, FocusChoice fresh, {required FocusVariant ins
 }
 
 /// Decides between the persisted fallback and a fresh trial without ever overriding an explicit user preference.
-/// [preference] is what the user actually wants (an explicit choice; Ezra by default); [fresh] is this trial run's
-/// result; [before] is the previously persisted choice; [others] holds, for every non-Ezra model, whether this
+/// [preference] is the model resolved from the user's explicit choice or the app's current default; [fresh] is this
+/// trial run's result; [before] is the previously persisted choice; [others] holds, for every non-Ezra model,
+/// whether this
 /// trial's own `choose()` call already found a usable tier for it (`installable`, i.e. `fresh.model == that model`)
 /// and whether a pack for it is on this device (`installed`) -- a model with no entry in [others] is treated as
 /// neither. An explicit Ezra preference is absolute. Otherwise the preferred non-Ezra model un-sticks a stale Ezra
