@@ -221,8 +221,10 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
       final svc = FakeSearchService((r, i) async => semantic([1]));
+      final root = Directory.systemTemp.createTempSync('scriptura-fresh-');
+      addTearDown(() => root.deleteSync(recursive: true));
       final app = AppController.fixed(
-          repository: fixtureRepository(), search: svc, user: UserStore.memory(), root: Directory.systemTemp.createTempSync('scriptura-fresh-'))
+          repository: fixtureRepository(), search: svc, user: UserStore.memory(), root: root)
         ..setFocusModelPreference(FocusModel.ezra);
       await tester.pumpWidget(ScripturesReaderApp(app: app));
       await tester.pumpAndSettle();
