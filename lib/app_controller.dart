@@ -141,7 +141,7 @@ class AppController extends ChangeNotifier {
 
   void setFocusModelPreference(FocusModel m) {
     user.setPref('focus_model_preference', m.name);
-    if (m == FocusModel.ezra) user.setPref('apollos_override_accepted', '0'); // a fresh Apollos pick re-warns
+    if (m != FocusModel.apollos) user.setPref('apollos_override_accepted', '0'); // a fresh Apollos pick (even via a detour) re-warns
     notifyListeners();
   }
 

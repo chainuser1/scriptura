@@ -113,16 +113,17 @@ FocusChoice choose({
     }
     if (forceApollos) return FocusChoice(FocusModel.apollos, FocusVariant.int8, 10, cpuMs * _apollosCpuFactor * 10);
   }
-  if (gpu) return FocusChoice(FocusModel.ezra, FocusVariant.fp16, 10, cpu10); // first searches measure the real graphics time
   if (preferred == FocusModel.priscilla) {
-    // Priscilla has no GPU/fp16 tier at all (not a temporary pack defect like Apollos's -- see Global
-    // Constraints), so a working graphics chip above already won Ezra's fp16 before this is ever reached.
+    // Priscilla has no GPU/fp16 tier of its own (not a temporary pack defect like Apollos's -- see Global
+    // Constraints), but mirrors Apollos's own branch above: an explicit non-Ezra preference beats the generic
+    // Ezra fp16/GPU default below when it fits, rather than a GPU device silently ignoring the reader's pick.
     // Priscilla reuses Ezra's own budget and candidate ladder (kFocusBudgetMs, _ks), just its own cost factor.
     for (final k in _ks) {
       final ms = cpuMs * _priscillaCpuFactor * k;
       if (ms <= kFocusBudgetMs) return FocusChoice(FocusModel.priscilla, FocusVariant.int8, k, ms);
     }
   }
+  if (gpu) return FocusChoice(FocusModel.ezra, FocusVariant.fp16, 10, cpu10); // first searches measure the real graphics time
   for (final k in _ks) {
     final ms = cpuMs * _cpuFactor * k;
     if (ms <= kFocusBudgetMs) return FocusChoice(FocusModel.ezra, FocusVariant.int8, k, ms);

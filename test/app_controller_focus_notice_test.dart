@@ -18,4 +18,13 @@ void main() {
     controller.setFocusModelPreference(FocusModel.ezra);
     expect(controller.apollosOverrideAccepted, isFalse);
   });
+
+  test('a detour through Priscilla still clears a previously accepted Apollos override, '
+      'so switching back to Apollos re-warns', () {
+    final controller = AppController.fixed();
+    controller.acceptApollosOverride();
+    expect(controller.apollosOverrideAccepted, isTrue);
+    controller.setFocusModelPreference(FocusModel.priscilla);
+    expect(controller.apollosOverrideAccepted, isFalse, reason: 'a fresh Apollos pick after this detour must re-warn');
+  });
 }
