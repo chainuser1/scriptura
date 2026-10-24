@@ -77,7 +77,7 @@ void main() {
     await tester.tap(find.text('Use Ezra instead'));
     await tester.pumpAndSettle();
     expect(app.focusModelPreference, FocusModel.ezra);
-    expect(app.apollosOverrideAccepted, isFalse);
+    expect(app.overrideAccepted(FocusModel.apollos), isFalse);
   });
 
   testWidgets('choosing Apollos on a device it does not fit, then "Try Apollos anyway" keeps Apollos', (tester) async {
@@ -89,7 +89,7 @@ void main() {
     await tester.tap(find.text('Try Apollos anyway'));
     await tester.pumpAndSettle();
     expect(app.focusModelPreference, FocusModel.apollos);
-    expect(app.apollosOverrideAccepted, isTrue);
+    expect(app.overrideAccepted(FocusModel.apollos), isTrue);
     expect(app.focusChoice!.model, FocusModel.apollos); // the override made it stick despite not fitting
   });
 
@@ -117,15 +117,57 @@ void main() {
     expect(picker.segments.firstWhere((s) => s.value == FocusModel.priscilla).enabled, isTrue);
   });
 
-  testWidgets('choosing Priscilla just switches, no dialog, even on a slow device', (tester) async {
-    // Unlike Apollos, Priscilla never warns -- use the same very slow cpuMs the Apollos warning test uses, to
-    // prove the absence of a dialog is not an artifact of an easy device.
-    final (app, _) = await settings(tester, cpuMs: 4200.0);
+  testWidgets('choosing Priscilla on a device it fits just switches, no dialog', (tester) async {
+    // cpuMs chosen so Priscilla's own (now Apollos-sized) ladder fits comfortably.
+    final (app, _) = await settings(tester, cpuMs: 200.0);
     await tester.ensureVisible(find.text('Priscilla'));
     await tester.tap(find.text('Priscilla'));
     await tester.pumpAndSettle();
     expect(app.focusModelPreference, FocusModel.priscilla);
+    expect(app.focusChoice!.model, FocusModel.priscilla);
     expect(find.byType(AlertDialog), findsNothing);
+  });
+
+  testWidgets('choosing Priscilla on a device it does not fit warns, and "Use Ezra instead" falls back', (tester) async {
+    final (app, _) = await settings(tester, cpuMs: 100000.0);
+    await tester.ensureVisible(find.text('Priscilla'));
+    await tester.tap(find.text('Priscilla'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('may not be fast enough'), findsOneWidget);
+    await tester.tap(find.text('Use Ezra instead'));
+    await tester.pumpAndSettle();
+    expect(app.focusModelPreference, FocusModel.ezra);
+    expect(app.overrideAccepted(FocusModel.priscilla), isFalse);
+  });
+
+  testWidgets('choosing Priscilla on a device it does not fit, then "Try Priscilla anyway" keeps Priscilla', (tester) async {
+    final (app, _) = await settings(tester, cpuMs: 100000.0);
+    await tester.ensureVisible(find.text('Priscilla'));
+    await tester.tap(find.text('Priscilla'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('may not be fast enough'), findsOneWidget);
+    await tester.tap(find.text('Try Priscilla anyway'));
+    await tester.pumpAndSettle();
+    expect(app.focusModelPreference, FocusModel.priscilla);
+    expect(app.overrideAccepted(FocusModel.priscilla), isTrue);
+    expect(app.focusChoice!.model, FocusModel.priscilla);
+  });
+
+  testWidgets('accepting the Apollos override does not suppress Priscilla\'s own warning on a later pick', (tester) async {
+    // 4200ms is slow enough to defeat Apollos's own real cost factor but not Priscilla's placeholder one (see
+    // Task 1's own finding) -- this test needs a device slow enough to defeat BOTH, same as Priscilla's own
+    // "does not fit" tests above.
+    final (app, _) = await settings(tester, cpuMs: 100000.0);
+    await tester.ensureVisible(find.text('Apollos'));
+    await tester.tap(find.text('Apollos'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Try Apollos anyway'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Priscilla'));
+    await tester.tap(find.text('Priscilla'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('may not be fast enough'), findsOneWidget,
+        reason: 'Priscilla must still warn even though Apollos was already overridden');
   });
 
   testWidgets('switching directly from Priscilla to Apollos works without going through Ezra first', (tester) async {
@@ -153,12 +195,13 @@ void main() {
     expect(find.byType(AlertDialog), findsNothing);
   });
 
-  testWidgets('Priscilla has its own description text', (tester) async {
+  testWidgets('Priscilla has its own description text reflecting its slower, experimental tradeoff', (tester) async {
     final (app, _) = await settings(tester, cpuMs: 200.0);
     await tester.ensureVisible(find.text('Priscilla'));
     await tester.tap(find.text('Priscilla'));
     await tester.pumpAndSettle();
-    expect(find.textContaining("a good middle ground between Ezra's speed and Apollos's deeper search"), findsOneWidget);
+    expect(find.textContaining('Priscilla'), findsWidgets);
+    expect(find.textContaining('experimental'), findsOneWidget);
   });
 
   testWidgets('the whole model picker is disabled while the engine is not ready', (tester) async {

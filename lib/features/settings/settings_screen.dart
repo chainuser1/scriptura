@@ -418,8 +418,9 @@ class _AnswerFocusTile extends StatelessWidget {
   }
 }
 
-/// Which model Answer focus uses on this device: Ezra or Apollos. Picking Apollos always re-measures; if the trial
-/// shows it does not fit this device, a dialog asks whether to try it anyway (it stays selectable, never greyed out).
+/// Which model Answer focus uses on this device: Ezra, Apollos, or Priscilla. Picking Apollos or Priscilla always
+/// re-measures; if the trial shows it does not fit this device, a dialog asks whether to try it anyway (it stays
+/// selectable, never greyed out). Ezra always just switches -- it is the steady, always-fits default.
 class _ModelPicker extends StatefulWidget {
   const _ModelPicker({required this.app});
   final AppController app;
@@ -432,34 +433,35 @@ class _ModelPickerState extends State<_ModelPicker> {
   AppController get app => widget.app;
   bool _checking = false;
 
-  Future<void> _selectApollos() async {
+  Future<void> _selectWithWarning(FocusModel model) async {
     setState(() => _checking = true);
-    app.setFocusModelPreference(FocusModel.apollos);
+    app.setFocusModelPreference(model);
     await app.remeasure();
     setState(() => _checking = false);
-    // Anything other than Apollos itself -- Ezra's own fallback, or FocusVariant.none when even Ezra's budget
-    // fails under Automatic -- means Apollos genuinely did not fit this device's trial.
-    final doesNotFit = app.focusChoice?.model != FocusModel.apollos;
-    if (doesNotFit && !app.apollosOverrideAccepted && mounted) await _warn();
+    // Anything other than the picked model itself -- Ezra's own fallback, or FocusVariant.none when even Ezra's
+    // budget fails under Automatic -- means it genuinely did not fit this device's trial.
+    final doesNotFit = app.focusChoice?.model != model;
+    if (doesNotFit && !app.overrideAccepted(model) && mounted) await _warn(model);
   }
 
-  Future<void> _warn() async {
+  Future<void> _warn(FocusModel model) async {
+    final name = switch (model) { FocusModel.apollos => 'Apollos', FocusModel.priscilla => 'Priscilla', FocusModel.ezra => 'Ezra' };
     final proceed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('This device may not be fast enough for Apollos'),
-        content: const Text(
-          'Ezra works better here. You can still try Apollos -- it is experimental and may take much longer to '
+        title: Text('This device may not be fast enough for $name'),
+        content: Text(
+          'Ezra works better here. You can still try $name -- it is experimental and may take much longer to '
           'search, or affect your experience. Download it anyway?',
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Use Ezra instead')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Try Apollos anyway')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: Text('Try $name anyway')),
         ],
       ),
     );
     if (proceed == true) {
-      app.acceptApollosOverride();
+      app.acceptOverride(model);
     } else {
       app.setFocusModelPreference(FocusModel.ezra);
       await app.remeasure();
@@ -482,12 +484,11 @@ class _ModelPickerState extends State<_ModelPicker> {
           // Same gate as Measure again: a pick the engine cannot trial would leave the old model running.
           onSelectionChanged: app.engineState == EngineState.ready && !_checking
               ? (s) {
-                  if (s.first == FocusModel.apollos) {
-                    _selectApollos();
-                  } else {
-                    // Ezra and Priscilla both just switch and remeasure -- neither has a warning dialog.
-                    app.setFocusModelPreference(s.first);
+                  if (s.first == FocusModel.ezra) {
+                    app.setFocusModelPreference(FocusModel.ezra);
                     app.remeasure();
+                  } else {
+                    _selectWithWarning(s.first);
                   }
                 }
               : null,
@@ -499,8 +500,8 @@ class _ModelPickerState extends State<_ModelPicker> {
           FocusModel.ezra => 'Ezra: a steady, well-tested choice that works on every device.',
           FocusModel.apollos => 'Apollos: looks harder for the exact answer, but is slower and experimental -- a good fit if you '
               'don\'t mind waiting a bit longer for more refined results.',
-          FocusModel.priscilla => 'Priscilla: a lighter model that\'s quick on most devices -- a good middle ground between '
-              'Ezra\'s speed and Apollos\'s deeper search.',
+          FocusModel.priscilla => 'Priscilla: looks harder for the exact answer than Ezra, but is slower and experimental -- a good '
+              'fit if you don\'t mind waiting a bit longer for more refined results.',
         },
         style: t.bodySmall,
       ),
