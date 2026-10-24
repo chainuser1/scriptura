@@ -91,6 +91,7 @@ class AppController extends ChangeNotifier {
   PackStore get focusFp16Packs => PackStore(Directory('${_root!.path}/scriptura'), PackKind.focusFp16);
   PackStore get focusApollosFp16Packs => PackStore(Directory('${_root!.path}/scriptura'), PackKind.apollosFp16);
   PackStore get focusApollosInt8Packs => PackStore(Directory('${_root!.path}/scriptura'), PackKind.apollosInt8);
+  PackStore get focusPriscillaInt8Packs => PackStore(Directory('${_root!.path}/scriptura'), PackKind.priscillaInt8);
 
   /// Answer focus setting (Settings › Advanced): Automatic, On or Off.
   FocusMode get focusMode => FocusMode.parse(user.pref('answer_focus'));
@@ -103,6 +104,7 @@ class AppController extends ChangeNotifier {
         (FocusModel.ezra, FocusVariant.fp16) => 'answer-focus-fp16',
         (FocusModel.apollos, FocusVariant.int8) => 'apollos-int8',
         (FocusModel.apollos, FocusVariant.fp16) => 'apollos-fp16',
+        (FocusModel.priscilla, FocusVariant.int8) => 'priscilla-int8',
         _ => null,
       };
 
@@ -114,6 +116,7 @@ class AppController extends ChangeNotifier {
       (FocusModel.ezra, FocusVariant.fp16) => focusFp16Packs.active(),
       (FocusModel.apollos, FocusVariant.int8) => focusApollosInt8Packs.active(),
       (FocusModel.apollos, FocusVariant.fp16) => focusApollosFp16Packs.active(),
+      (FocusModel.priscilla, FocusVariant.int8) => focusPriscillaInt8Packs.active(),
       _ => null,
     };
   }
@@ -124,9 +127,10 @@ class AppController extends ChangeNotifier {
     final (int8Store, fp16Store) = switch (model) {
       FocusModel.ezra => (focusInt8Packs, focusFp16Packs),
       FocusModel.apollos => (focusApollosInt8Packs, focusApollosFp16Packs),
+      FocusModel.priscilla => (focusPriscillaInt8Packs, null),
     };
     if (int8Store.active() != null) return FocusVariant.int8;
-    if (fp16Store.active() != null) return FocusVariant.fp16;
+    if (fp16Store?.active() != null) return FocusVariant.fp16;
     return FocusVariant.none;
   }
 
@@ -228,8 +232,10 @@ class AppController extends ChangeNotifier {
         preference: focusModelPreference,
         fresh: fresh,
         before: before,
-        apollosInstallable: fresh.model == FocusModel.apollos,
-        apollosInstalled: _installedVariant(FocusModel.apollos) != FocusVariant.none,
+        others: {
+          for (final m in FocusModel.values)
+            if (m != FocusModel.ezra) m: (installable: fresh.model == m, installed: _installedVariant(m) != FocusVariant.none),
+        },
       );
       // keep() only guards variant-level noise within one model; a genuine model switch (resolveFallback's job)
       // must not be masked by it, so it only sees `before` when `before` was already on the resolved model.
