@@ -73,6 +73,23 @@ fn shared_priscilla() -> Option<MutexGuard<'static, Focus>> {
         .map(|m| m.lock().unwrap_or_else(|e| e.into_inner()))
 }
 
+/// Aquila's own shared model, mirroring [shared_priscilla] above. Skips gracefully (same as [pack]) if the
+/// real pack directory isn't built in this environment.
+fn shared_aquila() -> Option<MutexGuard<'static, Focus>> {
+    static AQUILA: OnceLock<Option<Mutex<Focus>>> = OnceLock::new();
+    let d = root().join("generated-artifacts/aquila-int8-v1");
+    AQUILA
+        .get_or_init(|| {
+            if !d.join("model.onnx").exists() {
+                eprintln!("skipped: {} not built", d.display());
+                return None;
+            }
+            Some(Mutex::new(Focus::open(&d.join("model.onnx"), &d.join("tokenizer.json"), 4, false, RerankerFamily::Aquila).unwrap()))
+        })
+        .as_ref()
+        .map(|m| m.lock().unwrap_or_else(|e| e.into_inner()))
+}
+
 /// Scores a pack's own `verification.json` cases through [Focus::score], one call per query so the
 /// two-passage query goes through as a multi-text batch, and checks each against the reference `logit` within
 /// the pack's recorded `absolute_tolerance`.
@@ -138,6 +155,26 @@ fn priscilla_golden() -> Value {
 fn priscilla_pairs_tokenize_like_python() {
     let Some(f) = shared_priscilla() else { return };
     for p in priscilla_golden()["pairs"].as_array().unwrap() {
+        let want: Vec<u32> = p["input_ids"].as_array().unwrap().iter().map(|x| x.as_u64().unwrap() as u32).collect();
+        assert_eq!(f.encode(p["query"].as_str().unwrap(), p["text"].as_str().unwrap()).unwrap(), want);
+    }
+}
+
+#[test]
+fn aquila_int8_matches_its_pack_verification() {
+    let Some(mut f) = shared_aquila() else { return };
+    matches_pack_verification(&mut f, &root().join("generated-artifacts/aquila-int8-v1"));
+    assert_eq!(f.device(), "cpu");
+}
+
+fn aquila_golden() -> Value {
+    serde_json::from_str(&std::fs::read_to_string(root().join("test/golden/aquila_pairs.json")).unwrap()).unwrap()
+}
+
+#[test]
+fn aquila_pairs_tokenize_like_python() {
+    let Some(f) = shared_aquila() else { return };
+    for p in aquila_golden()["pairs"].as_array().unwrap() {
         let want: Vec<u32> = p["input_ids"].as_array().unwrap().iter().map(|x| x.as_u64().unwrap() as u32).collect();
         assert_eq!(f.encode(p["query"].as_str().unwrap(), p["text"].as_str().unwrap()).unwrap(), want);
     }

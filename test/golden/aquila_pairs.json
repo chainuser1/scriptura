@@ -1,0 +1,29 @@
+{
+ "model": "cross-encoder/ettin-reranker-400m-v1",
+ "note": "Pair token ids for Aquila; used by engine/tests/focus_e2e.rs. Generated from the real cached cross-encoder/ettin-reranker-150m-v1 tokenizer (same ModernBERT vocab/special tokens as the 400m target, confirmed directly: both report cls_token_id=50281, sep_token_id=50282, pad_token_id=50283, vocab_size=50368 in their real config.json files). Pair reused from Priscilla's own golden file (France/Paris) for continuity with already-reviewed data. No fp32 reference score included here (unlike Priscilla's golden file): Aquila's real reference scores come from build_aquila_pack_kaggle.py's own verify() step against the real 400m model, not duplicated here.",
+ "pairs": [
+  {
+   "query": "What is the capital of France?",
+   "text": "Paris is the capital of France.",
+   "input_ids": [
+    50281,
+    1276,
+    310,
+    253,
+    5347,
+    273,
+    6181,
+    32,
+    50282,
+    36062,
+    310,
+    253,
+    5347,
+    273,
+    6181,
+    15,
+    50282
+   ]
+  }
+ ]
+}
