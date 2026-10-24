@@ -30,6 +30,11 @@ void main() {
     expect(cfg['threads'], Platform.numberOfProcessors);
   });
 
+  test('priscillaInt8 pack kind has the expected format and directory name', () {
+    expect(PackKind.priscillaInt8.format, 'priscilla-int8-v1');
+    expect(PackKind.priscillaInt8.dirName, 'priscilla-int8');
+  });
+
   group('PackStore.adoptVerified', () {
     late Directory tmp;
     late Directory staged;

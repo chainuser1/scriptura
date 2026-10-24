@@ -41,7 +41,8 @@ enum PackKind {
   focusInt8('answer-focus-int8-v1', 'answer-focus-int8'),
   focusFp16('answer-focus-fp16-v1', 'answer-focus-fp16'),
   apollosFp16('apollos-fp16-v1', 'apollos-fp16'),
-  apollosInt8('apollos-int8-v1', 'apollos-int8');
+  apollosInt8('apollos-int8-v1', 'apollos-int8'),
+  priscillaInt8('priscilla-int8-v1', 'priscilla-int8');
 
   const PackKind(this.format, this.dirName);
   final String format, dirName;
