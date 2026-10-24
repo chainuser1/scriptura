@@ -16,6 +16,7 @@ Set INCLUDE_ONNX_MODELS = False below to skip the (potentially large) exported .
 only each model's JSON report -- usually all you actually need to see the pass/fail numbers, and the
 cheapest option storage-wise since there is then nothing large to zip at all.
 """
+import shutil
 import zipfile
 from pathlib import Path
 from IPython.display import FileLink, display
@@ -30,6 +31,16 @@ OUTER_ZIP = OUT / 'quant-smoke-results.zip'
 # data, or just waste space sitting alongside the new one.
 if OUTER_ZIP.exists():
     OUTER_ZIP.unlink()
+
+# One-time cleanup of an older version of this script's leftovers: an earlier revision staged files into
+# OUT/'quant-smoke-results' as a directory (copy-then-zip approach) before this one switched to zipping
+# straight from the source with no staging copy -- that old directory, if it still exists from a prior run,
+# is pure dead weight now and never gets cleaned up by the current logic below (which only ever touches
+# .zip files, not that directory path).
+_old_staging_dir = OUT / 'quant-smoke-results'
+if _old_staging_dir.is_dir():
+    shutil.rmtree(_old_staging_dir)
+    print(f'removed old staging directory from an earlier script version: {_old_staging_dir}')
 
 individual_zip_paths = []
 for name in ('gte', 'ettin150', 'ettin400'):
