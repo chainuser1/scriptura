@@ -119,6 +119,18 @@ void main() {
           reason: "keep()'s noise protection must still apply within Apollos, composed on top of resolveFallback");
     });
 
+    test('an installed Priscilla int8 pack is not orphaned by a noisy trial, mirroring Apollos\'s own protection', () async {
+      final root = Directory.systemTemp.createTempSync('scriptura-priscilla-');
+      addTearDown(() => root.deleteSync(recursive: true));
+      _markInstalled(root, PackKind.priscillaInt8);
+      final svc = FakeSearchService((r, id) async => SearchResponse(mode: 'device_trial', raw: {'cpu_ms': 1839.0, 'gpu': true}));
+      final app = AppController.fixed(root: root, search: svc, user: UserStore.memory())..setFocusModelPreference(FocusModel.priscilla);
+      app.user.setPref('answer_focus_choice', const FocusChoice(FocusModel.priscilla, FocusVariant.int8, 10, 600).toJson());
+      await app.measureDevice();
+      expect(app.focusChoice!.model, FocusModel.priscilla);
+      expect(app.focusChoice!.variant, FocusVariant.int8);
+    });
+
     test('a chosen but never-downloaded Apollos does not block the Ezra fallback once Apollos stops fitting', () async {
       // Apollos's 40s budget is generous, so this needs a genuinely very slow device (cpuMs=4200): Apollos's own
       // ladder exceeds 40000ms even at k=10 (measured _apollosCpuFactor ~14x Ezra's), and Ezra's own 1500ms
