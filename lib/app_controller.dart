@@ -527,6 +527,7 @@ class AppController extends ChangeNotifier {
         'answer-focus-fp16': 6,
         'apollos-int8': 6,
         'apollos-fp16': 6,
+        'priscilla-int8': 6,
       };
       final sorted = [...packs]..sort((a, b) => (order[a.kind] ?? 9).compareTo(order[b.kind] ?? 9));
       for (final p in sorted) {
@@ -577,6 +578,9 @@ class AppController extends ChangeNotifier {
             await _startEngine();
           case 'apollos-fp16':
             await focusApollosFp16Packs.adoptVerified(dir);
+            await _startEngine();
+          case 'priscilla-int8':
+            await focusPriscillaInt8Packs.adoptVerified(dir);
             await _startEngine();
           default:
             throw PackException('unknown_kind', 'This host offers a pack this version cannot install (${p.kind}).');
