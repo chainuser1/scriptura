@@ -24,13 +24,16 @@ is harmless for gte).
 
 Upload as a Kaggle Notebook with the SAME 'challengers' dataset Task 2's script used attached
   (/kaggle/input/<dataset>/content.db, catalog.db, test-queries/*.json)
-Turn on a GPU accelerator. Paste this whole file into a cell, set ACTION near the bottom to 'gte', 'ettin150'
+Turn on a GPU accelerator. Paste this whole file into a cell, set ACTION at the top to 'gte', 'ettin150'
 or 'ettin400', run the cell (repeat for each model -- output persists across cell runs in the same session).
 
 REQUIRED SETUP CELL, every time the kernel starts or restarts (pip installs do NOT survive a kernel restart
 on Kaggle -- only files already written to /kaggle/working/ do, so this must be re-run after every restart):
-  !pip install -q -U "transformers>=5.0"
-No optimum install needed at all for this script.
+  !pip install -q -U "transformers>=5.0" onnxruntime
+No optimum install needed at all for this script -- but onnxruntime itself must be installed explicitly:
+Kaggle's base image does not ship it by default (confirmed 2026-10-23: `import onnxruntime` fails with
+ModuleNotFoundError on a fresh kernel that only installed transformers, since optimum[onnxruntime] -- which
+used to pull it in as a transitive dependency -- is no longer part of this script's setup).
 
 Download /kaggle/working/quant-smoke/<model>.json for each model afterward (the project's existing
 zip_working_output.py pattern works here too -- point it at the quant-smoke folder instead).
