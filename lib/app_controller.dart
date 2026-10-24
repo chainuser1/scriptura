@@ -138,12 +138,15 @@ class AppController extends ChangeNotifier {
     return FocusVariant.none;
   }
 
-  /// Which model Answer focus should use: the reader's explicit choice (Settings' picker writes this), or
-  /// Priscilla by default when none has been made yet. Owner's choice (2026-10-24): Priscilla measured fast
-  /// and good quality over real use this session, so it became the default rather than Ezra -- the device
-  /// trial and warn-and-override dialog still protect a device that does not fit it, exactly as for any other
-  /// non-Ezra pick (see [choose]/[resolveFallback] in answer_focus.dart).
-  FocusModel get focusModelPreference => FocusModel.values.byName(user.pref('focus_model_preference') ?? 'priscilla');
+  /// Which model Answer focus should use: the reader's explicit choice, or Priscilla on a fresh install.
+  /// With no explicit choice but any model already installed, keep the legacy Ezra default so an upgrading
+  /// reader is not silently moved to an undownloaded model.
+  FocusModel get focusModelPreference {
+    final saved = user.pref('focus_model_preference');
+    if (saved != null) return FocusModel.values.byName(saved);
+    final nothingInstalled = FocusModel.values.every((m) => _installedVariant(m) == FocusVariant.none);
+    return nothingInstalled ? FocusModel.priscilla : FocusModel.ezra;
+  }
 
   void setFocusModelPreference(FocusModel m) {
     user.setPref('focus_model_preference', m.name);

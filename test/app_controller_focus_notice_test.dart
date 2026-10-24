@@ -126,6 +126,42 @@ void main() {
     expect(controller.focusModelPreference, FocusModel.priscilla);
   });
 
+  test('with nothing installed and no preference ever set, the default is still Priscilla', () {
+    final root = Directory.systemTemp.createTempSync();
+    addTearDown(() => root.deleteSync(recursive: true));
+    final controller = AppController.fixed(root: root, user: UserStore.memory());
+    expect(controller.focusModelPreference, FocusModel.priscilla);
+  });
+
+  test('with Ezra already installed and no preference ever set, the default stays Ezra, not Priscilla', () {
+    final root = Directory.systemTemp.createTempSync();
+    addTearDown(() => root.deleteSync(recursive: true));
+    _markInstalled(root, PackKind.focusInt8);
+    final controller = AppController.fixed(root: root, user: UserStore.memory());
+    expect(controller.focusModelPreference, FocusModel.ezra);
+  });
+
+  test('with Apollos already installed (not Priscilla) and no preference ever set, the default stays Ezra', () {
+    final root = Directory.systemTemp.createTempSync();
+    addTearDown(() => root.deleteSync(recursive: true));
+    _markInstalled(root, PackKind.apollosInt8);
+    final controller = AppController.fixed(root: root, user: UserStore.memory());
+    expect(controller.focusModelPreference, FocusModel.ezra);
+  });
+
+  test('an installed Ezra upgrade with a persisted Ezra trial does not become due when the preference is unset', () {
+    final root = Directory.systemTemp.createTempSync();
+    addTearDown(() => root.deleteSync(recursive: true));
+    _markInstalled(root, PackKind.focusInt8);
+    final controller = AppController.fixed(root: root, user: UserStore.memory());
+    controller.user.setPref('answer_focus_choice', const FocusChoice(FocusModel.ezra, FocusVariant.int8, 10, 1200).toJson());
+    controller.user.setPref('focus_trial_preference', 'ezra');
+
+    expect(controller.user.pref('focus_model_preference'), isNull);
+    expect(controller.focusModelPreference, FocusModel.ezra);
+    expect(controller.focusTrialDue, isFalse);
+  });
+
   test('an explicit Ezra pick is remembered and never silently moved to Priscilla', () {
     final controller = AppController.fixed();
     controller.setFocusModelPreference(FocusModel.ezra);
