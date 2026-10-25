@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import 'passage_selection.dart';
+
 enum Dest { home, read, search, study, settings }
 
 enum SearchMode { meaning, phrase }
@@ -27,6 +29,8 @@ class NavState extends ChangeNotifier {
 
   /// Verse to mark in the reading view (set when arriving from a search result, bookmark or note).
   int? verse;
+  PassageSelection? searchSelection;
+  int readingRevision = 0;
   PendingSearch? pending;
 
   /// True while the Trail page is on screen; the return bar hides itself then.
@@ -45,6 +49,8 @@ class NavState extends ChangeNotifier {
   }
 
   void openChapter(int book, int chapterNumber, {int? verseNumber}) {
+    searchSelection = null;
+    readingRevision++;
     bookId = book;
     chapter = chapterNumber;
     verse = verseNumber;
@@ -54,6 +60,8 @@ class NavState extends ChangeNotifier {
 
   /// Chapter changes inside the reader do not switch destination.
   void setChapter(int book, int chapterNumber) {
+    searchSelection = null;
+    readingRevision++;
     bookId = book;
     chapter = chapterNumber;
     verse = null;
@@ -61,12 +69,14 @@ class NavState extends ChangeNotifier {
   }
 
   void ask(String query, {SearchMode mode = SearchMode.meaning}) {
+    clearSearchSelection(notify: false);
     pending = PendingSearch.text(query, mode: mode);
     dest = Dest.search;
     notifyListeners();
   }
 
   void askSimilar(int verseId, String label) {
+    clearSearchSelection(notify: false);
     pending = PendingSearch.similar(verseId, label);
     dest = Dest.search;
     notifyListeners();
@@ -76,5 +86,28 @@ class NavState extends ChangeNotifier {
     final p = pending;
     pending = null;
     return p;
+  }
+
+  void openSearchSelection(PassageSelection selection) {
+    searchSelection = selection;
+    bookId = selection.anchor.bookId;
+    chapter = selection.anchor.chapter;
+    verse = selection.entry.verse;
+    readingRevision++;
+    dest = Dest.read;
+    notifyListeners();
+  }
+
+  void jumpSearchPassage(int index) {
+    final selection = searchSelection;
+    if (selection != null) openSearchSelection(selection.atRun(index));
+  }
+
+  void clearSearchSelection({bool notify = true}) {
+    if (searchSelection == null) return;
+    searchSelection = null;
+    verse = null;
+    readingRevision++;
+    if (notify) notifyListeners();
   }
 }

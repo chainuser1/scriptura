@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 import '../../app/looks.dart';
 import '../../app/theme.dart';
 import '../../app/verse_tools.dart';
+import '../../app/nav_state.dart';
+import '../../app/passage_navigation.dart';
 import '../../app_controller.dart';
 import '../../data/content/content_repository.dart';
 import '../../data/trails/trail_models.dart';
@@ -13,7 +15,8 @@ import 'reading_sheet.dart';
 import '../../data/user/user_store.dart';
 import '../trails/start_trail.dart';
 
-String _label(String language) => language[0].toUpperCase() + language.substring(1);
+String _label(String language) =>
+    language[0].toUpperCase() + language.substring(1);
 
 /// Book browser beside a book-style reading column. Click or right-click any verse for its actions.
 class ReadScreen extends StatefulWidget {
@@ -27,6 +30,7 @@ class ReadScreen extends StatefulWidget {
 class _ReadScreenState extends State<ReadScreen> {
   final _markedKey = GlobalKey();
   final _scroll = ScrollController();
+  int _lastReadingRevision = -1;
 
   AppController get app => widget.app;
   ContentRepository get repo => app.repository!;
@@ -49,11 +53,16 @@ class _ReadScreenState extends State<ReadScreen> {
     final w = _where;
     final c = repo.catalog.chapterRange(w.book, w.chapter);
     if (c == null) return;
-    final n = delta > 0 ? repo.catalog.nextChapter(c) : repo.catalog.previousChapter(c);
+    final n = delta > 0
+        ? repo.catalog.nextChapter(c)
+        : repo.catalog.previousChapter(c);
     if (n != null) _go(n.bookId, n.chapter);
   }
 
-  void _scale(double d) => user.setPref('text_scale', (user.prefDouble('text_scale', 1.0) + d).clamp(0.8, 1.8).toStringAsFixed(2));
+  void _scale(double d) => user.setPref(
+    'text_scale',
+    (user.prefDouble('text_scale', 1.0) + d).clamp(0.8, 1.8).toStringAsFixed(2),
+  );
 
   @override
   void dispose() {
@@ -69,36 +78,107 @@ class _ReadScreenState extends State<ReadScreen> {
         final w = _where;
         final lang = app.language;
         final books = repo.listBooks(language: lang);
-        final book = books.firstWhere((b) => b.id == w.book, orElse: () => books.first);
+        final book = books.firstWhere(
+          (b) => b.id == w.book,
+          orElse: () => books.first,
+        );
         final chapter = w.chapter.clamp(1, book.chapters);
+        if (app.nav.dest == Dest.read &&
+            app.nav.verse != null &&
+            _lastReadingRevision != app.nav.readingRevision) {
+          final revision = app.nav.readingRevision;
+          _lastReadingRevision = revision;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted || app.nav.dest != Dest.read ||
+                app.nav.readingRevision != revision) {
+              return;
+            }
+            final target = _markedKey.currentContext;
+            if (target != null) {
+              Scrollable.ensureVisible(
+                target,
+                alignment: 0.25,
+                duration: MediaQuery.disableAnimationsOf(context)
+                    ? Duration.zero
+                    : const Duration(milliseconds: 180),
+              );
+            }
+          });
+        }
         user.savePosition(book.id, chapter, app.nav.verse);
         final wide = MediaQuery.sizeOf(context).width >= kWideBreakpoint;
-        final browser = _Browser(app: app, books: books, currentBook: book.id, currentChapter: chapter, onPick: _go);
+        final browser = _Browser(
+          app: app,
+          books: books,
+          currentBook: book.id,
+          currentChapter: chapter,
+          onPick: _go,
+        );
         final reading = CallbackShortcuts(
           bindings: {
-            const SingleActivator(LogicalKeyboardKey.arrowLeft): () => _step(-1),
-            const SingleActivator(LogicalKeyboardKey.arrowRight): () => _step(1),
-            const SingleActivator(LogicalKeyboardKey.equal, control: true): () => _scale(0.1),
-            const SingleActivator(LogicalKeyboardKey.minus, control: true): () => _scale(-0.1),
+            const SingleActivator(LogicalKeyboardKey.arrowLeft): () =>
+                _step(-1),
+            const SingleActivator(LogicalKeyboardKey.arrowRight): () =>
+                _step(1),
+            const SingleActivator(
+              LogicalKeyboardKey.equal,
+              control: true,
+            ): () =>
+                _scale(0.1),
+            const SingleActivator(
+              LogicalKeyboardKey.minus,
+              control: true,
+            ): () =>
+                _scale(-0.1),
           },
-          child: Focus(autofocus: true, child: _Reading(app: app, book: book, chapter: chapter, scroll: _scroll, markedKey: _markedKey, onStep: _step, onBrowse: wide ? null : () => _openBrowser(context, books, book.id, chapter))),
+          child: Focus(
+            autofocus: true,
+            child: _Reading(
+              app: app,
+              book: book,
+              chapter: chapter,
+              scroll: _scroll,
+              markedKey: _markedKey,
+              onStep: _step,
+              onBrowse: wide
+                  ? null
+                  : () => _openBrowser(context, books, book.id, chapter),
+            ),
+          ),
         );
         if (!wide) return reading;
-        return Row(children: [SizedBox(width: 300, child: browser), const VerticalDivider(), Expanded(child: reading)]);
+        return Row(
+          children: [
+            SizedBox(width: 300, child: browser),
+            const VerticalDivider(),
+            Expanded(child: reading),
+          ],
+        );
       },
     );
   }
 
-  void _openBrowser(BuildContext context, List<BookEntry> books, int book, int chapter) {
+  void _openBrowser(
+    BuildContext context,
+    List<BookEntry> books,
+    int book,
+    int chapter,
+  ) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       builder: (ctx) => SizedBox(
         height: MediaQuery.sizeOf(ctx).height * 0.8,
-        child: _Browser(app: app, books: books, currentBook: book, currentChapter: chapter, onPick: (b, c) {
-          Navigator.pop(ctx);
-          _go(b, c);
-        }),
+        child: _Browser(
+          app: app,
+          books: books,
+          currentBook: book,
+          currentChapter: chapter,
+          onPick: (b, c) {
+            Navigator.pop(ctx);
+            _go(b, c);
+          },
+        ),
       ),
     );
   }
@@ -305,31 +385,35 @@ class _Reading extends StatelessWidget {
     final user = app.user;
     final lang = app.language;
     final parallel = user.pref('parallel');
-    final showParallel = parallel != null && parallel != lang && repo.servedLanguages.contains(parallel);
+    final showParallel =
+        parallel != null &&
+        parallel != lang &&
+        repo.servedLanguages.contains(parallel);
     final prefs = ReadingPrefs.of(user);
     final theme = prefs.theme;
     final widthPref = prefs.width;
-    final maxWidth = showParallel ? 1100.0 : const [560.0, 700.0, 880.0][widthPref.clamp(0, 2)];
+    final maxWidth = showParallel
+        ? 1100.0
+        : const [560.0, 700.0, 880.0][widthPref.clamp(0, 2)];
     final passages = repo.getChapter(book.id, chapter, language: lang);
-    final other = showParallel ? repo.getChapter(book.id, chapter, language: parallel) : const <Passage>[];
+    final other = showParallel
+        ? repo.getChapter(book.id, chapter, language: parallel)
+        : const <Passage>[];
     final first = passages.first.verseId, last = passages.last.verseId;
     final highlights = user.highlightsIn(first, last);
     final bookmarks = user.bookmarkedIn(first, last);
     final noted = user.versesWithNotes(first, last);
     final marked = app.nav.verse;
+    final selection = app.nav.searchSelection;
     final style = prefs.style(color: theme.text);
 
-    if (marked != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        final c = markedKey.currentContext;
-        if (c != null) Scrollable.ensureVisible(c, alignment: 0.25, duration: const Duration(milliseconds: 200));
-      });
-    }
-
     Widget verse(Passage p, {required bool primary}) {
-      final isMarked = primary && p.verse == marked;
+      final isMarked =
+          primary && (selection?.contains(p.verseId) ?? (p.verse == marked));
       return _VerseRow(
-        key: isMarked ? markedKey : ValueKey('verse-${p.verseId}-$primary'),
+        key: primary && p.verse == marked
+            ? markedKey
+            : ValueKey('verse-${p.verseId}-$primary'),
         passage: p,
         style: style,
         numberColor: theme.text.withValues(alpha: 0.72),
@@ -338,66 +422,179 @@ class _Reading extends StatelessWidget {
         cardColor: theme.text.withValues(alpha: 0.06),
         highlight: highlights[p.verseId],
         marked: isMarked,
+        searchMatch: primary && (selection?.contains(p.verseId) ?? false),
+        activeMatch: primary && (selection?.isActive(p.verseId) ?? false),
         bookmarked: primary && bookmarks.contains(p.verseId),
         hasNote: primary && noted.contains(p.verseId),
         onMenu: (at) => _verseMenu(context, at, p),
       );
     }
 
-    final canPrev = repo.catalog.previousChapter(repo.catalog.chapterRange(book.id, chapter)!) != null;
-    final canNext = repo.catalog.nextChapter(repo.catalog.chapterRange(book.id, chapter)!) != null;
+    final canPrev =
+        repo.catalog.previousChapter(
+          repo.catalog.chapterRange(book.id, chapter)!,
+        ) !=
+        null;
+    final canNext =
+        repo.catalog.nextChapter(
+          repo.catalog.chapterRange(book.id, chapter)!,
+        ) !=
+        null;
 
     return Container(
       color: theme.background,
       child: SafeArea(
         bottom: false,
         child: Column(
-        children: [
-          _Header(app: app, book: book, chapter: chapter, theme: theme, onBrowse: onBrowse, passages: passages),
-          Expanded(
-            child: Stack(children: [
-            SelectionArea(
-              child: SingleChildScrollView(
-                controller: scroll,
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 48),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: maxWidth),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _Header(
+              app: app,
+              book: book,
+              chapter: chapter,
+              theme: theme,
+              onBrowse: onBrowse,
+              passages: passages,
+            ),
+            if (selection != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.only(top: 16, bottom: 20),
-                          child: Text(
-                            '${book.name} $chapter',
-                            style: style.copyWith(fontSize: style.fontSize! * 1.5, fontWeight: FontWeight.w600),
+                        TextButton.icon(
+                          onPressed: () => app.nav.go(Dest.search),
+                          style: TextButton.styleFrom(
+                            foregroundColor: theme.text,
+                          ),
+                          icon: const Icon(Icons.arrow_back),
+                          label: const Text('Back to results'),
+                        ),
+                        IconButton(
+                          tooltip: selection.passages.length > 1
+                              ? 'Copy matched passages'
+                              : 'Copy with reference',
+                          color: theme.text,
+                          icon: const Icon(Icons.copy),
+                          onPressed: () => copyText(
+                            context,
+                            formatForCopy(selection.passages),
+                            message: 'Copied with reference',
                           ),
                         ),
-                        for (var i = 0; i < passages.length; i++)
-                          if (showParallel && i < other.length)
-                            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                              Expanded(child: verse(passages[i], primary: true)),
-                              const SizedBox(width: 12),
-                              Expanded(child: verse(other[i], primary: false)),
-                            ])
-                          else
-                            verse(passages[i], primary: true),
-                        const SizedBox(height: 24),
-                        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                          TextButton.icon(onPressed: canPrev ? () => onStep(-1) : null, style: TextButton.styleFrom(foregroundColor: theme.text, disabledForegroundColor: theme.text.withValues(alpha: 0.45)), icon: const Icon(Icons.chevron_left), label: const Text('Previous')),
-                          TextButton.icon(onPressed: canNext ? () => onStep(1) : null, style: TextButton.styleFrom(foregroundColor: theme.text, disabledForegroundColor: theme.text.withValues(alpha: 0.45)), icon: const Icon(Icons.chevron_right), label: const Text('Next'), iconAlignment: IconAlignment.end),
-                        ]),
                       ],
                     ),
-                  ),
+                    Text(
+                      citationFor(selection.passages),
+                      style: TextStyle(
+                        color: theme.text,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    PassageNavigation(
+                      selection: selection,
+                      color: theme.text,
+                      onSelect: app.nav.jumpSearchPassage,
+                    ),
+                  ],
                 ),
               ),
+            Expanded(
+              child: Stack(
+                children: [
+                  SelectionArea(
+                    child: SingleChildScrollView(
+                      controller: scroll,
+                      padding: const EdgeInsets.fromLTRB(24, 8, 24, 48),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(maxWidth: maxWidth),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                  top: 16,
+                                  bottom: 20,
+                                ),
+                                child: Text(
+                                  '${book.name} $chapter',
+                                  style: style.copyWith(
+                                    fontSize: style.fontSize! * 1.5,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              for (var i = 0; i < passages.length; i++)
+                                if (showParallel && i < other.length)
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                        child: verse(
+                                          passages[i],
+                                          primary: true,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: verse(other[i], primary: false),
+                                      ),
+                                    ],
+                                  )
+                                else
+                                  verse(passages[i], primary: true),
+                              const SizedBox(height: 24),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  TextButton.icon(
+                                    onPressed: canPrev
+                                        ? () => onStep(-1)
+                                        : null,
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: theme.text,
+                                      disabledForegroundColor: theme.text
+                                          .withValues(alpha: 0.45),
+                                    ),
+                                    icon: const Icon(Icons.chevron_left),
+                                    label: const Text('Previous'),
+                                  ),
+                                  TextButton.icon(
+                                    onPressed: canNext ? () => onStep(1) : null,
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: theme.text,
+                                      disabledForegroundColor: theme.text
+                                          .withValues(alpha: 0.45),
+                                    ),
+                                    icon: const Icon(Icons.chevron_right),
+                                    label: const Text('Next'),
+                                    iconAlignment: IconAlignment.end,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  _FloatingFlip(
+                    scroll: scroll,
+                    theme: theme,
+                    onPrevious: canPrev ? () => onStep(-1) : null,
+                    onNext: canNext ? () => onStep(1) : null,
+                  ),
+                ],
+              ),
             ),
-            _FloatingFlip(scroll: scroll, theme: theme, onPrevious: canPrev ? () => onStep(-1) : null, onNext: canNext ? () => onStep(1) : null),
-            ]),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
@@ -670,6 +867,8 @@ class _VerseRow extends StatefulWidget {
     required this.cardColor,
     required this.highlight,
     required this.marked,
+    this.activeMatch = false,
+    this.searchMatch = false,
     required this.bookmarked,
     required this.hasNote,
     required this.onMenu,
@@ -680,7 +879,7 @@ class _VerseRow extends StatefulWidget {
   final VerseNumbers numbers;
   final bool cards;
   final int? highlight;
-  final bool marked, bookmarked, hasNote;
+  final bool marked, bookmarked, hasNote, activeMatch, searchMatch;
   final void Function(Offset globalPosition) onMenu;
 
   @override
@@ -692,7 +891,9 @@ class _VerseRowState extends State<_VerseRow> {
 
   void _openFromKeyboard() {
     final box = context.findRenderObject() as RenderBox;
-    widget.onMenu(box.localToGlobal(Offset(box.size.width * 0.5, box.size.height * 0.5)));
+    widget.onMenu(
+      box.localToGlobal(Offset(box.size.width * 0.5, box.size.height * 0.5)),
+    );
   }
 
   @override
@@ -701,7 +902,13 @@ class _VerseRowState extends State<_VerseRow> {
     final style = widget.style;
     final scheme = Theme.of(context).colorScheme;
     final hl = widget.highlight;
-    final status = [if (widget.bookmarked) 'bookmarked', if (hl != null) 'highlighted', if (widget.hasNote) 'has a note'].join(', ');
+    final status = [
+      if (widget.searchMatch) 'search match',
+      if (widget.activeMatch) 'active passage',
+      if (widget.bookmarked) 'bookmarked',
+      if (hl != null) 'highlighted',
+      if (widget.hasNote) 'has a note',
+    ].join(', ');
     return Semantics(
       container: true,
       button: true,
@@ -710,10 +917,13 @@ class _VerseRowState extends State<_VerseRow> {
       hint: 'Opens the verse menu',
       onTap: _openFromKeyboard,
       child: Focus(
-        includeSemantics: false, // the Semantics above already describes this row
+        includeSemantics:
+            false, // the Semantics above already describes this row
         onFocusChange: (f) => setState(() => _focused = f),
         onKeyEvent: (node, e) {
-          if (e is KeyDownEvent && (e.logicalKey == LogicalKeyboardKey.enter || e.logicalKey == LogicalKeyboardKey.space)) {
+          if (e is KeyDownEvent &&
+              (e.logicalKey == LogicalKeyboardKey.enter ||
+                  e.logicalKey == LogicalKeyboardKey.space)) {
             _openFromKeyboard();
             return KeyEventResult.handled;
           }
@@ -726,29 +936,68 @@ class _VerseRowState extends State<_VerseRow> {
           onSecondaryTapUp: (d) => widget.onMenu(d.globalPosition),
           child: Container(
             margin: EdgeInsets.symmetric(vertical: widget.cards ? 5 : 2),
-            padding: widget.cards ? const EdgeInsets.fromLTRB(14, 10, 6, 10) : const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: widget.cards
+                ? const EdgeInsets.fromLTRB(14, 10, 6, 10)
+                : const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: hl == null ? (widget.cards ? widget.cardColor : null) : highlightPalette[hl % highlightPalette.length],
+              color: hl == null
+                  ? (widget.cards ? widget.cardColor : null)
+                  : highlightPalette[hl % highlightPalette.length],
               borderRadius: BorderRadius.circular(widget.cards ? 12 : 6),
               border: _focused
                   ? Border.all(color: scheme.tertiary, width: 2)
                   : widget.marked
-                      ? Border.all(color: scheme.primary, width: 1.5)
-                      : Border.all(color: Colors.transparent, width: 1.5),
+                  ? Border.all(
+                      color: style.color!.withValues(
+                        alpha: widget.activeMatch ? 0.75 : 0.4,
+                      ),
+                      width: widget.activeMatch ? 2.5 : 1.5,
+                    )
+                  : Border.all(color: Colors.transparent, width: 1.5),
             ),
             child: ExcludeSemantics(
               child: _withNumber(
                 context,
                 Text.rich(
-                TextSpan(children: [
-                  if (widget.numbers == VerseNumbers.inline)
-                    TextSpan(text: '${p.verse}  ', style: style.copyWith(fontSize: style.fontSize! * 0.62, fontWeight: FontWeight.bold, color: widget.numberColor)),
-                  TextSpan(text: p.text),
-                  if (widget.bookmarked) const WidgetSpan(alignment: PlaceholderAlignment.middle, child: Padding(padding: EdgeInsets.only(left: 6), child: Icon(Icons.bookmark, size: 15))),
-                  if (widget.hasNote) const WidgetSpan(alignment: PlaceholderAlignment.middle, child: Padding(padding: EdgeInsets.only(left: 6), child: Icon(Icons.sticky_note_2_outlined, size: 15))),
-                  if (p.isFallback) TextSpan(text: '  [${p.language}]', style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 13)),
-                ]),
-                style: style,
+                  TextSpan(
+                    children: [
+                      if (widget.numbers == VerseNumbers.inline)
+                        TextSpan(
+                          text: '${p.verse}  ',
+                          style: style.copyWith(
+                            fontSize: style.fontSize! * 0.62,
+                            fontWeight: FontWeight.bold,
+                            color: widget.numberColor,
+                          ),
+                        ),
+                      TextSpan(text: p.text),
+                      if (widget.bookmarked)
+                        const WidgetSpan(
+                          alignment: PlaceholderAlignment.middle,
+                          child: Padding(
+                            padding: EdgeInsets.only(left: 6),
+                            child: Icon(Icons.bookmark, size: 15),
+                          ),
+                        ),
+                      if (widget.hasNote)
+                        const WidgetSpan(
+                          alignment: PlaceholderAlignment.middle,
+                          child: Padding(
+                            padding: EdgeInsets.only(left: 6),
+                            child: Icon(Icons.sticky_note_2_outlined, size: 15),
+                          ),
+                        ),
+                      if (p.isFallback)
+                        TextSpan(
+                          text: '  [${p.language}]',
+                          style: const TextStyle(
+                            fontStyle: FontStyle.italic,
+                            fontSize: 13,
+                          ),
+                        ),
+                    ],
+                  ),
+                  style: style,
                 ),
               ),
             ),

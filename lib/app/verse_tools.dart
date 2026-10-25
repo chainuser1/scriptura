@@ -3,21 +3,45 @@ import 'package:flutter/services.dart';
 
 import '../data/content/content_repository.dart';
 import '../data/user/user_store.dart';
+import 'passage_selection.dart';
 
-/// "Alma 32:21" or, for verses in one chapter, "Alma 32:21–23".
+/// Exact references, including gaps: "Revelation 12:3–4, 11, 13–17".
 String citationFor(List<Passage> passages) {
   if (passages.isEmpty) return '';
-  final first = passages.first;
-  final sameChapter = passages.every((p) => p.bookId == first.bookId && p.chapter == first.chapter);
-  if (passages.length == 1) return first.reference;
-  if (sameChapter) return '${first.book} ${first.chapter}:${first.verse}–${passages.last.verse}';
-  return '${first.reference} – ${passages.last.reference}';
+  final runs = passageRuns(passages);
+  final chapters = <String>[];
+  Passage? previous;
+  for (final run in runs) {
+    final first = run.first;
+    if (previous != null &&
+        previous.bookId == first.bookId &&
+        previous.chapter == first.chapter) {
+      chapters[chapters.length - 1] += ', ${runLabel(run)}';
+    } else {
+      chapters.add(
+        run.length == 1
+            ? first.reference
+            : '${first.book} ${first.chapter}:${runLabel(run)}',
+      );
+    }
+    previous = first;
+  }
+  return chapters.join('; ');
 }
 
-/// Text ready to paste into a document or message: the words, then the citation.
+/// Copy exact passages with verse boundaries and explicit gaps between runs.
 String formatForCopy(List<Passage> passages, {bool withReference = true}) {
-  final body = passages.map((p) => p.text.trim()).join(' ');
-  return withReference ? '“$body” — ${citationFor(passages)}' : body;
+  final sorted = canonicalPassages(passages);
+  if (sorted.length <= 1) {
+    final body = sorted.map((p) => p.text.trim()).join(' ');
+    return withReference ? '“$body” — ${citationFor(sorted)}' : body;
+  }
+  return passageRuns(sorted)
+      .map((run) {
+        final body = run.map((p) => '${p.verse} ${p.text.trim()}').join('\n');
+        return withReference ? '${citationFor(run)}\n$body' : body;
+      })
+      .join('\n\n[…]\n\n');
 }
 
 Future<void> copyText(BuildContext context, String text, {String message = 'Copied'}) async {

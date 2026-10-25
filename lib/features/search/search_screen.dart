@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../../app/guide_content.dart';
 import '../../app/looks.dart';
 import '../../app/nav_state.dart';
+import '../../app/passage_navigation.dart';
+import '../../app/passage_selection.dart';
 import '../../app/theme.dart';
 import '../../app/verse_tools.dart';
 import '../../app_controller.dart';
@@ -14,6 +16,7 @@ import '../../data/trails/trail_models.dart';
 import '../../services/engine/search_models.dart';
 import '../../services/engine/search_service.dart';
 import '../trails/start_trail.dart';
+import 'result_groups.dart';
 
 /// Meaning and exact-phrase search with an honest account of what was understood, results beside a live preview of
 /// the passage in context, and similar verses.
@@ -23,14 +26,6 @@ class SearchScreen extends StatefulWidget {
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
-}
-
-/// One displayed result card: [passages] in canonical (verse-number) order for display, [anchor] the member that
-/// was actually highest-ranked, for per-card actions (see [_SearchScreenState._groupAdjacent]).
-class _Group {
-  _Group(this.passages, this.anchor);
-  final List<Passage> passages;
-  final Passage anchor;
 }
 
 class _SearchScreenState extends State<SearchScreen> {
@@ -45,8 +40,13 @@ class _SearchScreenState extends State<SearchScreen> {
   String _title = '';
   String _lastQuery = '';
   List<Passage> _passages = const [];
-  Passage? _selected;
+  PassageSelection? _selected;
+  List<PassageSelection> _groups = const [];
+  Set<int> _rerankedVerseIds = const {};
+  bool _separate = false;
+  final _expanded = <int>{};
   final _resultsScroll = ScrollController();
+  Dest? _previousDestination;
 
   AppController get app => widget.app;
   ContentRepository get repo => app.repository!;
@@ -69,9 +69,21 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _onNav() {
-    if (!mounted || app.nav.dest != Dest.search) return;
+    if (!mounted) return;
+    final returningFromReader = _previousDestination == Dest.read;
+    _previousDestination = app.nav.dest;
+    if (app.nav.dest != Dest.search) return;
     final p = app.nav.takePending();
-    if (p == null) return;
+    if (p == null) {
+      final selection = app.nav.searchSelection;
+      if (returningFromReader && selection != null &&
+          _selected?.anchor.verseId == selection.anchor.verseId &&
+          _selected!.passages.length == selection.passages.length &&
+          _selected!.passages.every((p) => selection.contains(p.verseId))) {
+        setState(() => _selected = selection);
+      }
+      return;
+    }
     if (p.similarTo != null) {
       _text.text = '';
       _runSimilar(p.similarTo!, p.query);
@@ -86,13 +98,22 @@ class _SearchScreenState extends State<SearchScreen> {
 
   List<VerseRange>? get _filter {
     if (_scopeVolume == null) return null;
-    final v = repo.volumes(language: app.language).firstWhere((v) => v.id == _scopeVolume);
+    final v = repo
+        .volumes(language: app.language)
+        .firstWhere((v) => v.id == _scopeVolume);
     return [VerseRange(v.firstVerseId, v.lastVerseId)];
   }
 
-  Future<void> _run(SearchRequest Function() build, {required String title, String? remember, String mode = 'meaning', String? focus}) async {
+  Future<void> _run(
+    SearchRequest Function() build, {
+    required String title,
+    String? remember,
+    String mode = 'meaning',
+    String? focus,
+  }) async {
     if (_activeRequest != null) _service.cancel(_activeRequest!);
     final id = _service.nextRequestId();
+    app.nav.clearSearchSelection();
     setState(() {
       _activeRequest = id;
       _busy = true;
@@ -104,13 +125,23 @@ class _SearchScreenState extends State<SearchScreen> {
       final r = await _service.search(build(), requestId: id);
       if (!mounted || _activeRequest != id) return;
       if (remember != null) app.user.rememberSearch(remember, mode);
-      var passages = _resolve(r);
-      if (focus != null && r.mode != 'reference') passages = await _focus(focus, passages, id);
+      final resolved = _resolve(r);
+      final focused = focus != null && r.mode != 'reference'
+          ? await _focus(focus, resolved, id)
+          : (passages: resolved, reranked: <int>{});
       if (!mounted || _activeRequest != id) return;
       setState(() {
         _response = r;
-        _passages = passages;
-        _selected = passages.isEmpty ? null : passages.first;
+        _passages = focused.passages;
+        _rerankedVerseIds = focused.reranked;
+        _groups = groupSearchPassages(
+          _passages,
+          rerankedVerseIds: _rerankedVerseIds,
+          phrase: r.mode == 'phrase',
+          separate: _separate,
+        );
+        _selected = _groups.isEmpty ? null : _groups.first;
+        _expanded.clear();
         _busy = false;
       });
       // a new search is read from its first result, not from where the last list happened to be scrolled
@@ -127,6 +158,7 @@ class _SearchScreenState extends State<SearchScreen> {
           _error = _explain(e);
           _response = null;
           _passages = const [];
+          _groups = const [];
           _selected = null;
         }
       });
@@ -136,25 +168,53 @@ class _SearchScreenState extends State<SearchScreen> {
   /// Answer focus: the top results reordered by how well each answers [query]. Today's order whenever focus is not
   /// installed, fails, or takes longer than twice the budget; the request shares the search's id, so a newer search
   /// cancels it.
-  Future<List<Passage>> _focus(String query, List<Passage> passages, int id) async {
+  Future<({List<Passage> passages, Set<int> reranked})> _focus(
+    String query,
+    List<Passage> passages,
+    int id,
+  ) async {
+    final unchanged = (passages: passages, reranked: <int>{});
     final choice = app.focusChoice;
-    if (!_service.hasFocus || choice == null || choice.k == 0 || passages.length < 2) return passages;
+    if (!_service.hasFocus ||
+        choice == null ||
+        choice.k == 0 ||
+        passages.length < 2) {
+      return unchanged;
+    }
     final top = passages.take(choice.k).toList();
     final budget = focusBudgetMs(choice.model);
     try {
       final r = await _service
-          .search(SearchRequest.raw('focus', {'query': query, 'texts': [for (final p in top) p.text]}), requestId: id)
+          .search(
+            SearchRequest.raw('focus', {
+              'query': query,
+              'texts': [for (final p in top) p.text],
+            }),
+            requestId: id,
+          )
           .timeout(Duration(milliseconds: (2 * budget).round()));
-      final scores = [for (final s in r.raw['scores'] as List) (s as num).toDouble()];
-      if (scores.length != top.length) return passages;
-      app.recordFocusTime((r.raw['ms'] as num).toDouble(), device: r.raw['device'] as String?);
-      return focusOrder(passages, scores);
+      final scores = [
+        for (final s in r.raw['scores'] as List) (s as num).toDouble(),
+      ];
+      if (scores.length != top.length || scores.any((s) => !s.isFinite)) {
+        return unchanged;
+      }
+      app.recordFocusTime(
+        (r.raw['ms'] as num).toDouble(),
+        device: r.raw['device'] as String?,
+      );
+      return (
+        passages: focusOrder(passages, scores),
+        reranked: top.map((p) => p.verseId).toSet(),
+      );
     } on TimeoutException {
       _service.cancel(id);
-      app.recordFocusTime(2 * budget); // at least this long: so Automatic learns this device is too slow
-      return passages;
+      app.recordFocusTime(
+        2 * budget,
+      ); // at least this long: so Automatic learns this device is too slow
+      return unchanged;
     } on Object {
-      return passages; // focus_unavailable, a driver error, a cancel: today's order
+      return unchanged; // focus_unavailable, a driver error, a cancel: today's order
     }
   }
 
@@ -175,7 +235,9 @@ class _SearchScreenState extends State<SearchScreen> {
 
   List<Passage> _resolve(SearchResponse r) {
     final out = <Passage>[];
+    final seen = <int>{};
     for (final h in r.hits) {
+      if (!seen.add(h.verseId)) continue;
       try {
         out.add(repo.getPassage(h.verseId, language: app.language));
       } on Object {
@@ -185,41 +247,28 @@ class _SearchScreenState extends State<SearchScreen> {
     return out;
   }
 
-  /// Groups canonically adjacent verses (same book+chapter, consecutive verse numbers) into one displayed range,
-  /// e.g. "Proverbs 3:5" and "Proverbs 3:6" both ranking highly becomes one "Proverbs 3:5-6" card. [passages] is
-  /// already rank-ordered and stays in that order: each returned group appears at its highest-ranked (first-
-  /// occurring) member's position. [_Group.passages] is in canonical (verse-number) order for display;
-  /// [_Group.anchor] is the member that was actually highest-ranked (for actions like "open"/"similar"/"trail"),
-  /// which is not always the lowest verse number -- a later verse in the range can outrank an earlier one.
-  /// Reranking can separate canonically adjacent verses in the list, so this scans every pair, not just neighbors.
-  List<_Group> _groupAdjacent(List<Passage> passages) {
-    final byVerseId = {for (final p in passages) p.verseId: p};
-    final grouped = <int>{};
-    final out = <_Group>[];
-    for (final p in passages) {
-      if (grouped.contains(p.verseId)) continue;
-      final group = [p];
-      grouped.add(p.verseId);
-      // extend in both directions while the neighbor is both present in this result set and canonically adjacent
-      var before = p;
-      while (true) {
-        final prev = byVerseId[before.verseId - 1];
-        if (prev == null || prev.bookId != before.bookId || prev.chapter != before.chapter || grouped.contains(prev.verseId)) break;
-        group.insert(0, prev);
-        grouped.add(prev.verseId);
-        before = prev;
+  void _showSeparately(bool separate) {
+    setState(() {
+      _separate = separate;
+      final previous = _selected;
+      _groups = groupSearchPassages(
+        _passages,
+        rerankedVerseIds: _rerankedVerseIds,
+        phrase: _response?.mode == 'phrase',
+        separate: separate,
+      );
+      if (_groups.isNotEmpty) {
+        _selected = _groups.firstWhere(
+          (g) => g.contains(previous?.anchor.verseId ?? -1),
+          orElse: () => _groups.first,
+        );
       }
-      var after = p;
-      while (true) {
-        final next = byVerseId[after.verseId + 1];
-        if (next == null || next.bookId != after.bookId || next.chapter != after.chapter || grouped.contains(next.verseId)) break;
-        group.add(next);
-        grouped.add(next.verseId);
-        after = next;
-      }
-      out.add(_Group(group, p));
-    }
-    return out;
+    });
+  }
+
+  void _selectGroup(PassageSelection group, {required bool wide}) {
+    setState(() => _selected = group);
+    if (!wide) app.nav.openSearchSelection(group);
   }
 
   void _submit([String? _]) {
@@ -227,10 +276,24 @@ class _SearchScreenState extends State<SearchScreen> {
     if (q.isEmpty) return;
     _lastQuery = q;
     if (_mode == SearchMode.phrase) {
-      _run(() => SearchRequest.phrase(q, language: app.language, filter: _filter),
-          title: 'Exact phrase', remember: q, mode: 'phrase');
+      _run(
+        () => SearchRequest.phrase(q, language: app.language, filter: _filter),
+        title: 'Exact phrase',
+        remember: q,
+        mode: 'phrase',
+      );
     } else {
-      _run(() => SearchRequest.search(q, language: app.language, filter: _filter, profile: app.searchProfile), title: 'Passages for “$q”', remember: q, focus: q);
+      _run(
+        () => SearchRequest.search(
+          q,
+          language: app.language,
+          filter: _filter,
+          profile: app.searchProfile,
+        ),
+        title: 'Passages for “$q”',
+        remember: q,
+        focus: q,
+      );
     }
   }
 
@@ -240,10 +303,21 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _pickPerson(String entityId) {
-    _run(() => SearchRequest.search(_lastQuery, language: app.language, filter: _filter, person: entityId, profile: app.searchProfile), title: 'Passages for “$_lastQuery”', focus: _lastQuery);
+    _run(
+      () => SearchRequest.search(
+        _lastQuery,
+        language: app.language,
+        filter: _filter,
+        person: entityId,
+        profile: app.searchProfile,
+      ),
+      title: 'Passages for “$_lastQuery”',
+      focus: _lastQuery,
+    );
   }
 
-  void _open(Passage p) => app.nav.openChapter(p.bookId, p.chapter, verseNumber: p.verse);
+  void _open(Passage p) =>
+      app.nav.openChapter(p.bookId, p.chapter, verseNumber: p.verse);
 
   @override
   Widget build(BuildContext context) {
@@ -257,12 +331,27 @@ class _SearchScreenState extends State<SearchScreen> {
             _queryBar(context),
             const Divider(),
             Expanded(
-              child: wide && _selected != null && _response != null && _response!.mode != 'reference'
-                  ? Row(children: [
-                      Expanded(flex: 5, child: results),
-                      const VerticalDivider(),
-                      Expanded(flex: 4, child: _Preview(app: app, passage: _selected!, onOpen: _open)),
-                    ])
+              child:
+                  wide &&
+                      _selected != null &&
+                      _response != null &&
+                      _response!.mode != 'reference'
+                  ? Row(
+                      children: [
+                        Expanded(flex: 5, child: results),
+                        const VerticalDivider(),
+                        Expanded(
+                          flex: 4,
+                          child: _Preview(
+                            app: app,
+                            selection: _selected!,
+                            onSelect: (selection) =>
+                                setState(() => _selected = selection),
+                            onOpen: app.nav.openSearchSelection,
+                          ),
+                        ),
+                      ],
+                    )
                   : results,
             ),
           ],
@@ -506,20 +595,25 @@ class _SearchScreenState extends State<SearchScreen> {
     if (_passages.isEmpty) {
       yield Padding(
         padding: const EdgeInsets.all(24),
-        child: Text(r.mode == 'phrase'
-            ? 'No verse contains that exact phrase. Try fewer words, or search by meaning.'
-            : 'No passages found. Try different words.'),
+        child: Text(
+          r.mode == 'phrase'
+              ? 'No verse contains that exact phrase. Try fewer words, or search by meaning.'
+              : 'No passages found. Try different words.',
+        ),
       );
       return;
     }
     final heading = r.mode == 'phrase'
         ? '${r.total} verse${r.total == 1 ? '' : 's'} contain “$_lastQuery”${r.truncated ? ' · showing the first ${_passages.length}' : ''}'
         : r.mode == 'similar'
-            ? _title
-            : _title;
+        ? _title
+        : _title;
     yield Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
-      child: Semantics(header: true, child: Text(heading, style: t.textTheme.titleSmall)),
+      child: Semantics(
+        header: true,
+        child: Text(heading, style: t.textTheme.titleSmall),
+      ),
     );
     if (r.mode != 'phrase' && r.mode != 'similar') {
       // The trail keeps to what answered the question: the question itself plus the top three results.
@@ -530,51 +624,170 @@ class _SearchScreenState extends State<SearchScreen> {
           child: TextButton.icon(
             icon: const Icon(Icons.alt_route),
             label: const Text('Start a trail from this question'),
-            onPressed: () => startTrail(context, app,
-                seed: TrailSeed.question(_lastQuery),
-                name: _lastQuery,
-                extraSeeds: [for (final p in _passages.take(3)) TrailSeed.verse(p.verseId)]),
+            onPressed: () => startTrail(
+              context,
+              app,
+              seed: TrailSeed.question(_lastQuery),
+              name: _lastQuery,
+              extraSeeds: [
+                for (final p in _passages.take(3)) TrailSeed.verse(p.verseId),
+              ],
+            ),
           ),
         ),
       );
     }
     final phrase = r.mode == 'phrase' ? _lastQuery : null;
     final wide = MediaQuery.sizeOf(context).width >= kSplitBreakpoint;
-    for (final group in _groupAdjacent(_passages)) {
-      final p = group.anchor; // every action targets the group's highest-ranked verse, not necessarily the first
-      final selected = _selected?.verseId == p.verseId;
+    yield Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Showing ${_passages.length} verse matches in ${_groups.length} results',
+              style: t.textTheme.bodySmall,
+            ),
+          ),
+          PopupMenuButton<bool>(
+            tooltip: 'Result display',
+            onSelected: _showSeparately,
+            itemBuilder: (_) => [
+              CheckedPopupMenuItem(
+                value: false,
+                checked: !_separate,
+                child: const Text('Group related passages'),
+              ),
+              CheckedPopupMenuItem(
+                value: true,
+                checked: _separate,
+                child: const Text('Show matches separately'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+    for (final original in _groups) {
+      final p = original.anchor;
+      final selected = _selected?.anchor.verseId == p.verseId;
+      final group = selected ? _selected! : original;
+      final expanded = _expanded.contains(p.verseId);
+      final anchorRun = group.runs.firstWhere(
+        (run) => run.any((v) => v.verseId == p.verseId),
+      );
       yield ListTile(
         key: ValueKey('hit-${p.verseId}'),
         selected: selected && wide,
-        selectedTileColor: t.colorScheme.primaryContainer.withValues(alpha: 0.45),
-        title: Text(citationFor(group.passages), style: const TextStyle(fontWeight: FontWeight.w600)),
+        selectedTileColor: t.colorScheme.primaryContainer.withValues(
+          alpha: 0.45,
+        ),
+        title: Text(
+          citationFor(group.passages),
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [for (final m in group.passages) _snippet(context, m.text, phrase)],
+          children: [
+            if (group.passages.length > 1) ...[
+              Text(
+                '${group.runs.length} passage${group.runs.length == 1 ? '' : 's'} \u00b7 ${group.passages.length} matching verses',
+                style: t.textTheme.bodySmall,
+              ),
+              if (!expanded)
+                Text(
+                  'Excerpt: ${citationFor(anchorRun)}',
+                  style: t.textTheme.labelSmall,
+                ),
+            ],
+            if (!expanded)
+              _snippet(
+                context,
+                anchorRun
+                    .map(
+                      (m) => group.passages.length == 1
+                          ? m.text
+                          : '${m.verse} ${m.text}',
+                    )
+                    .join(' '),
+                phrase,
+              )
+            else
+              for (var i = 0; i < group.runs.length; i++) ...[
+                if (i > 0)
+                  const Text(
+                    '\u2026',
+                    semanticsLabel: 'Unmatched verses omitted',
+                  ),
+                Text(citationFor(group.runs[i]), style: t.textTheme.labelLarge),
+                for (final m in group.runs[i]) Text('${m.verse} ${m.text}'),
+              ],
+            if (group.runs.length > 1)
+              PassageNavigation(
+                selection: group,
+                controls: false,
+                onSelect: (index) =>
+                    _selectGroup(group.atRun(index), wide: wide),
+              ),
+            if (group.passages.length > 1)
+              TextButton(
+                onPressed: () => setState(
+                  () => expanded
+                      ? _expanded.remove(p.verseId)
+                      : _expanded.add(p.verseId),
+                ),
+                child: Text(expanded ? 'Collapse passages' : 'Expand passages'),
+              ),
+          ],
         ),
-        onTap: () => wide ? setState(() => _selected = p) : _open(p),
+        onTap: () => _selectGroup(group, wide: wide),
         trailing: PopupMenuButton<String>(
           tooltip: 'More',
           onSelected: (v) {
             switch (v) {
               case 'open':
-                _open(p);
+                _selectGroup(group, wide: false);
               case 'similar':
                 _runSimilar(p.verseId, 'Verses similar to ${p.reference}');
               case 'trail':
-                startTrail(context, app, seed: TrailSeed.verse(p.verseId), name: p.reference);
+                startTrail(
+                  context,
+                  app,
+                  seed: TrailSeed.verse(p.verseId),
+                  name: p.reference,
+                );
               case 'copy':
-                copyText(context, formatForCopy(group.passages), message: 'Copied with reference');
+                copyText(
+                  context,
+                  formatForCopy(group.passages),
+                  message: 'Copied with reference',
+                );
               case 'bookmark':
                 app.user.toggleBookmark(p.verseId);
             }
           },
-          itemBuilder: (_) => const [
-            PopupMenuItem(value: 'open', child: Text('Read in context')),
-            PopupMenuItem(value: 'similar', child: Text('Similar verses')),
-            PopupMenuItem(value: 'trail', child: Text('Start a trail from this verse')),
-            PopupMenuItem(value: 'copy', child: Text('Copy with reference')),
-            PopupMenuItem(value: 'bookmark', child: Text('Bookmark')),
+          itemBuilder: (_) => [
+            const PopupMenuItem(value: 'open', child: Text('Read in context')),
+            PopupMenuItem(
+              value: 'similar',
+              child: Text('Similar to ${p.reference}'),
+            ),
+            PopupMenuItem(
+              value: 'trail',
+              child: Text('Start a trail from ${p.reference}'),
+            ),
+            PopupMenuItem(
+              value: 'copy',
+              child: Text(
+                group.passages.length > 1
+                    ? 'Copy matched passages'
+                    : 'Copy with reference',
+              ),
+            ),
+            PopupMenuItem(
+              value: 'bookmark',
+              child: Text('Bookmark ${p.reference}'),
+            ),
           ],
         ),
       );
@@ -583,18 +796,26 @@ class _SearchScreenState extends State<SearchScreen> {
 
   Widget _snippet(BuildContext context, String text, String? phrase) {
     final style = Theme.of(context).textTheme.bodyMedium!;
-    if (phrase == null || phrase.isEmpty) return Text(text, maxLines: 4, overflow: TextOverflow.ellipsis);
+    if (phrase == null || phrase.isEmpty) {
+      return Text(text, maxLines: 4, overflow: TextOverflow.ellipsis);
+    }
     final i = text.toLowerCase().indexOf(phrase.toLowerCase());
     if (i < 0) return Text(text, maxLines: 4, overflow: TextOverflow.ellipsis);
     return Text.rich(
-      TextSpan(style: style, children: [
-        TextSpan(text: text.substring(0, i)),
-        TextSpan(
-          text: text.substring(i, i + phrase.length),
-          style: TextStyle(fontWeight: FontWeight.bold, backgroundColor: highlightPalette[0]),
-        ),
-        TextSpan(text: text.substring(i + phrase.length)),
-      ]),
+      TextSpan(
+        style: style,
+        children: [
+          TextSpan(text: text.substring(0, i)),
+          TextSpan(
+            text: text.substring(i, i + phrase.length),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              backgroundColor: highlightPalette[0],
+            ),
+          ),
+          TextSpan(text: text.substring(i + phrase.length)),
+        ],
+      ),
       maxLines: 4,
       overflow: TextOverflow.ellipsis,
     );
@@ -602,20 +823,79 @@ class _SearchScreenState extends State<SearchScreen> {
 }
 
 /// The selected result inside its chapter, so the answer can be judged in context without leaving the results.
-class _Preview extends StatelessWidget {
-  const _Preview({required this.app, required this.passage, required this.onOpen});
+class _Preview extends StatefulWidget {
+  const _Preview({
+    required this.app,
+    required this.selection,
+    required this.onSelect,
+    required this.onOpen,
+  });
   final AppController app;
-  final Passage passage;
-  final void Function(Passage) onOpen;
+  final PassageSelection selection;
+  final ValueChanged<PassageSelection> onSelect, onOpen;
+
+  @override
+  State<_Preview> createState() => _PreviewState();
+}
+
+class _PreviewState extends State<_Preview> {
+  final _entryKey = GlobalKey();
+  final _scroll = ScrollController();
+
+  void _jump() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || widget.app.nav.dest != Dest.search) return;
+      final target = _entryKey.currentContext;
+      if (target != null) {
+        Scrollable.ensureVisible(
+          target,
+          alignment: 0.15,
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : const Duration(milliseconds: 180),
+        );
+      }
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _jump();
+  }
+
+  @override
+  void didUpdateWidget(covariant _Preview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selection.entry.verseId != widget.selection.entry.verseId ||
+        oldWidget.selection.anchor.verseId != widget.selection.anchor.verseId) {
+      _jump();
+    }
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final repo = app.repository!;
+    final app = widget.app;
+    final group = widget.selection;
+    final anchor = group.anchor;
     final user = app.user;
     final prefs = ReadingPrefs.of(user);
     final theme = prefs.theme;
-    final chapter = repo.getChapter(passage.bookId, passage.chapter, language: app.language);
-    final around = chapter.where((p) => (p.verse - passage.verse).abs() <= 6).toList();
+    final chapter = app.repository!.getChapter(
+      anchor.bookId,
+      anchor.chapter,
+      language: app.language,
+    );
+    final highlights = user.highlightsIn(
+      chapter.first.verseId,
+      chapter.last.verseId,
+    );
     final style = prefs.style(color: theme.text, extraScale: 0.9);
     return Container(
       color: theme.background,
@@ -624,55 +904,136 @@ class _Preview extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-            child: Row(children: [
-              Expanded(child: Text(passage.reference, style: style.copyWith(fontSize: 22, fontWeight: FontWeight.w600))),
-              IconButton(
-                tooltip: user.isBookmarked(passage.verseId) ? 'Remove bookmark' : 'Bookmark',
-                icon: Icon(user.isBookmarked(passage.verseId) ? Icons.bookmark : Icons.bookmark_border, color: theme.text),
-                onPressed: () => user.toggleBookmark(passage.verseId),
-              ),
-              IconButton(
-                tooltip: 'Copy with reference',
-                icon: Icon(Icons.copy, color: theme.text),
-                onPressed: () => copyText(context, formatForCopy([passage]), message: 'Copied with reference'),
-              ),
-            ]),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    citationFor(group.passages),
+                    style: style.copyWith(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip:
+                      '${user.isBookmarked(anchor.verseId) ? 'Remove bookmark for' : 'Bookmark'} ${anchor.reference}',
+                  icon: Icon(
+                    user.isBookmarked(anchor.verseId)
+                        ? Icons.bookmark
+                        : Icons.bookmark_border,
+                    color: theme.text,
+                  ),
+                  onPressed: () => user.toggleBookmark(anchor.verseId),
+                ),
+                IconButton(
+                  tooltip: group.passages.length > 1
+                      ? 'Copy matched passages'
+                      : 'Copy with reference',
+                  icon: Icon(Icons.copy, color: theme.text),
+                  onPressed: () => copyText(
+                    context,
+                    formatForCopy(group.passages),
+                    message: 'Copied with reference',
+                  ),
+                ),
+              ],
+            ),
           ),
+          if (group.runs.length > 1)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: PassageNavigation(
+                selection: group,
+                color: theme.text,
+                onSelect: (index) => widget.onSelect(group.atRun(index)),
+              ),
+            ),
           Expanded(
             child: SelectionArea(
-              child: ListView(
-                key: ValueKey('preview-${passage.verseId}'), // a new passage starts at its top
+              child: SingleChildScrollView(
+                key: const ValueKey('passage-preview'),
+                controller: _scroll,
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                children: [
-                  for (final p in around)
-                    Container(
-                      margin: const EdgeInsets.symmetric(vertical: 2),
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: p.verse == passage.verse ? highlightPalette[0] : null,
-                        borderRadius: BorderRadius.circular(6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (final p in chapter)
+                      Semantics(
+                        key: p.verseId == group.entry.verseId
+                            ? _entryKey
+                            : ValueKey('preview-verse-${p.verseId}'),
+                        label: group.contains(p.verseId)
+                            ? 'Search match${group.isActive(p.verseId) ? ', active passage' : ''}'
+                            : null,
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: highlights[p.verseId] == null
+                                ? null
+                                : highlightPalette[highlights[p.verseId]! %
+                                      highlightPalette.length],
+                            border: Border.all(
+                              color: group.contains(p.verseId)
+                                  ? theme.text.withValues(
+                                      alpha: group.isActive(p.verseId)
+                                          ? 0.75
+                                          : 0.35,
+                                    )
+                                  : Colors.transparent,
+                              width: group.isActive(p.verseId) ? 2.5 : 1,
+                            ),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: '${p.verse}  ',
+                                  style: style.copyWith(
+                                    fontSize: style.fontSize! * 0.62,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                TextSpan(text: p.text),
+                              ],
+                            ),
+                            style: style,
+                          ),
+                        ),
                       ),
-                      child: Text.rich(
-                        TextSpan(children: [
-                          TextSpan(text: '${p.verse}  ', style: style.copyWith(fontSize: style.fontSize! * 0.62, fontWeight: FontWeight.bold)),
-                          TextSpan(text: p.text),
-                        ]),
-                        style: style,
-                      ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
           Padding(
             padding: const EdgeInsets.all(12),
-            child: Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
-              FilledButton.tonal(onPressed: () => onOpen(passage), child: const Text('Read the chapter')),
-              TextButton(
-                onPressed: () => app.nav.askSimilar(passage.verseId, 'Verses similar to ${passage.reference}'),
-                child: Text('Similar verses', style: TextStyle(color: theme.text)),
-              ),
-            ]),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                FilledButton.tonal(
+                  onPressed: () => widget.onOpen(group),
+                  child: const Text('Read the chapter'),
+                ),
+                TextButton(
+                  onPressed: () => app.nav.askSimilar(
+                    anchor.verseId,
+                    'Verses similar to ${anchor.reference}',
+                  ),
+                  child: Text(
+                    'Similar to ${anchor.reference}',
+                    style: TextStyle(color: theme.text),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

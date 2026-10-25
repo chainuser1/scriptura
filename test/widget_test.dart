@@ -409,6 +409,13 @@ void main() {
         return app;
       }
 
+      Future<void> showSeparately(WidgetTester tester) async {
+        await tester.tap(find.byTooltip('Result display'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(CheckedPopupMenuItem<bool>, 'Show matches separately'));
+        await tester.pumpAndSettle();
+      }
+
       double top(WidgetTester tester, int id) => tester.getTopLeft(find.byKey(ValueKey('hit-$id'))).dy;
 
       testWidgets('reorders the top results by how well they answer, sending their texts in order', (tester) async {
@@ -418,6 +425,7 @@ void main() {
           return focused([0.1, 0.2, 0.3, 0.4]);
         });
         await typeAndSubmit(tester, find.byType(TextField).first, 'how can I find peace');
+        await showSeparately(tester);
         expect(top(tester, 8), lessThan(top(tester, 6)));
         expect(top(tester, 6), lessThan(top(tester, 5)));
         expect(top(tester, 5), lessThan(top(tester, 2)));
@@ -434,6 +442,7 @@ void main() {
         }, k: 2);
         await typeAndSubmit(tester, find.byType(TextField).first, 'peace');
         expect((sent.single.body!['texts'] as List), hasLength(2));
+        await showSeparately(tester);
         expect(top(tester, 5), lessThan(top(tester, 2)));
         expect(top(tester, 2), lessThan(top(tester, 6)));
         expect(top(tester, 6), lessThan(top(tester, 8)));
@@ -442,6 +451,7 @@ void main() {
       testWidgets('a failure shows today\'s order', (tester) async {
         await withFocus(tester, (r) async => throw SearchFailure('focus_failed', 'driver error'));
         await typeAndSubmit(tester, find.byType(TextField).first, 'peace');
+        await showSeparately(tester);
         expect(top(tester, 2), lessThan(top(tester, 8)));
         expect(find.textContaining('driver error'), findsNothing);
       });
@@ -453,6 +463,7 @@ void main() {
         await tester.pump(const Duration(seconds: 4));
         await tester.pumpAndSettle();
         expect(find.byKey(const ValueKey('hit-2')), findsOneWidget);
+        await showSeparately(tester);
         expect(top(tester, 2), lessThan(top(tester, 8)));
       });
 
@@ -472,6 +483,7 @@ void main() {
         slow.complete(focused([5.0]));
         await tester.pumpAndSettle();
         expect(find.byKey(const ValueKey('hit-3')), findsNothing);
+        await showSeparately(tester);
         expect(top(tester, 8), lessThan(top(tester, 2)));
       });
 
@@ -493,6 +505,7 @@ void main() {
         app.user.setPref('answer_focus_choice', const FocusChoice(FocusModel.ezra, FocusVariant.int8, 10, 300).toJson());
         await typeAndSubmit(tester, find.byType(TextField).first, 'peace');
         expect(svc.requests.map((r) => r.op), ['search']);
+        await showSeparately(tester);
         expect(top(tester, 2), lessThan(top(tester, 8)));
       });
 
@@ -565,7 +578,7 @@ void main() {
       testWidgets('two canonically adjacent verses show as one "1-2" card, not two separate hits', (tester) async {
         await inSearch(tester, FakeSearchService((r, id) async => semantic([1, 2])));
         await typeAndSubmit(tester, find.byType(TextField).first, 'trust');
-        expect(find.text('Alpha Book 1:1–2'), findsOneWidget); // one merged card in the results list
+        expect(find.text('Alpha Book 1:1–2'), findsNWidgets(2)); // one merged card and its complete preview citation
         expect(find.text('Alpha Book 1:2'), findsNothing); // never its own separate list entry
         // Also found in the live preview pane, which shows the whole chapter's surrounding context.
         expect(find.textContaining('Synthetic English passage 1.'), findsWidgets);
@@ -575,7 +588,7 @@ void main() {
       testWidgets('a chain of three adjacent verses merges into one "1-3" card', (tester) async {
         await inSearch(tester, FakeSearchService((r, id) async => semantic([1, 2, 3])));
         await typeAndSubmit(tester, find.byType(TextField).first, 'trust');
-        expect(find.text('Alpha Book 1:1–3'), findsOneWidget);
+        expect(find.text('Alpha Book 1:1–3'), findsNWidgets(2));
       });
 
       testWidgets('verses adjacent in id but in different chapters do not merge', (tester) async {
@@ -590,16 +603,18 @@ void main() {
         // Reranking can separate canonically adjacent verses in the list; merging must not depend on list order.
         await inSearch(tester, FakeSearchService((r, id) async => semantic([2, 6, 1])));
         await typeAndSubmit(tester, find.byType(TextField).first, 'trust');
-        expect(find.text('Alpha Book 1:1–2'), findsOneWidget);
+        expect(find.text('Alpha Book 1:1–2'), findsNWidgets(2));
         expect(find.text('Beta Book 1:1'), findsOneWidget);
       });
 
-      testWidgets('tapping a merged group opens the first (highest-ranked) verse', (tester) async {
-        await inSearch(tester, FakeSearchService((r, id) async => semantic([1, 2])));
+      testWidgets('opening a merged group starts at the beginning of its anchor run', (tester) async {
+        final app = await inSearch(tester, FakeSearchService((r, id) async => semantic([2, 1])));
         await typeAndSubmit(tester, find.byType(TextField).first, 'trust');
-        await tester.tap(find.byKey(const ValueKey('hit-1')));
+        await tester.tap(find.text('Read the chapter'));
         await tester.pumpAndSettle();
-        expect(find.text('Alpha Book 1:1'), findsWidgets); // the reader opened at the group's first verse
+        expect(app.nav.verse, 1);
+        expect(app.nav.searchSelection!.anchor.verseId, 2);
+        expect(app.nav.searchSelection!.passages.map((p) => p.verseId), [1, 2]);
       });
     });
 
@@ -710,7 +725,7 @@ void main() {
       await typeAndSubmit(tester, find.byType(TextField).first, 'faith');
       await tester.tap(find.byTooltip('More').first);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Similar verses').last);
+      await tester.tap(find.widgetWithText(PopupMenuItem<String>, 'Similar to Alpha Book 1:2'));
       await tester.pumpAndSettle();
       expect(svc.requests.last.op, 'similar');
       expect(svc.requests.last.verseId, 2);
