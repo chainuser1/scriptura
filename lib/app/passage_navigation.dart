@@ -9,16 +9,19 @@ class PassageNavigation extends StatelessWidget {
     required this.selection,
     required this.onSelect,
     this.color,
+    this.surfaceColor,
     this.controls = true,
   });
   final PassageSelection selection;
   final ValueChanged<int> onSelect;
   final Color? color;
+  final Color? surfaceColor;
   final bool controls;
 
   @override
   Widget build(BuildContext context) {
     final ink = color ?? Theme.of(context).colorScheme.onSurface;
+    final surface = surfaceColor ?? Theme.of(context).colorScheme.surface;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -35,10 +38,20 @@ class PassageNavigation extends StatelessWidget {
                       child: ChoiceChip(
                         label: Text(runLabel(selection.runs[i])),
                         labelStyle: TextStyle(color: ink),
-                        selectedColor: ink.withValues(alpha: 0.16),
-                        backgroundColor: ink.withValues(alpha: 0.04),
+                        // The app theme may be dark while this reading page is
+                        // light. Use an opaque fill from the local surface.
+                        color: WidgetStateProperty.resolveWith(
+                            (states) => Color.alphaBlend(
+                                  ink.withValues(
+                                      alpha:
+                                          states.contains(WidgetState.selected)
+                                              ? 0.16
+                                              : 0.04),
+                                  surface,
+                                )),
                         side: BorderSide(color: ink.withValues(alpha: 0.4)),
                         checkmarkColor: ink,
+                        showCheckmark: true,
                         selected: selection.activeRun == i,
                         onSelected: (_) => onSelect(i),
                       ),

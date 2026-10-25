@@ -42,7 +42,6 @@ class _SearchScreenState extends State<SearchScreen> {
   List<Passage> _passages = const [];
   PassageSelection? _selected;
   List<PassageSelection> _groups = const [];
-  Set<int> _rerankedVerseIds = const {};
   bool _separate = false;
   final _expanded = <int>{};
   final _resultsScroll = ScrollController();
@@ -128,16 +127,13 @@ class _SearchScreenState extends State<SearchScreen> {
       final resolved = _resolve(r);
       final focused = focus != null && r.mode != 'reference'
           ? await _focus(focus, resolved, id)
-          : (passages: resolved, reranked: <int>{});
+          : resolved;
       if (!mounted || _activeRequest != id) return;
       setState(() {
         _response = r;
-        _passages = focused.passages;
-        _rerankedVerseIds = focused.reranked;
+        _passages = focused;
         _groups = groupSearchPassages(
           _passages,
-          rerankedVerseIds: _rerankedVerseIds,
-          phrase: r.mode == 'phrase',
           separate: _separate,
         );
         _selected = _groups.isEmpty ? null : _groups.first;
@@ -168,18 +164,17 @@ class _SearchScreenState extends State<SearchScreen> {
   /// Answer focus: the top results reordered by how well each answers [query]. Today's order whenever focus is not
   /// installed, fails, or takes longer than twice the budget; the request shares the search's id, so a newer search
   /// cancels it.
-  Future<({List<Passage> passages, Set<int> reranked})> _focus(
+  Future<List<Passage>> _focus(
     String query,
     List<Passage> passages,
     int id,
   ) async {
-    final unchanged = (passages: passages, reranked: <int>{});
     final choice = app.focusChoice;
     if (!_service.hasFocus ||
         choice == null ||
         choice.k == 0 ||
         passages.length < 2) {
-      return unchanged;
+      return passages;
     }
     final top = passages.take(choice.k).toList();
     final budget = focusBudgetMs(choice.model);
@@ -197,24 +192,21 @@ class _SearchScreenState extends State<SearchScreen> {
         for (final s in r.raw['scores'] as List) (s as num).toDouble(),
       ];
       if (scores.length != top.length || scores.any((s) => !s.isFinite)) {
-        return unchanged;
+        return passages;
       }
       app.recordFocusTime(
         (r.raw['ms'] as num).toDouble(),
         device: r.raw['device'] as String?,
       );
-      return (
-        passages: focusOrder(passages, scores),
-        reranked: top.map((p) => p.verseId).toSet(),
-      );
+      return focusOrder(passages, scores);
     } on TimeoutException {
       _service.cancel(id);
       app.recordFocusTime(
         2 * budget,
       ); // at least this long: so Automatic learns this device is too slow
-      return unchanged;
+      return passages;
     } on Object {
-      return unchanged; // focus_unavailable, a driver error, a cancel: today's order
+      return passages; // focus_unavailable, a driver error, a cancel: today's order
     }
   }
 
@@ -253,8 +245,6 @@ class _SearchScreenState extends State<SearchScreen> {
       final previous = _selected;
       _groups = groupSearchPassages(
         _passages,
-        rerankedVerseIds: _rerankedVerseIds,
-        phrase: _response?.mode == 'phrase',
         separate: separate,
       );
       if (_groups.isNotEmpty) {
@@ -946,6 +936,7 @@ class _PreviewState extends State<_Preview> {
               child: PassageNavigation(
                 selection: group,
                 color: theme.text,
+                surfaceColor: theme.background,
                 onSelect: (index) => widget.onSelect(group.atRun(index)),
               ),
             ),

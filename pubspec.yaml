@@ -1,7 +1,7 @@
 name: scriptures_reader_mobile
 description: Mobile offline scripture reader with full search intelligence parity.
 publish_to: 'none'
-version: 1.0.8+9
+version: 1.0.9+10
 
 environment:
   sdk: '>=3.4.0 <4.0.0'

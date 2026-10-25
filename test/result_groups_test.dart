@@ -41,8 +41,7 @@ void main() {
     expect(groups.first.atRun(1).passages, groups.first.passages);
   });
 
-  test(
-      'a rank neighborhood does not chain through members or promote a weak adjacent hit',
+  test('all returned chapter matches join one card regardless of rank distance',
       () {
     final ranked = [
       verse(3),
@@ -51,32 +50,34 @@ void main() {
       verse(4)
     ];
     final groups = groupSearchPassages(ranked);
-    expect(groups.first.passages.map((p) => p.verse), [3, 11]);
-    expect(groups.last.passages.single.verse, 4);
+    expect(groups.first.passages.map((p) => p.verse), [3, 4, 11]);
+    expect(groups, hasLength(9));
+    expect(groups.first.anchor.verse, 3);
     expect(groups.expand((g) => g.passages).length, ranked.length);
     expect(groups.skip(1).take(8).map((g) => g.anchor.chapter),
         List.generate(8, (i) => i + 1));
   });
 
-  test('reranked and unevaluated hits cannot borrow each other\'s position',
+  test('chapter cards follow their strongest match, not canonical book order',
       () {
-    final ranked = [verse(17), verse(13), verse(11), verse(3)];
-    final groups = groupSearchPassages(ranked,
-        rerankedVerseIds: ranked.take(2).map((p) => p.verseId).toSet());
-    expect(groups.map((g) => g.passages.map((p) => p.verse).toList()), [
-      [13, 17],
-      [3, 11]
-    ]);
-    expect(groupSearchPassages(ranked).length, 1,
-        reason: 'focus-off/failure uses final retrieval ranks');
+    final ranked = [
+      verse(7, book: 2, chapter: 5),
+      verse(17),
+      verse(18, chapter: 17),
+      verse(13),
+      verse(7)
+    ];
+    final groups = groupSearchPassages(ranked);
+    expect(groups.map((g) => g.anchor.verse), [7, 17, 18]);
+    expect(groups[1].passages.map((p) => p.verse), [7, 13, 17]);
+    expect(groups[1].entry.verse, 17);
+    expect(groups[2].passages.single.chapter, 17);
   });
 
-  test(
-      'phrase matches stay in adjacent runs and individual display preserves rank',
+  test('chapter grouping preserves gaps and individual display preserves rank',
       () {
     final ranked = [verse(3), verse(4), verse(11), verse(13), verse(14)];
-    expect(
-        groupSearchPassages(ranked, phrase: true).map((g) => g.passages.length),
+    expect(groupSearchPassages(ranked).single.runs.map((r) => r.length),
         [2, 1, 2]);
     final separate =
         groupSearchPassages(ranked.reversed.toList(), separate: true);

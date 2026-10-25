@@ -497,6 +497,7 @@ class _Reading extends StatelessWidget {
                     PassageNavigation(
                       selection: selection,
                       color: theme.text,
+                      surfaceColor: theme.background,
                       onSelect: app.nav.jumpSearchPassage,
                     ),
                   ],

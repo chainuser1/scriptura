@@ -128,7 +128,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('the screen keeps unevaluated tail hits out of a reranked group',
+  testWidgets('after partial reranking all chapter matches share one card',
       (tester) async {
     final svc = FakeSearchService(
         (r, id) async => r.op == 'focus'
@@ -145,11 +145,57 @@ void main() {
     app.nav.go(Dest.search);
     await tester.pumpAndSettle();
     await typeAndSubmit(tester, find.byType(TextField).first, 'trust');
-    for (final id in [6, 1, 3]) {
+    for (final id in [6, 1]) {
       expect(find.byKey(ValueKey('hit-$id')), findsOneWidget);
     }
+    expect(find.byKey(const ValueKey('hit-3')), findsNothing);
+    expect(find.text('Alpha Book 1:1, 3'), findsOneWidget);
+    expect(tester.getTopLeft(find.byKey(const ValueKey('hit-6'))).dy,
+        lessThan(tester.getTopLeft(find.byKey(const ValueKey('hit-1'))).dy));
     expect(svc.requests.map((r) => r.op), ['search', 'focus']);
   });
+  testWidgets(
+      'Answer Focus selects the strongest passage by default within its chapter card',
+      (tester) async {
+    final svc = FakeSearchService(
+        (r, id) async => r.op == 'focus'
+            ? SearchResponse(mode: 'focus', raw: {
+                'scores': [0.1, 0.2, 0.9, 0.3],
+                'ms': 10.0
+              })
+            : semantic([1, 6, 3, 4]),
+        hasFocus: true);
+    final app = await boot(tester, search: svc);
+    addTearDown(app.dispose);
+    app.user.setPref(
+        'answer_focus_choice',
+        const FocusChoice(FocusModel.ezra, FocusVariant.int8, 10, 300)
+            .toJson());
+    app.nav.go(Dest.search);
+    await tester.pumpAndSettle();
+    await typeAndSubmit(tester, find.byType(TextField).first, 'trust');
+    expect(find.byKey(const ValueKey('hit-1')), findsNothing);
+    for (final id in [3, 4, 6]) {
+      expect(find.byKey(ValueKey('hit-$id')), findsOneWidget);
+    }
+    final navigation = find.byType(PassageNavigation).last;
+    Iterable<bool> checks() => tester
+        .widgetList<ChoiceChip>(
+            find.descendant(of: navigation, matching: find.byType(ChoiceChip)))
+        .map((c) => c.selected);
+    expect(checks(), [false, true],
+        reason: 'verse 3 has the highest Answer Focus score');
+    await tester.tap(find.descendant(of: navigation, matching: find.text('1')));
+    await tester.pumpAndSettle();
+    expect(checks(), [true, false]);
+    await tester.tap(find.text('Read the chapter'));
+    await tester.pumpAndSettle();
+    expect(app.nav.verse, 1);
+    expect(app.nav.searchSelection!.anchor.verseId, 3);
+    expect(app.nav.searchSelection!.passages.map((p) => p.verseId), [1, 3]);
+    expect(svc.requests.map((r) => r.op), ['search', 'focus']);
+  });
+
   testWidgets(
       'manual reader scroll and result position survive navigation and preference rebuilds',
       (tester) async {
@@ -171,8 +217,11 @@ void main() {
             .descendant(of: results, matching: find.byType(Scrollable))
             .first)
         .position;
-    final secondTitle = find.descendant(of: find.byKey(const ValueKey('hit-8')),
-        matching: find.byType(Text)).first;
+    final secondTitle = find
+        .descendant(
+            of: find.byKey(const ValueKey('hit-8')),
+            matching: find.byType(Text))
+        .first;
     await tester.ensureVisible(secondTitle);
     await tester.pumpAndSettle();
     final before = resultScroll.pixels;
