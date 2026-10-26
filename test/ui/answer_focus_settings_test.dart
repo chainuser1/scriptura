@@ -58,6 +58,28 @@ void main() {
     expect(find.textContaining('too slow'), findsOneWidget);
   });
 
+  testWidgets('result dropdown offers every limit and updates the model allowance', (tester) async {
+    final (app, _) = await settings(tester, hasFocus: true,
+        choice: const FocusChoice(FocusModel.ezra, FocusVariant.int8, 60, 100));
+    addTearDown(app.dispose);
+    final dropdown = find.byKey(const ValueKey('answer-focus-limit'));
+    for (final (limit, seconds) in [(10, 3), (15, 5), (30, 9), (60, 18), (100, 30)]) {
+      await tester.ensureVisible(dropdown);
+      await tester.tap(dropdown);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Top $limit results').last);
+      await tester.pumpAndSettle();
+      expect(app.focusLimit, limit);
+      expect(app.focusChoice!.k, limit);
+      expect(find.textContaining('Time allowance: up to $seconds seconds.'), findsOneWidget);
+    }
+    app.setFocusModelPreference(FocusModel.apollos);
+    await app.measureDevice();
+    await tester.pumpAndSettle();
+    expect(app.focusLimit, 100);
+    expect(find.textContaining('Time allowance: up to 13 min 20s.'), findsOneWidget);
+  });
+
   testWidgets('credits name the model and its licence', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: AboutScreen()));
     await tester.scrollUntilVisible(find.textContaining('bge-reranker-v2-m3'), 300, scrollable: find.byType(Scrollable).first);

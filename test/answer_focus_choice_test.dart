@@ -3,84 +3,45 @@ import 'package:scriptures_reader_mobile/services/engine/answer_focus.dart';
 
 void main() {
   for (final model in FocusModel.values) {
-    // Trial cost per candidate, calibrated independently for each model.
-    final factor = switch (model) {
-      FocusModel.ezra => 0.069,
-      FocusModel.priscilla => 0.134,
-      _ => 0.994,
-    };
-    final budget = focusBudgetMs(model);
-    group(model.name, () {
-      for (final (capacity, expected) in [(110, 100), (90, 80), (70, 60)]) {
-        test('chooses $expected candidates when $capacity fit', () {
-          final c = choose(cpuMs: budget / (factor * capacity), gpu: false,
-              mode: FocusMode.automatic, preferred: model);
+    for (final limit in [10, 15, 30, 60, 100]) {
+      test('${model.name} respects $limit results on CPU and GPU devices', () {
+        for (final gpu in [false, true]) {
+          final c = choose(cpuMs: 100, gpu: gpu, mode: FocusMode.automatic,
+              preferred: model, limit: limit);
           expect(c.model, model);
-          expect(c.variant, FocusVariant.int8);
-          expect(c.k, expected);
-          expect(c.predictedMs, closeTo(budget * expected / capacity, 0.01));
-        });
-      }
-      test('Off stays off, including forced choices and graphics', () {
+          expect(c.k, limit);
+          expect(c.variant, gpu && model == FocusModel.ezra ? FocusVariant.fp16 : FocusVariant.int8);
+        }
+      });
+      test('${model.name} scales its allowance for $limit results', () {
+        final perTen = model == FocusModel.ezra ? 1500.0 : 40000.0;
+        expect(focusBudgetMs(model, limit: limit), closeTo(perTen * limit / 10, 0.001));
+        final c = FocusChoice(model, FocusVariant.int8, limit, 100);
+        final budget = focusBudgetMs(model, limit: limit);
+        expect(adapt(c, [budget * 1.5, budget * 1.6, budget * 1.7], FocusMode.automatic), c);
+        expect(adapt(c, List.filled(3, budget * 2), FocusMode.on), c);
+        expect(adapt(c, List.filled(3, budget * 2), FocusMode.automatic), FocusChoice.none);
+        expect(adapt(c, [budget * 2], FocusMode.automatic), c);
+      });
+      test('${model.name} preserves $limit through saving and overrides', () {
+        final c = FocusChoice(model, FocusVariant.int8, limit, limit * 100);
+        expect(FocusChoice.fromJson(c.toJson()), c);
+        final forced = choose(cpuMs: 200000, gpu: false, mode: FocusMode.on,
+            preferred: model, force: true, limit: limit);
+        expect(forced.model, model);
+        expect(forced.k, limit);
         expect(choose(cpuMs: 100, gpu: true, mode: FocusMode.off,
-            preferred: model, force: true), FocusChoice.none);
-      });
-      test('very slow Automatic devices retain the existing fallback policy', () {
+            preferred: model, force: true, limit: limit), FocusChoice.none);
         expect(choose(cpuMs: 200000, gpu: false, mode: FocusMode.automatic,
-            preferred: model), FocusChoice.none);
+            preferred: model, limit: limit), FocusChoice.none);
       });
-      test('On keeps a minimum of 60 even on a slow device', () {
-        final c = choose(cpuMs: 200000, gpu: false, mode: FocusMode.on,
-            preferred: model, force: true);
-        expect(c.model, model);
-        expect(c.k, 60);
-        expect(c.variant, FocusVariant.int8);
-      });
-      test('a fitting preferred model wins on a GPU-capable device', () {
-        final c = choose(cpuMs: 100, gpu: true, mode: FocusMode.automatic,
-            preferred: model);
-        expect(c.model, model);
-        expect(c.variant, model == FocusModel.ezra ? FocusVariant.fp16 : FocusVariant.int8);
-        expect(c.k, model == FocusModel.ezra ? 60 : 100);
-      });
-      test('force has no effect on an already fitting model', () {
-        expect(choose(cpuMs: 100, gpu: false, mode: FocusMode.on, preferred: model, force: true),
-            choose(cpuMs: 100, gpu: false, mode: FocusMode.on, preferred: model));
-      });
-      test('adaptation steps 100 to 80 to 60 and never below 60', () {
-        final start = FocusChoice(model, FocusVariant.int8, 100, budget);
-        final slow = [budget * 1.2, budget * 1.3, budget * 1.4];
-        expect(adapt(start, [budget], FocusMode.automatic), start);
-        expect(adapt(start, [budget / 2, budget, budget], FocusMode.automatic), start);
-        final middle = adapt(start, slow, FocusMode.automatic);
-        expect(middle.k, 80);
-        final floor = adapt(middle, slow, FocusMode.automatic);
-        expect(floor.k, 60);
-        expect(adapt(floor, slow, FocusMode.automatic), floor);
-        final timeout = List<double>.filled(3, 2 * budget);
-        expect(adapt(floor, timeout, FocusMode.automatic), FocusChoice.none);
-        expect(adapt(floor, timeout, FocusMode.on), floor);
-      });
-      test('saved legacy choices upgrade without losing model or cost estimate', () {
-        for (final k in [10, 15, 30]) {
-          final c = FocusChoice.fromJson(FocusChoice(model, FocusVariant.int8, k, k * 100).toJson())!;
-          expect(c.model, model);
-          expect(c.variant, FocusVariant.int8);
-          expect(c.k, 60);
-          expect(c.predictedMs, 6000);
-        }
-        for (final k in [60, 80, 100]) {
-          final c = FocusChoice(model, FocusVariant.int8, k, k * 100);
-          expect(FocusChoice.fromJson(c.toJson()), c);
-        }
-      });
-    });
+    }
   }
 
-  test('GPU choice starts at 60 until real searches measure graphics time', () {
-    final c = choose(cpuMs: 1839, gpu: true, mode: FocusMode.automatic, preferred: FocusModel.ezra);
-    expect(c.k, 60);
-    expect(c.predictedMs, closeTo(7613.46, 0.01));
+  test('changing the count scales the prediction but preserves the model', () {
+    const c = FocusChoice(FocusModel.priscilla, FocusVariant.int8, 10, 500);
+    expect(c.withLimit(100), const FocusChoice(FocusModel.priscilla, FocusVariant.int8, 100, 5000));
+    expect(FocusChoice.none.withLimit(100), FocusChoice.none);
   });
 
   group('resolveFallback', () {
@@ -202,7 +163,7 @@ void main() {
   });
 
   test('choices survive being saved', () {
-    const c = FocusChoice(FocusModel.apollos, FocusVariant.fp16, 80, 812.5);
+    const c = FocusChoice(FocusModel.apollos, FocusVariant.fp16, 30, 812.5);
     expect(FocusChoice.fromJson(c.toJson()), c);
     expect(FocusChoice.fromJson('nonsense'), isNull);
     // Saved before the model field existed: still loads, as Ezra.

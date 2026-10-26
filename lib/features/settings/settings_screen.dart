@@ -374,6 +374,14 @@ class _AnswerFocusTile extends StatelessWidget {
     return 'This device will use the ${c.variant == FocusVariant.fp16 ? 'graphics chip' : 'processor'}. Not downloaded yet ($size, best on Wi-Fi).';
   }
 
+  String _allowance() {
+    final choice = app.focusChoice;
+    final model = choice != null && choice.variant != FocusVariant.none ? choice.model : app.focusModelPreference;
+    final seconds = (2 * focusBudgetMs(model, limit: app.focusLimit) / 1000).ceil();
+    if (seconds < 60) return '$seconds seconds';
+    return '${seconds ~/ 60} min${seconds % 60 == 0 ? '' : ' ${seconds % 60}s'}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
@@ -388,12 +396,36 @@ class _AnswerFocusTile extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.only(left: 40, top: 4),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Puts the passages that answer your question first. Chosen for this device automatically.', style: t.bodySmall),
+            Text('Puts the passages that answer your question first. Choose how many results it checks.', style: t.bodySmall),
             const SizedBox(height: 4),
             Text(_status()),
             const SizedBox(height: 12),
             _ModelPicker(app: app),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 280),
+              child: InputDecorator(
+                decoration: const InputDecoration(labelText: 'Results to focus', border: OutlineInputBorder()),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<int>(
+                    key: const ValueKey('answer-focus-limit'),
+                    value: app.focusLimit,
+                    isExpanded: true,
+                    isDense: true,
+                    items: [
+                      for (final limit in focusCandidateCounts)
+                        DropdownMenuItem(value: limit, child: Text('Top $limit results')),
+                    ],
+                    onChanged: (limit) {
+                      if (limit != null) app.setFocusLimit(limit);
+                    },
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text('Time allowance: up to ${_allowance()}. Results appear as soon as they are ready.', style: t.bodySmall),
+            const SizedBox(height: 12),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: SegmentedButton<FocusMode>(

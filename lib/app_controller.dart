@@ -98,7 +98,24 @@ class AppController extends ChangeNotifier {
   FocusMode get focusMode => FocusMode.parse(user.pref('answer_focus'));
 
   /// What the device trial chose (and later measurements adjusted); null until the trial has run.
-  FocusChoice? get focusChoice => FocusChoice.fromJson(user.pref('answer_focus_choice'));
+  FocusChoice? get focusChoice => FocusChoice.fromJson(user.pref('answer_focus_choice'))?.withLimit(focusLimit);
+
+  /// Preserve a supported saved count on upgrade; fresh installs start at 60.
+  int get focusLimit {
+    final saved = int.tryParse(user.pref('answer_focus_limit') ?? '');
+    if (focusCandidateCounts.contains(saved)) return saved!;
+    final previous = FocusChoice.fromJson(user.pref('answer_focus_choice'))?.k;
+    return focusCandidateCounts.contains(previous) ? previous! : defaultFocusLimit;
+  }
+
+  void setFocusLimit(int limit) {
+    if (!focusCandidateCounts.contains(limit)) throw ArgumentError.value(limit, 'limit');
+    final before = focusChoice;
+    user.setPref('answer_focus_limit', limit.toString());
+    if (before != null) user.setPref('answer_focus_choice', before.withLimit(limit).toJson());
+    _focusTimes.clear();
+    notifyListeners();
+  }
 
   String? get focusKind => switch ((focusChoice?.model, focusChoice?.variant)) {
         (FocusModel.ezra, FocusVariant.int8) => 'answer-focus-int8',
@@ -233,15 +250,19 @@ class AppController extends ChangeNotifier {
   /// Where Answer focus last ran ('gpu' or 'cpu'); null until the first focused search.
   String? focusDevice;
 
-  /// A measured Answer focus time; after a few, Automatic adjusts how many results it reorders (or turns itself off).
-  void recordFocusTime(double ms, {String? device}) {
+  /// Automatic can turn itself off after repeated timeouts, retaining the selected limit.
+  void recordFocusTime(double ms, {String? device, FocusChoice? choice}) {
+    // A search started under an older limit/model must not judge the new choice.
+    if (choice != null && choice != focusChoice) return;
     focusDevice = device ?? focusDevice;
     final c = focusChoice;
     if (c == null) return;
     if (c.variant == FocusVariant.fp16 && device == 'cpu') user.setPref('focus_gpu_failed', '1'); // the engine fell back
     _focusTimes.add(ms);
+    if (_focusTimes.length > 3) _focusTimes.removeAt(0);
     final next = adapt(c, _focusTimes, focusMode);
     if (next != c) {
+      user.setPref('answer_focus_limit', c.k.toString());
       user.setPref('answer_focus_choice', next.toJson());
       _focusTimes.clear();
     }
@@ -298,6 +319,7 @@ class AppController extends ChangeNotifier {
         mode: mode,
         preferred: preference,
         force: force,
+        limit: focusLimit,
       );
       final resolved = resolveFallback(
         preference: preference,
@@ -310,7 +332,8 @@ class AppController extends ChangeNotifier {
       );
       // keep() only guards variant-level noise within one model; a genuine model switch (resolveFallback's job)
       // must not be masked by it, so it only sees `before` when `before` was already on the resolved model.
-      final c = keep(before?.model == resolved.model ? before : null, resolved, installed: _installedVariant(resolved.model));
+      final c = keep(before?.model == resolved.model ? before : null, resolved, installed: _installedVariant(resolved.model)).withLimit(focusLimit);
+      user.setPref('answer_focus_limit', focusLimit.toString());
       user.setPref('answer_focus_choice', c.toJson());
       user.setPref('focus_trial_preference', preference.name);
       if (automatic && mode != FocusMode.off) user.setPref('focus_automatic_model', c.model.name);
@@ -376,7 +399,7 @@ class AppController extends ChangeNotifier {
     // a previously saved database's preferences always win over the temporary store.
     final focusPrefs = {
       for (final key in const ['focus_automatic_model', 'focus_model_preference', 'answer_focus',
-        'answer_focus_choice', 'focus_trial_preference', 'home_fallback_seen_priscilla'])
+        'answer_focus_choice', 'answer_focus_limit', 'focus_trial_preference', 'home_fallback_seen_priscilla'])
         if (_user?.pref(key) case final String value) key: value,
     };
     _repository = null;

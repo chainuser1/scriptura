@@ -39,7 +39,7 @@ class _WideRepository extends ContentRepository {
 
 void main() {
   for (final model in FocusModel.values) {
-    for (final k in [60, 80, 100]) {
+    for (final k in [10, 15, 30, 60, 100]) {
       testWidgets('${model.name} retrieves and scores $k passages before grouping', (tester) async {
         tester.view.physicalSize = const Size(1280, 800);
         tester.view.devicePixelRatio = 1;
@@ -60,11 +60,12 @@ void main() {
         }, hasFocus: true);
         final app = AppController.fixed(repository: repo, search: service, user: UserStore.memory());
         addTearDown(app.dispose);
-        app.user.setPref('answer_focus_choice', FocusChoice(model, FocusVariant.int8, k, 100).toJson());
+        app.user.setPref('answer_focus_choice', FocusChoice(model, FocusVariant.int8, 60, 100).toJson());
+        app.setFocusLimit(k);
         await tester.pumpWidget(MaterialApp(home: Scaffold(body: SearchScreen(app: app))));
         await typeAndSubmit(tester, find.byType(TextField).first, 'find the strongest answer');
         expect(service.requests.map((r) => r.op), ['search', 'focus']);
-        // The last retrieved verse was outside the old pool; it now anchors the card.
+        // The strongest verse anchors the card, including candidates beyond the old pool.
         expect(find.byKey(ValueKey('hit-$k')), findsOneWidget);
         expect(find.text('Alpha Book 1:1–$k'), findsNWidgets(2));
         expect(tester.takeException(), isNull);

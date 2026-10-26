@@ -434,7 +434,7 @@ void main() {
         expect((sent.single.body!['texts'] as List).first, contains('Synthetic English passage'));
       });
 
-      testWidgets('a saved small pool upgrades and scores all available matches', (tester) async {
+      testWidgets('an unsupported saved pool uses the default and scores all available matches', (tester) async {
         final sent = <SearchRequest>[];
         await withFocus(tester, (r) async {
           sent.add(r);
@@ -466,6 +466,28 @@ void main() {
         await showSeparately(tester);
         expect(top(tester, 2), lessThan(top(tester, 8)));
       });
+
+      for (final (model, limit, seconds) in [
+        (FocusModel.ezra, 10, 3),
+        (FocusModel.ezra, 100, 30),
+        (FocusModel.priscilla, 15, 120),
+        (FocusModel.apollos, 10, 80),
+        (FocusModel.aquila, 100, 800),
+      ]) {
+        testWidgets('${model.name} with $limit results gets its full $seconds second timeout', (tester) async {
+          final app = await withFocus(tester, (r) => Completer<SearchResponse>().future, k: limit);
+          app.user.setPref('answer_focus_choice', FocusChoice(model, FocusVariant.int8, limit, 100).toJson());
+          await tester.enterText(find.byType(TextField).first, 'peace');
+          await tester.testTextInput.receiveAction(TextInputAction.search);
+          await tester.pump();
+          await tester.pump(Duration(seconds: seconds - 1));
+          expect(find.byKey(const ValueKey('hit-2')), findsNothing);
+          await tester.pump(const Duration(seconds: 2));
+          await tester.pumpAndSettle();
+          expect(find.byKey(const ValueKey('hit-2')), findsOneWidget);
+          expect((app.search as FakeSearchService).cancelled, hasLength(1));
+        });
+      }
 
       testWidgets('a newer search wins over an older one still being focused', (tester) async {
         final slow = Completer<SearchResponse>();
@@ -535,12 +557,12 @@ void main() {
         expect(app.user.pref('focus_gpu_failed'), '1');
       });
 
-      testWidgets('slow searches teach Automatic to look at fewer candidates', (tester) async {
+      testWidgets('slow searches respect the selected result limit', (tester) async {
         final app = await withFocus(tester, (r) async => focused([0.1, 0.2, 0.3, 0.4], ms: 15600), k: 100);
         for (final q in ['one', 'two', 'three']) {
           await typeAndSubmit(tester, find.byType(TextField).first, q);
         }
-        expect(app.focusChoice!.k, 80);
+        expect(app.focusChoice!.k, 100);
       });
     });
 

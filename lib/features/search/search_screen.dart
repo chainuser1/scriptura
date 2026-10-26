@@ -179,7 +179,7 @@ class _SearchScreenState extends State<SearchScreen> {
       return passages;
     }
     final top = passages.take(choice.k).toList();
-    final budget = focusBudgetMs(choice.model);
+    final budget = focusBudgetMs(choice.model, limit: choice.k);
     try {
       final r = await _service
           .search(
@@ -199,12 +199,14 @@ class _SearchScreenState extends State<SearchScreen> {
       app.recordFocusTime(
         (r.raw['ms'] as num).toDouble(),
         device: r.raw['device'] as String?,
+        choice: choice,
       );
       return focusOrder(passages, scores);
     } on TimeoutException {
       _service.cancel(id);
       app.recordFocusTime(
         2 * budget,
+        choice: choice,
       ); // at least this long: so Automatic learns this device is too slow
       return passages;
     } on Object {
@@ -264,9 +266,10 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   // Retrieve the full scoring pool before ranking and chapter grouping.
-  int get _meaningTopK => app.focusMode != FocusMode.off && _service.hasFocus
-      ? (app.focusChoice?.k ?? 0).clamp(20, focusCandidateCounts.first)
-      : 20;
+  int get _meaningTopK {
+    final k = app.focusChoice?.k ?? 0;
+    return app.focusMode != FocusMode.off && _service.hasFocus && k > 0 ? k : 20;
+  }
 
   void _submit([String? _]) {
     final q = _text.text.trim();
