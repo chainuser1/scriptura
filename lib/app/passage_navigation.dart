@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'passage_selection.dart';
+import 'passage_colors.dart';
 
 /// Shared passage shortcuts for result cards, preview and full reader.
 class PassageNavigation extends StatelessWidget {
@@ -22,6 +23,8 @@ class PassageNavigation extends StatelessWidget {
   Widget build(BuildContext context) {
     final ink = color ?? Theme.of(context).colorScheme.onSurface;
     final surface = surfaceColor ?? Theme.of(context).colorScheme.surface;
+    final colors = PassageColors(Theme.of(context).colorScheme,
+        surface: surface, text: ink);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -37,20 +40,22 @@ class PassageNavigation extends StatelessWidget {
                       label: 'Go to passage ${runLabel(selection.runs[i])}',
                       child: ChoiceChip(
                         label: Text(runLabel(selection.runs[i])),
-                        labelStyle: TextStyle(color: ink),
+                        labelStyle: TextStyle(
+                            color: selection.activeRun == i
+                                ? colors.onAccent
+                                : ink),
                         // The app theme may be dark while this reading page is
                         // light. Use an opaque fill from the local surface.
-                        color: WidgetStateProperty.resolveWith(
-                            (states) => Color.alphaBlend(
-                                  ink.withValues(
-                                      alpha:
-                                          states.contains(WidgetState.selected)
-                                              ? 0.16
-                                              : 0.04),
-                                  surface,
-                                )),
-                        side: BorderSide(color: ink.withValues(alpha: 0.4)),
-                        checkmarkColor: ink,
+                        color: WidgetStateProperty.resolveWith((states) =>
+                            states.contains(WidgetState.selected)
+                                ? colors.accent
+                                : colors.matchFill),
+                        side: BorderSide(
+                            color: selection.activeRun == i
+                                ? colors.accent
+                                : ink.withValues(alpha: 0.3)),
+                        checkmarkColor:
+                            selection.activeRun == i ? colors.onAccent : ink,
                         showCheckmark: true,
                         selected: selection.activeRun == i,
                         onSelected: (_) => onSelect(i),
