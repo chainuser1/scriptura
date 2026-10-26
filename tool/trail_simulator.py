@@ -32,14 +32,64 @@ class MixedPatternReader:
         return a
 
 
+def exploration_cost(run):
+    """Fraction of all picks across [run] (a play_trail() result) whose parts.explore flag was true."""
+    flags = [h['parts']['explore'] for step in run for h in step['hits']]
+    return sum(flags) / len(flags) if flags else 0.0
+
+
+def taste_convergence(run, target_family, threshold=0.5, window=10):
+    """Steps until [target_family]'s share of the last [window] picks' dominant_family crosses [threshold];
+    None if the run never reaches it. Reads only the picked (first) hit of each step, matching how play_trail
+    itself records the stream."""
+    picks = [step['hits'][0]['dominant_family'] for step in run if step['hits']]
+    for i in range(len(picks)):
+        recent = picks[max(0, i - window + 1):i + 1]
+        if recent.count(target_family) / len(recent) >= threshold:
+            return i
+    return None
+
+
+def _shown_verses(run):
+    return [step['hits'][0]['verse_id'] for step in run if step['hits']]
+
+
+def flow_coherence(trails, run):
+    """Mean cosine similarity between consecutive shown verses' genome vectors (trails.V rows are already
+    L2-normalized, so a raw dot product IS the cosine -- see tool/similar_verses.py's own SimilarVerses.__init__)."""
+    verses = _shown_verses(run)
+    if len(verses) < 2:
+        return 0.0
+    sims = [float(trails.V[trails.row_of[a]] @ trails.V[trails.row_of[b]]) for a, b in zip(verses, verses[1:])]
+    return sum(sims) / len(sims)
+
+
+def novelty_spacing(trails, run, cosine_threshold=0.90):
+    """For every pair of shown verses whose genome cosine exceeds [cosine_threshold], the number of steps between
+    them (by position in the shown-verse list, matching how 'recent' is tracked in a real trail)."""
+    verses = _shown_verses(run)
+    spacing = []
+    for i in range(len(verses)):
+        for j in range(i + 1, len(verses)):
+            cos = float(trails.V[trails.row_of[verses[i]]] @ trails.V[trails.row_of[verses[j]]])
+            if cos >= cosine_threshold:
+                spacing.append(j - i)
+    return spacing
+
+
 def play_trail(trails, seed, reader, moods, *, k, focus, mood_strength, steps):
     """Plays [steps] cards of a trail against the real Trails.trail_next(), feeding [reader]'s chosen action back
     into the event log each time. Returns the full list of per-step trail_next() responses (not just verse ids),
-    so later callers can read hits[].parts for their own metrics."""
+    so later callers can read hits[].parts for their own metrics. Each hit also gets a 'dominant_family' key
+    (trails.dominant[row], not part of the real engine response) so taste_convergence() can read it without
+    needing a Trails object of its own."""
     events, history, run = [], [], []
     for step in range(steps):
         r = trails.trail_next({'k': k, 'step': step, 'seed': seed, 'events': events, 'recent': history[-5:],
                                 'moods': moods, 'mood_strength': mood_strength, 'focus': focus})
+        for h in r['hits']:
+            row = trails.row_of.get(h['verse_id'])
+            h['dominant_family'] = int(trails.dominant[row]) if row is not None else None
         run.append(r)
         if not r['hits']:
             break
