@@ -2,9 +2,18 @@
 resulting stream -- taste convergence, flow, novelty spacing, exploration cost, mood pull -- so tuning is
 measured, not argued (docs/superpowers/specs/2026-10-25-trails-next-move-design.md, section 3).
 
+Battery is verse seeds only (no question seeds): tool/trails.py's Trails.seed_vector() cannot encode text, and
+the native engine exposes no op to return the genome it computes internally for a text seed -- see this plan's
+own ledger for the investigation. Adding that requires a new engine op, out of this plan's scope.
+
   .venv\\Scripts\\python.exe -I tool/trail_simulator.py
 """
+import json
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+OUT = ROOT / 'local-benchmarks'
+RET = Path(r'C:\Users\jayky\AppData\Roaming\Scriptures\Scriptures\scriptura\engine-pack\retrieval')
 
 VALID_ACTIONS = {'like', 'skip', 'dislike'}
 
@@ -77,6 +86,19 @@ def novelty_spacing(trails, run, cosine_threshold=0.90):
     return spacing
 
 
+def mood_pull(trails, run, mood_vector):
+    """Mean cosine of the run's shown verses to [mood_vector] (trails.V rows are already L2-normalized, so a raw
+    dot product is the cosine). Returns 0.0 when there is no mood vector or no shown verses, rather than raising
+    -- there is nothing to measure a "pull" toward."""
+    if mood_vector is None:
+        return 0.0
+    verses = _shown_verses(run)
+    if not verses:
+        return 0.0
+    sims = [float(trails.V[trails.row_of[v]] @ mood_vector) for v in verses]
+    return sum(sims) / len(sims)
+
+
 def play_trail(trails, seed, reader, moods, *, k, focus, mood_strength, steps):
     """Plays [steps] cards of a trail against the real Trails.trail_next(), feeding [reader]'s chosen action back
     into the event log each time. Returns the full list of per-step trail_next() responses (not just verse ids),
@@ -103,8 +125,41 @@ def play_trail(trails, seed, reader, moods, *, k, focus, mood_strength, steps):
     return run
 
 
+SEEDS = [('John 3:16', {'verse_id': 26137}), ('Alma 32:21', {'verse_id': 34000})]
+READERS = [('always_like', AlwaysLikeReader), ('always_dislike', AlwaysDislikeReader), ('mixed', MixedPatternReader)]
+
+
+def _run_battery(trails, moods_data):
+    scenarios = []
+    for seed_name, seed in SEEDS:
+        for reader_name, reader_cls in READERS:
+            for mood in [None] + moods_data:
+                mood_genes = [] if mood is None else [mood['genes']]
+                run = play_trail(trails, seed, reader_cls(), moods=mood_genes, k=5, focus=0.5, mood_strength=0.5, steps=20)
+                mv = trails.mood_vector(mood_genes) if mood_genes else None
+                target = int(trails.dominant[trails.row_of[seed['verse_id']]])
+                scenarios.append({
+                    'seed': seed_name, 'reader': reader_name, 'mood': mood['id'] if mood else None,
+                    'taste_convergence': taste_convergence(run, target_family=target),
+                    'flow_coherence': flow_coherence(trails, run),
+                    'novelty_spacing': novelty_spacing(trails, run),
+                    'exploration_cost': exploration_cost(run),
+                    'mood_pull': mood_pull(trails, run, mv),
+                })
+    return scenarios
+
+
 if __name__ == '__main__':
     import sys
-    ROOT = Path(__file__).resolve().parent.parent
     sys.path.insert(0, str(ROOT / 'tool'))
-    print('tool/trail_simulator.py: see tool/test_trail_simulator.py for usage; report CLI lands in a later task.')
+    from trails import Trails  # noqa: E402
+
+    trails = Trails(str(RET))
+    moods_data = json.loads((ROOT / 'assets' / 'trail_moods.json').read_text('utf-8'))['moods']
+    scenarios = _run_battery(trails, moods_data)
+    OUT.mkdir(exist_ok=True)
+    (OUT / 'trail-simulator-report.json').write_text(json.dumps(scenarios, indent=1), 'utf-8')
+    print(f'-> {OUT / "trail-simulator-report.json"} ({len(scenarios)} scenarios)')
+    for s in scenarios:
+        print(f"{s['seed']:12s} {s['reader']:14s} mood={str(s['mood']):10s} "
+              f"explore_cost={s['exploration_cost']:.3f} mood_pull={s['mood_pull']:+.3f}")

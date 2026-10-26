@@ -2,6 +2,7 @@
 
   .venv\\Scripts\\python.exe -I tool/test_trail_simulator.py
 """
+import json
 import sys
 from pathlib import Path
 
@@ -9,7 +10,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / 'tool'))
 from trails import Trails  # noqa: E402
 from trail_simulator import (AlwaysLikeReader, exploration_cost, flow_coherence,  # noqa: E402
-                              novelty_spacing, play_trail, taste_convergence)
+                              mood_pull, novelty_spacing, play_trail, taste_convergence)
 
 RET = Path(r'C:\Users\jayky\AppData\Roaming\Scriptures\Scriptures\scriptura\engine-pack\retrieval')
 
@@ -76,6 +77,22 @@ def test_novelty_spacing_finds_the_repeated_verse_pair():
     run = [{'hits': [{'verse_id': 26137}]}, {'hits': [{'verse_id': 1}]}, {'hits': [{'verse_id': 26137}]}]
     spacing = novelty_spacing(trails, run, cosine_threshold=0.90)
     assert 2 in spacing  # the two 26137 picks are 2 steps apart and trivially >= 0.90 cosine to themselves
+
+
+def test_mood_pull_is_zero_or_handles_gracefully_with_no_mood():
+    trails = Trails(str(RET))
+    run = play_trail(trails, {'verse_id': 26137}, AlwaysLikeReader(), moods=[], k=5, focus=0.5, mood_strength=0.5, steps=5)
+    assert mood_pull(trails, run, mood_vector=None) == 0.0  # no crash, no nonsensical ratio
+
+
+def test_mood_pull_is_higher_with_a_mood_than_without():
+    trails = Trails(str(RET))
+    moods_data = json.loads((ROOT / 'assets' / 'trail_moods.json').read_text('utf-8'))['moods']
+    comfort = next(m for m in moods_data if m['id'] == 'comfort')
+    mv = trails.mood_vector([comfort['genes']])
+    with_mood = play_trail(trails, {'verse_id': 26137}, AlwaysLikeReader(), moods=[comfort['genes']], k=5, focus=0.5, mood_strength=0.5, steps=20)
+    without_mood = play_trail(trails, {'verse_id': 26137}, AlwaysLikeReader(), moods=[], k=5, focus=0.5, mood_strength=0.5, steps=20)
+    assert mood_pull(trails, with_mood, mv) > mood_pull(trails, without_mood, mv)
 
 
 if __name__ == '__main__':
