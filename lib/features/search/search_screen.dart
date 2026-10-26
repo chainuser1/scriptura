@@ -6,6 +6,7 @@ import '../../app/guide_content.dart';
 import '../../app/looks.dart';
 import '../../app/nav_state.dart';
 import '../../app/passage_navigation.dart';
+import '../../app/passage_colors.dart';
 import '../../app/passage_selection.dart';
 import '../../app/theme.dart';
 import '../../app/verse_tools.dart';
@@ -887,6 +888,8 @@ class _PreviewState extends State<_Preview> {
       chapter.last.verseId,
     );
     final style = prefs.style(color: theme.text, extraScale: 0.9);
+    final colors = PassageColors(Theme.of(context).colorScheme,
+        surface: theme.background, text: theme.text);
     return Container(
       color: theme.background,
       child: Column(
@@ -964,19 +967,14 @@ class _PreviewState extends State<_Preview> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: highlights[p.verseId] == null
-                                ? null
-                                : highlightPalette[highlights[p.verseId]! %
-                                      highlightPalette.length],
+                            color: highlights[p.verseId] != null
+                                ? highlightPalette[highlights[p.verseId]! % highlightPalette.length]
+                                : group.contains(p.verseId)
+                                    ? (group.isActive(p.verseId) ? colors.activeFill : colors.matchFill)
+                                    : null,
                             border: Border.all(
-                              color: group.contains(p.verseId)
-                                  ? theme.text.withValues(
-                                      alpha: group.isActive(p.verseId)
-                                          ? 0.75
-                                          : 0.35,
-                                    )
-                                  : Colors.transparent,
-                              width: group.isActive(p.verseId) ? 2.5 : 1,
+                              color: group.contains(p.verseId) ? colors.marker : Colors.transparent,
+                              width: group.isActive(p.verseId) ? 1.5 : 0.75,
                             ),
                             borderRadius: BorderRadius.circular(6),
                           ),

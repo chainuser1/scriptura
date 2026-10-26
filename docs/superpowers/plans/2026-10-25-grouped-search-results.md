@@ -58,7 +58,8 @@ Passage shortcuts scroll horizontally on narrow surfaces. Preview and reader off
 previous/next passage controls and position text. Their checkmark follows the
 active passage, initially the anchor's run.
 
-Use opaque chip fills derived from the actual reading surface and text colors.
+Use opaque chip fills derived from the app accent and actual reading surface.
+Selected chips use the app primary/on-primary pair, including their checkmark.
 The surrounding dark app theme must not force a dark chip background behind the
 light reading page's dark text. Keep labels and checkmarks legible in both light
 and dark reading themes; explicitly show the selected checkmark.
@@ -109,3 +110,25 @@ chip contrast regression.
 
 No generated theological summaries, cross-chapter automatic merging, similarity
 percentages, whole-collection bookmarks, collection deep links, or model changes.
+
+
+## Selection theme refinement
+
+Preview and reader selection now share the app accent: a soft tinted background,
+a thinner accent outline, and a solid accent on the selected passage chip. The
+active run retains stronger emphasis. Saved highlight colors take priority over
+the temporary tint; chapter context remains on the chosen reading surface.
+
+`PassageColors` adapts the accent marker toward the page ink only when needed to
+keep it visible on an independently chosen light or dark reading page. This avoids
+hard-coded gray outlines and preserves each app theme's accent.
+
+Validation includes all app styles, both brightness settings, and every reading
+surface: selected-chip text and verse text retain 4.5:1 contrast, and selection
+markers retain 3:1 against the page. Windows trial build: 1.0.10 (build 11).
+
+
+Theme refinement verification: 21 targeted checks passed, including desktop and
+phone render inspection; analysis of all five affected Dart files passed. Built
+the Windows installer and verified version 1.0.10, app build 1.0.10+11, and the
+bundled runtime files. No release was published.

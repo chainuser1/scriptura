@@ -8,6 +8,7 @@ import '../../app/theme.dart';
 import '../../app/verse_tools.dart';
 import '../../app/nav_state.dart';
 import '../../app/passage_navigation.dart';
+import '../../app/passage_colors.dart';
 import '../../app_controller.dart';
 import '../../data/content/content_repository.dart';
 import '../../data/trails/trail_models.dart';
@@ -406,6 +407,8 @@ class _Reading extends StatelessWidget {
     final marked = app.nav.verse;
     final selection = app.nav.searchSelection;
     final style = prefs.style(color: theme.text);
+    final selectionColors = PassageColors(Theme.of(context).colorScheme,
+        surface: theme.background, text: theme.text);
 
     Widget verse(Passage p, {required bool primary}) {
       final isMarked =
@@ -420,6 +423,7 @@ class _Reading extends StatelessWidget {
         numbers: prefs.numbers,
         cards: prefs.layout == VerseLayout.cards,
         cardColor: theme.text.withValues(alpha: 0.06),
+        selectionColors: selectionColors,
         highlight: highlights[p.verseId],
         marked: isMarked,
         searchMatch: primary && (selection?.contains(p.verseId) ?? false),
@@ -866,6 +870,7 @@ class _VerseRow extends StatefulWidget {
     required this.numbers,
     required this.cards,
     required this.cardColor,
+    required this.selectionColors,
     required this.highlight,
     required this.marked,
     this.activeMatch = false,
@@ -877,6 +882,7 @@ class _VerseRow extends StatefulWidget {
   final Passage passage;
   final TextStyle style;
   final Color numberColor, cardColor;
+  final PassageColors selectionColors;
   final VerseNumbers numbers;
   final bool cards;
   final int? highlight;
@@ -903,6 +909,8 @@ class _VerseRowState extends State<_VerseRow> {
     final style = widget.style;
     final scheme = Theme.of(context).colorScheme;
     final hl = widget.highlight;
+    final colors = widget.selectionColors;
+    final active = widget.activeMatch || !widget.searchMatch;
     final status = [
       if (widget.searchMatch) 'search match',
       if (widget.activeMatch) 'active passage',
@@ -942,17 +950,17 @@ class _VerseRowState extends State<_VerseRow> {
                 : const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
               color: hl == null
-                  ? (widget.cards ? widget.cardColor : null)
+                  ? (widget.marked
+                      ? (active ? colors.activeFill : colors.matchFill)
+                      : (widget.cards ? widget.cardColor : null))
                   : highlightPalette[hl % highlightPalette.length],
               borderRadius: BorderRadius.circular(widget.cards ? 12 : 6),
               border: _focused
                   ? Border.all(color: scheme.tertiary, width: 2)
                   : widget.marked
                   ? Border.all(
-                      color: style.color!.withValues(
-                        alpha: widget.activeMatch ? 0.75 : 0.4,
-                      ),
-                      width: widget.activeMatch ? 2.5 : 1.5,
+                      color: colors.marker,
+                      width: active ? 1.5 : 0.75,
                     )
                   : Border.all(color: Colors.transparent, width: 1.5),
             ),
