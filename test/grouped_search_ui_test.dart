@@ -128,12 +128,12 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('after partial reranking all chapter matches share one card',
+  testWidgets('after reranking all chapter matches share one card',
       (tester) async {
     final svc = FakeSearchService(
         (r, id) async => r.op == 'focus'
             ? SearchResponse(mode: 'focus', raw: {
-                'scores': [0.8, 0.9],
+                'scores': [0.8, 0.9, 0.1],
                 'ms': 10.0
               })
             : semantic([1, 6, 3]),

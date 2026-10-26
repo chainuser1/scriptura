@@ -189,7 +189,7 @@ void main() {
           SearchResponse(mode: 'device_trial', raw: {'cpu_ms': 200, 'gpu': false})));
       await app.measureDevice();
       for (var i = 0; i < 9; i++) {
-        app.recordFocusTime(100000);
+        app.recordFocusTime(2 * kApollosBudgetMs);
       }
       expect(app.focusChoice, FocusChoice.none);
       expect(app.focusFellBackFromDefault, isFalse);

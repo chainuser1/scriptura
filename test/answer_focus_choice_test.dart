@@ -2,263 +2,85 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:scriptures_reader_mobile/services/engine/answer_focus.dart';
 
 void main() {
-  // The reference laptop: device trial 1839 ms, CPU int8 focus measured 1270 ms at 10 candidates.
-  const laptop = 1839.0;
-
-  group('choose', () {
-    test('a working graphics chip gets the graphics model', () {
-      final c = choose(cpuMs: laptop, gpu: true, mode: FocusMode.automatic, preferred: FocusModel.ezra);
-      expect(c.variant, FocusVariant.fp16);
-      expect(c.k, 10);
+  for (final model in FocusModel.values) {
+    // Trial cost per candidate, calibrated independently for each model.
+    final factor = switch (model) {
+      FocusModel.ezra => 0.069,
+      FocusModel.priscilla => 0.134,
+      _ => 0.994,
+    };
+    final budget = focusBudgetMs(model);
+    group(model.name, () {
+      for (final (capacity, expected) in [(110, 100), (90, 80), (70, 60)]) {
+        test('chooses $expected candidates when $capacity fit', () {
+          final c = choose(cpuMs: budget / (factor * capacity), gpu: false,
+              mode: FocusMode.automatic, preferred: model);
+          expect(c.model, model);
+          expect(c.variant, FocusVariant.int8);
+          expect(c.k, expected);
+          expect(c.predictedMs, closeTo(budget * expected / capacity, 0.01));
+        });
+      }
+      test('Off stays off, including forced choices and graphics', () {
+        expect(choose(cpuMs: 100, gpu: true, mode: FocusMode.off,
+            preferred: model, force: true), FocusChoice.none);
+      });
+      test('very slow Automatic devices retain the existing fallback policy', () {
+        expect(choose(cpuMs: 200000, gpu: false, mode: FocusMode.automatic,
+            preferred: model), FocusChoice.none);
+      });
+      test('On keeps a minimum of 60 even on a slow device', () {
+        final c = choose(cpuMs: 200000, gpu: false, mode: FocusMode.on,
+            preferred: model, force: true);
+        expect(c.model, model);
+        expect(c.k, 60);
+        expect(c.variant, FocusVariant.int8);
+      });
+      test('a fitting preferred model wins on a GPU-capable device', () {
+        final c = choose(cpuMs: 100, gpu: true, mode: FocusMode.automatic,
+            preferred: model);
+        expect(c.model, model);
+        expect(c.variant, model == FocusModel.ezra ? FocusVariant.fp16 : FocusVariant.int8);
+        expect(c.k, model == FocusModel.ezra ? 60 : 100);
+      });
+      test('force has no effect on an already fitting model', () {
+        expect(choose(cpuMs: 100, gpu: false, mode: FocusMode.on, preferred: model, force: true),
+            choose(cpuMs: 100, gpu: false, mode: FocusMode.on, preferred: model));
+      });
+      test('adaptation steps 100 to 80 to 60 and never below 60', () {
+        final start = FocusChoice(model, FocusVariant.int8, 100, budget);
+        final slow = [budget * 1.2, budget * 1.3, budget * 1.4];
+        expect(adapt(start, [budget], FocusMode.automatic), start);
+        expect(adapt(start, [budget / 2, budget, budget], FocusMode.automatic), start);
+        final middle = adapt(start, slow, FocusMode.automatic);
+        expect(middle.k, 80);
+        final floor = adapt(middle, slow, FocusMode.automatic);
+        expect(floor.k, 60);
+        expect(adapt(floor, slow, FocusMode.automatic), floor);
+        final timeout = List<double>.filled(3, 2 * budget);
+        expect(adapt(floor, timeout, FocusMode.automatic), FocusChoice.none);
+        expect(adapt(floor, timeout, FocusMode.on), floor);
+      });
+      test('saved legacy choices upgrade without losing model or cost estimate', () {
+        for (final k in [10, 15, 30]) {
+          final c = FocusChoice.fromJson(FocusChoice(model, FocusVariant.int8, k, k * 100).toJson())!;
+          expect(c.model, model);
+          expect(c.variant, FocusVariant.int8);
+          expect(c.k, 60);
+          expect(c.predictedMs, 6000);
+        }
+        for (final k in [60, 80, 100]) {
+          final c = FocusChoice(model, FocusVariant.int8, k, k * 100);
+          expect(FocusChoice.fromJson(c.toJson()), c);
+        }
+      });
     });
+  }
 
-    test('without graphics, a fast processor gets the CPU model with the most candidates within budget', () {
-      final fast = choose(cpuMs: 600, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.ezra); // 0.69 * 600 * 30 / 10 = 1242 ms
-      expect(fast.variant, FocusVariant.int8);
-      expect(fast.k, 30);
-      final mid = choose(cpuMs: 1200, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.ezra); // 15 -> 1242 ms, 30 -> 2484 ms
-      expect(mid.k, 15);
-      final here = choose(cpuMs: laptop, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.ezra); // 10 -> 1269 ms
-      expect((here.variant, here.k), (FocusVariant.int8, 10));
-      expect(here.predictedMs, closeTo(1269, 1));
-    });
-
-    test('too slow for Automatic means none', () {
-      expect(choose(cpuMs: 5000, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.ezra).variant, FocusVariant.none);
-    });
-
-    test('Off is always none, even with graphics', () {
-      expect(choose(cpuMs: 100, gpu: true, mode: FocusMode.off, preferred: FocusModel.ezra).variant, FocusVariant.none);
-    });
-
-    test('On still uses it when slow, with the fewest candidates', () {
-      final c = choose(cpuMs: 5000, gpu: false, mode: FocusMode.on, preferred: FocusModel.ezra);
-      expect((c.variant, c.k), (FocusVariant.int8, 10));
-      expect(choose(cpuMs: 5000, gpu: true, mode: FocusMode.on, preferred: FocusModel.ezra).variant, FocusVariant.fp16);
-    });
-
-    test('preferring Apollos with a working graphics chip still goes through the int8/CPU ladder, not fp16/GPU (fp16 pack is broken for now)', () {
-      // A fast-enough device: GPU being available no longer grants fp16 (removed until the pack is fixed), but a
-      // working graphics chip says nothing about CPU speed, so this still has to go through Apollos's own CPU ladder.
-      final c = choose(cpuMs: 600, gpu: true, mode: FocusMode.automatic, preferred: FocusModel.apollos);
-      expect(c.model, FocusModel.apollos);
-      expect(c.variant, FocusVariant.int8);
-    });
-
-    test('preferring Apollos without a graphics chip gets Apollos int8 on a fast-enough device', () {
-      final c = choose(cpuMs: 600, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.apollos);
-      expect(c.model, FocusModel.apollos);
-      expect(c.variant, FocusVariant.int8);
-    });
-
-    test('preferring Apollos on a device too slow for even its smallest int8 candidate count falls back to Ezra', () {
-      final c = choose(cpuMs: 50000, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.apollos);
-      expect(c.model, FocusModel.ezra); // Apollos's own ladder (Task 5) found nothing that fits; fall back
-    });
-
-    test('preferring Ezra always gets Ezra, with or without graphics', () {
-      expect(choose(cpuMs: laptop, gpu: true, mode: FocusMode.automatic, preferred: FocusModel.ezra).model, FocusModel.ezra);
-      expect(choose(cpuMs: laptop, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.ezra).model, FocusModel.ezra);
-    });
-
-    test('Apollos CPU ladder predicts cost from its own constant, not Ezra\'s', () {
-      const fast = 200.0; // fast enough both ladders fit at k=30 with room to spare (414ms / 828ms vs 1500 budget)
-      final apollos = choose(cpuMs: fast, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.apollos);
-      final ezra = choose(cpuMs: fast, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.ezra);
-      expect(apollos.model, FocusModel.apollos); // confirms it didn't fall back to Ezra at this speed
-      expect(apollos.k, 30);
-      expect(ezra.k, 30);
-      // Same device, same k -- but the predicted ms must come from Apollos's own constant, not Ezra's:
-      expect(apollos.predictedMs, isNot(equals(ezra.predictedMs)));
-    });
-
-    test('preferring Apollos on a device too slow for its own 40s budget falls back to Ezra', () {
-      // Apollos's budget is generous (40s -- the reader already opted into a slower, more refined search), so
-      // this only happens on a genuinely very slow device: at cpuMs=4200, Apollos's own ladder exceeds 40000ms
-      // even at k=10 (41748ms), and Ezra's 1500ms budget fails too at every k -- mode On keeps Ezra at k=10
-      // anyway rather than giving up, which is what surfaces the fallback here.
-      const verySlow = 4200.0;
-      final apollos = choose(cpuMs: verySlow, gpu: false, mode: FocusMode.on, preferred: FocusModel.apollos);
-      expect(apollos.model, FocusModel.ezra);
-      expect(apollos.k, 10);
-    });
-
-    test('force overrides the budget fit check: Apollos is used even when it would not otherwise fit', () {
-      // The reader explicitly chose to try Apollos anyway after being warned it may not fit their device.
-      const verySlow = 4200.0;
-      final c = choose(cpuMs: verySlow, gpu: false, mode: FocusMode.on, preferred: FocusModel.apollos, force: true);
-      expect(c.model, FocusModel.apollos);
-      expect(c.variant, FocusVariant.int8);
-      expect(c.k, 10); // the smallest tier, since it's already known to be slow here
-    });
-
-    test('force has no effect when Apollos already fits on its own', () {
-      const fast = 200.0;
-      final forced = choose(cpuMs: fast, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.apollos, force: true);
-      final natural = choose(cpuMs: fast, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.apollos);
-      expect(forced, natural);
-    });
-
-    test('force is ignored when Ezra is the actual preference', () {
-      final c = choose(cpuMs: laptop, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.ezra, force: true);
-      expect(c.model, FocusModel.ezra);
-    });
-
-    test('force does nothing when Answer focus is off', () {
-      final c = choose(cpuMs: laptop, gpu: false, mode: FocusMode.off, preferred: FocusModel.apollos, force: true);
-      expect(c.variant, FocusVariant.none);
-    });
-
-    test('force also overrides the budget fit check for Priscilla, mirroring Apollos', () {
-      const extremelySlow = 100000.0;
-      final c = choose(cpuMs: extremelySlow, gpu: false, mode: FocusMode.on, preferred: FocusModel.priscilla, force: true);
-      expect(c.model, FocusModel.priscilla);
-      expect(c.variant, FocusVariant.int8);
-      expect(c.k, 10);
-    });
-  });
-
-  group('choose (Priscilla)', () {
-    test('Priscilla preferred and fitting returns the Priscilla int8 choice, using Apollos-sized headroom', () {
-      final c = choose(cpuMs: 600.0, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.priscilla);
-      expect(c.model, FocusModel.priscilla);
-      expect(c.variant, FocusVariant.int8);
-    });
-
-    test('Priscilla preferred but not fitting at any k under its own (Apollos-sized) budget falls back to Ezra', () {
-      // _priscillaCpuFactor (0.069, Ezra's unmeasured placeholder) is far smaller than _apollosCpuFactor (0.994,
-      // measured) -- the same 4200ms device speed that defeats Apollos's own ladder does NOT defeat Priscilla's
-      // (4200*0.069*10 ~= 2898ms, well under kApollosBudgetMs). This needs a genuinely much slower device to
-      // actually exceed kApollosBudgetMs even at Priscilla's own, much smaller, per-candidate cost.
-      const extremelySlow = 100000.0; // 100000*0.069*10 ~= 69000ms > kApollosBudgetMs (40000ms) at every _apollosKs tier
-      final c = choose(cpuMs: extremelySlow, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.priscilla);
-      expect(c.model, FocusModel.ezra);
-    });
-
-    test('Priscilla preferred but not fitting falls back to the smallest Ezra k under On, not none', () {
-      const extremelySlow = 100000.0;
-      final c = choose(cpuMs: extremelySlow, gpu: false, mode: FocusMode.on, preferred: FocusModel.priscilla);
-      expect(c.model, FocusModel.ezra);
-      expect(c.k, 10);
-    });
-
-    test('Priscilla preferred and fitting wins even on a device with a working graphics chip, mirroring Apollos', () {
-      final c = choose(cpuMs: 600.0, gpu: true, mode: FocusMode.automatic, preferred: FocusModel.priscilla);
-      expect(c.model, FocusModel.priscilla);
-      expect(c.variant, FocusVariant.int8);
-    });
-
-    test('Priscilla and Apollos are evaluated independently against the shared budget/ladder, each with its own '
-        'cost factor -- NOT a permanent guarantee that Priscilla always fits where Apollos doesn\'t: this is '
-        'incidental to their current real factors (Priscilla ~0.134, Apollos 0.994, cross-calibrated 2026-10-25) '
-        'and will need updating if either factor is re-measured and changes materially', () {
-      const apollosDoesNotFitHere = 4200.0; // 4200*0.994*10 = 41748 > kApollosBudgetMs; 4200*0.134*10 = 5628, still fits
-      final apollos = choose(cpuMs: apollosDoesNotFitHere, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.apollos);
-      final priscilla = choose(cpuMs: apollosDoesNotFitHere, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.priscilla);
-      expect(apollos.model, FocusModel.ezra, reason: 'Apollos genuinely does not fit at this speed');
-      expect(priscilla.model, FocusModel.priscilla, reason: 'Priscilla, with its own real (much smaller) cost factor, still fits the same budget ceiling here');
-    });
-  });
-
-  group('adapt (after install, from measured times)', () {
-    const start = FocusChoice(FocusModel.ezra, FocusVariant.int8, 30, 1200);
-
-    test('keeps the choice while searches are within budget', () {
-      expect(adapt(start, [900, 1100, 1300], FocusMode.automatic), start);
-    });
-
-    test('steps down to fewer candidates when searches are slow', () {
-      expect(adapt(start, [2600, 2500, 2700], FocusMode.automatic).k, 15);
-      expect(adapt(const FocusChoice(FocusModel.ezra, FocusVariant.fp16, 15, 900), [2000, 2100, 1900], FocusMode.automatic).k, 10);
-    });
-
-    test('at 10 candidates and still far too slow, Automatic turns itself off; On keeps going', () {
-      const ten = FocusChoice(FocusModel.ezra, FocusVariant.int8, 10, 1200);
-      expect(adapt(ten, [3200, 3500, 3100], FocusMode.automatic).variant, FocusVariant.none);
-      expect(adapt(ten, [3200, 3500, 3100], FocusMode.on), ten);
-    });
-
-    test('needs a few searches before judging', () {
-      expect(adapt(start, [5000], FocusMode.automatic), start);
-    });
-  });
-
-  group('adapt (Priscilla)', () {
-    test('Priscilla at k=10 (the floor) with a very slow median turns off under Automatic, same as Apollos would', () {
-      const start = FocusChoice(FocusModel.priscilla, FocusVariant.int8, 10, 30000);
-      final r = adapt(start, [85000.0, 86000.0, 84000.0], FocusMode.automatic); // >= 2x kApollosBudgetMs
-      expect(r, FocusChoice.none);
-    });
-
-    test('Priscilla at k=10 under On mode never turns off, same as Apollos', () {
-      const start = FocusChoice(FocusModel.priscilla, FocusVariant.int8, 10, 30000);
-      final r = adapt(start, [85000.0, 86000.0, 84000.0], FocusMode.on);
-      expect(r, start);
-    });
-
-    test('Priscilla steps down its own ladder the same shape as Apollos, not Ezra\'s', () {
-      const start = FocusChoice(FocusModel.priscilla, FocusVariant.int8, 30, 2000);
-      final r = adapt(start, [45000.0, 46000.0, 44000.0], FocusMode.automatic); // over kApollosBudgetMs, under 2x
-      expect(r.k, 15); // _apollosKs[1], matching the same step-down shape Apollos's own ladder test uses
-    });
-  });
-
-  group('choose (Aquila)', () {
-    test('Aquila preferred and fitting returns the Aquila int8 choice, using Apollos-sized headroom', () {
-      final c = choose(cpuMs: 200.0, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.aquila);
-      expect(c.model, FocusModel.aquila);
-      expect(c.variant, FocusVariant.int8);
-    });
-
-    test('Aquila preferred but not fitting at any k under its own (Apollos-sized) budget falls back to Ezra', () {
-      // _aquilaCpuFactor == _apollosCpuFactor (0.994), so Aquila's own fit boundary matches Apollos's real one:
-      // the same 4200ms device speed that already defeats Apollos's ladder (4200*0.994*10 ~= 41748ms) defeats
-      // Aquila's too -- unlike Priscilla's own much smaller placeholder factor, no inflated device speed is needed.
-      const verySlow = 4200.0;
-      final c = choose(cpuMs: verySlow, gpu: false, mode: FocusMode.automatic, preferred: FocusModel.aquila);
-      expect(c.model, FocusModel.ezra);
-    });
-
-    test('Aquila preferred but not fitting falls back to the smallest Ezra k under On, not none', () {
-      const verySlow = 4200.0;
-      final c = choose(cpuMs: verySlow, gpu: false, mode: FocusMode.on, preferred: FocusModel.aquila);
-      expect(c.model, FocusModel.ezra);
-      expect(c.k, 10);
-    });
-
-    test('Aquila preferred and fitting wins even on a device with a working graphics chip, mirroring Apollos/Priscilla', () {
-      final c = choose(cpuMs: 200.0, gpu: true, mode: FocusMode.automatic, preferred: FocusModel.aquila);
-      expect(c.model, FocusModel.aquila);
-      expect(c.variant, FocusVariant.int8);
-    });
-
-    test('force overrides the budget fit check for Aquila too, mirroring Apollos and Priscilla', () {
-      const verySlow = 4200.0;
-      final c = choose(cpuMs: verySlow, gpu: false, mode: FocusMode.on, preferred: FocusModel.aquila, force: true);
-      expect(c.model, FocusModel.aquila);
-      expect(c.variant, FocusVariant.int8);
-      expect(c.k, 10);
-    });
-  });
-
-  group('adapt (Aquila)', () {
-    test('Aquila at k=10 (the floor) with a very slow median turns off under Automatic, same as Apollos/Priscilla would', () {
-      const start = FocusChoice(FocusModel.aquila, FocusVariant.int8, 10, 30000);
-      final r = adapt(start, [85000.0, 86000.0, 84000.0], FocusMode.automatic);
-      expect(r, FocusChoice.none);
-    });
-
-    test('Aquila at k=10 under On mode never turns off, same as Apollos/Priscilla', () {
-      const start = FocusChoice(FocusModel.aquila, FocusVariant.int8, 10, 30000);
-      final r = adapt(start, [85000.0, 86000.0, 84000.0], FocusMode.on);
-      expect(r, start);
-    });
-
-    test('Aquila steps down its own ladder the same shape as Apollos/Priscilla, not Ezra\'s', () {
-      const start = FocusChoice(FocusModel.aquila, FocusVariant.int8, 30, 2000);
-      final r = adapt(start, [45000.0, 46000.0, 44000.0], FocusMode.automatic);
-      expect(r.k, 15);
-    });
+  test('GPU choice starts at 60 until real searches measure graphics time', () {
+    final c = choose(cpuMs: 1839, gpu: true, mode: FocusMode.automatic, preferred: FocusModel.ezra);
+    expect(c.k, 60);
+    expect(c.predictedMs, closeTo(7613.46, 0.01));
   });
 
   group('resolveFallback', () {
@@ -380,7 +202,7 @@ void main() {
   });
 
   test('choices survive being saved', () {
-    const c = FocusChoice(FocusModel.apollos, FocusVariant.fp16, 15, 812.5);
+    const c = FocusChoice(FocusModel.apollos, FocusVariant.fp16, 80, 812.5);
     expect(FocusChoice.fromJson(c.toJson()), c);
     expect(FocusChoice.fromJson('nonsense'), isNull);
     // Saved before the model field existed: still loads, as Ezra.
@@ -390,7 +212,7 @@ void main() {
   });
 
   test('a pre-existing persisted choice (saved before Priscilla existed) still decodes correctly', () {
-    final old = '{"model":"ezra","variant":"int8","k":10,"predicted_ms":1200.0}';
+    const old = '{"model":"ezra","variant":"int8","k":10,"predicted_ms":1200.0}';
     final c = FocusChoice.fromJson(old);
     expect(c!.model, FocusModel.ezra);
   });

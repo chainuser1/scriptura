@@ -434,14 +434,14 @@ void main() {
         expect((sent.single.body!['texts'] as List).first, contains('Synthetic English passage'));
       });
 
-      testWidgets('only the top K are reordered', (tester) async {
+      testWidgets('a saved small pool upgrades and scores all available matches', (tester) async {
         final sent = <SearchRequest>[];
         await withFocus(tester, (r) async {
           sent.add(r);
-          return focused([0.1, 0.9]);
+          return focused([0.5, 0.9, 0.2, 0.1]);
         }, k: 2);
         await typeAndSubmit(tester, find.byType(TextField).first, 'peace');
-        expect((sent.single.body!['texts'] as List), hasLength(2));
+        expect((sent.single.body!['texts'] as List), hasLength(4));
         await showSeparately(tester);
         expect(top(tester, 5), lessThan(top(tester, 2)));
         expect(top(tester, 2), lessThan(top(tester, 6)));
@@ -460,7 +460,7 @@ void main() {
         await withFocus(tester, (r) => Completer<SearchResponse>().future);
         await tester.enterText(find.byType(TextField).first, 'peace');
         await tester.testTextInput.receiveAction(TextInputAction.search);
-        await tester.pump(const Duration(seconds: 4));
+        await tester.pump(const Duration(seconds: 19));
         await tester.pumpAndSettle();
         expect(find.byKey(const ValueKey('hit-2')), findsOneWidget);
         await showSeparately(tester);
@@ -522,7 +522,7 @@ void main() {
         for (final q in ['one', 'two', 'three']) {
           await tester.enterText(find.byType(TextField).first, q);
           await tester.testTextInput.receiveAction(TextInputAction.search);
-          await tester.pump(const Duration(seconds: 4));
+          await tester.pump(const Duration(seconds: 19));
           await tester.pumpAndSettle();
         }
         expect(app.focusChoice!.variant, FocusVariant.none);
@@ -536,11 +536,11 @@ void main() {
       });
 
       testWidgets('slow searches teach Automatic to look at fewer candidates', (tester) async {
-        final app = await withFocus(tester, (r) async => focused([0.1, 0.2, 0.3, 0.4], ms: 2600), k: 30);
+        final app = await withFocus(tester, (r) async => focused([0.1, 0.2, 0.3, 0.4], ms: 15600), k: 100);
         for (final q in ['one', 'two', 'three']) {
           await typeAndSubmit(tester, find.byType(TextField).first, q);
         }
-        expect(app.focusChoice!.k, 15);
+        expect(app.focusChoice!.k, 80);
       });
     });
 

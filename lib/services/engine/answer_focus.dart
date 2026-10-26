@@ -18,26 +18,21 @@ enum FocusVariant { none, int8, fp16 }
 /// Which model: Ezra (always available), Apollos, Priscilla, or Aquila. Ezra is also the "nothing chosen yet" placeholder.
 enum FocusModel { ezra, apollos, priscilla, aquila }
 
-/// A search should not wait longer than this for Answer focus (Ezra).
-const kFocusBudgetMs = 1500.0;
-const _ks = [30, 15, 10];
+/// All active profiles examine 60-100 candidates, chosen for the device's speed.
+const focusCandidateCounts = [100, 80, 60];
+
+/// Six times the former budget: the minimum pool grew from 10 to 60. Keep the
+/// same slow-device boundary instead of disabling focus merely because it now
+/// examines more passages. Searches return as soon as scoring finishes.
+const kFocusBudgetMs = 9000.0;
 
 /// CPU Answer focus time per candidate relative to the device trial (measured on the reference laptop: trial 1839 ms,
 /// 10 candidates 1270 ms).
 const _cpuFactor = 0.069;
 
-/// Apollos's own, much longer budget: measured real device data (see below) showed its int8/CPU tier
-/// cannot fit Ezra's 1500ms "feels instant" budget at any reasonable candidate count, on any
-/// realistic device speed -- not a tuning problem, a real size difference (Apollos is a ~1.24B-param
-/// Llama-family cross-encoder; Ezra's bge-reranker-v2-m3 is much smaller). Apollos's own copy already
-/// tells the reader "on some devices it takes a bit longer" -- this budget is what makes that honest.
-/// Owner's choice (2026-10-19, raised from 15s to 40s same day): room for k=10 even on somewhat slower
-/// devices than the one this constant was calibrated on. A search that finishes sooner returns right
-/// away -- this is a ceiling before Automatic gives up and falls back, never a fixed wait.
-const kApollosBudgetMs = 40000.0;
-
-/// Apollos's own CPU-tier candidate-count ladder, independent of Ezra's `_ks`.
-const _apollosKs = [30, 15, 10];
+/// The larger models retain their own allowance, scaled from 40s to 240s for
+/// the sixfold minimum pool. This is a ceiling, not a fixed wait.
+const kApollosBudgetMs = 240000.0;
 
 /// Apollos's own CPU cost-per-candidate constant, measured on a real Android phone (2026-10-19):
 /// device trial cpu_ms 1238/1295 (avg 1267), k=10 completed in 12846/12342 ms (avg 12594) -- a real,
@@ -84,7 +79,13 @@ class FocusChoice {
       final m = jsonDecode(s!) as Map<String, dynamic>;
       // Saved before the model field existed: those were Ezra.
       final model = m['model'] == null ? FocusModel.ezra : FocusModel.values.byName(m['model'] as String);
-      return FocusChoice(model, FocusVariant.values.byName(m['variant'] as String), m['k'] as int, (m['predicted_ms'] as num).toDouble());
+      final variant = FocusVariant.values.byName(m['variant'] as String);
+      if (variant == FocusVariant.none) return FocusChoice.none;
+      final savedK = m['k'] as int;
+      final k = savedK.clamp(focusCandidateCounts.last, focusCandidateCounts.first);
+      final predicted = (m['predicted_ms'] as num).toDouble();
+      // Upgrade existing installations immediately, without another device trial.
+      return FocusChoice(model, variant, k, savedK > 0 ? predicted * k / savedK : predicted);
     } catch (_) {
       return null;
     }
@@ -100,7 +101,7 @@ class FocusChoice {
 }
 
 /// The choice from the device trial: a working graphics chip gets the graphics model; otherwise the CPU model with the
-/// most candidates that fit the budget. Automatic declines a device too slow for even 10; On uses 10 anyway. Apollos
+/// most candidates that fit the budget. Automatic declines a device too slow for even 60; On uses 60 anyway. Apollos
 /// and Priscilla are each used when preferred and they fit; otherwise (no candidate fits) the Ezra logic decides.
 /// Neither has a GPU/fp16 tier available right now -- Apollos's is a real pack defect (temporary, not a device
 /// limitation); Priscilla's pack simply has none (see Global Constraints in its own design doc) -- so both only ever
@@ -117,53 +118,50 @@ FocusChoice choose({
   bool force = false,
 }) {
   if (mode == FocusMode.off) return FocusChoice.none;
-  final cpu10 = cpuMs * _cpuFactor * 10;
+  final cpu60 = cpuMs * _cpuFactor * 60;
   if (preferred == FocusModel.apollos) {
     // Apollos's fp16/GPU pack has a real ONNX export defect (DirectML rejects it; see memory
     // apollos-fp16-gpu-broken-int8-only-for-now) -- not yet fixed/re-uploaded. Until it is, a
     // GPU-capable device still gets Apollos, just on its working int8/CPU tier below, not fp16/GPU.
     // Apollos's own budget is much longer than Ezra's -- see kApollosBudgetMs.
-    for (final k in _apollosKs) {
+    for (final k in focusCandidateCounts) {
       final ms = cpuMs * _apollosCpuFactor * k;
       if (ms <= kApollosBudgetMs) return FocusChoice(FocusModel.apollos, FocusVariant.int8, k, ms);
     }
-    if (force) return FocusChoice(FocusModel.apollos, FocusVariant.int8, 10, cpuMs * _apollosCpuFactor * 10);
+    if (force) return FocusChoice(FocusModel.apollos, FocusVariant.int8, 60, cpuMs * _apollosCpuFactor * 60);
   }
   if (preferred == FocusModel.priscilla) {
     // Priscilla has no GPU/fp16 tier of its own (not a temporary pack defect like Apollos's -- see Global
     // Constraints), but mirrors Apollos's own branch above: an explicit non-Ezra preference beats the generic
     // Ezra fp16/GPU default below when it fits, rather than a GPU device silently ignoring the reader's pick.
-    // Priscilla reuses Apollos's own budget and candidate ladder (kApollosBudgetMs, _apollosKs), not Ezra's: a
-    // tight Ezra-shaped budget was rationing Priscilla to too few candidates for its real size, hurting search
-    // quality -- Apollos's generous headroom is the better (if still unmeasured) guess for a model Priscilla's
-    // weight class, same reasoning kApollosBudgetMs's own comment already gives for Apollos itself.
-    for (final k in _apollosKs) {
+    // All models share the candidate ladder; Priscilla uses the larger-model time budget.
+    for (final k in focusCandidateCounts) {
       final ms = cpuMs * _priscillaCpuFactor * k;
       if (ms <= kApollosBudgetMs) return FocusChoice(FocusModel.priscilla, FocusVariant.int8, k, ms);
     }
-    if (force) return FocusChoice(FocusModel.priscilla, FocusVariant.int8, 10, cpuMs * _priscillaCpuFactor * 10);
+    if (force) return FocusChoice(FocusModel.priscilla, FocusVariant.int8, 60, cpuMs * _priscillaCpuFactor * 60);
   }
   if (preferred == FocusModel.aquila) {
     // Aquila has no GPU/fp16 tier of its own, same as Priscilla -- mirrors both branches above: an explicit
     // non-Ezra preference beats the generic Ezra fp16/GPU default below when it fits. Aquila reuses Apollos's
-    // own budget and candidate ladder (kApollosBudgetMs, _apollosKs) and -- unlike Priscilla's original
+    // own budget and candidate ladder (kApollosBudgetMs, focusCandidateCounts) and -- unlike Priscilla's original
     // mistake -- starts out using Apollos's own real cost factor directly (_aquilaCpuFactor ==
     // _apollosCpuFactor), never Ezra's, since Aquila like Apollos is a real ~400m-parameter-class model.
-    for (final k in _apollosKs) {
+    for (final k in focusCandidateCounts) {
       final ms = cpuMs * _aquilaCpuFactor * k;
       if (ms <= kApollosBudgetMs) return FocusChoice(FocusModel.aquila, FocusVariant.int8, k, ms);
     }
-    if (force) return FocusChoice(FocusModel.aquila, FocusVariant.int8, 10, cpuMs * _aquilaCpuFactor * 10);
+    if (force) return FocusChoice(FocusModel.aquila, FocusVariant.int8, 60, cpuMs * _aquilaCpuFactor * 60);
   }
-  if (gpu) return FocusChoice(FocusModel.ezra, FocusVariant.fp16, 10, cpu10); // first searches measure the real graphics time
-  for (final k in _ks) {
+  if (gpu) return FocusChoice(FocusModel.ezra, FocusVariant.fp16, 60, cpu60); // first searches measure the real graphics time
+  for (final k in focusCandidateCounts) {
     final ms = cpuMs * _cpuFactor * k;
     if (ms <= kFocusBudgetMs) return FocusChoice(FocusModel.ezra, FocusVariant.int8, k, ms);
   }
-  return mode == FocusMode.on ? FocusChoice(FocusModel.ezra, FocusVariant.int8, 10, cpu10) : FocusChoice.none;
+  return mode == FocusMode.on ? FocusChoice(FocusModel.ezra, FocusVariant.int8, 60, cpu60) : FocusChoice.none;
 }
 
-/// Models that share Apollos's own longer budget and candidate ladder (see kApollosBudgetMs) rather than
+/// Models that share Apollos's own longer budget (see kApollosBudgetMs) rather than
 /// Ezra's -- a named, reusable set rather than an inline boolean, so a future model joining this tier does
 /// not require touching every place that already checks it. Public: search_screen.dart's own timeout check
 /// must use this too, not a second, easy-to-forget copy of "is this model Apollos-sized".
@@ -173,14 +171,13 @@ const apollosSizedModels = {FocusModel.apollos, FocusModel.priscilla, FocusModel
 /// (see apollosSizedModels), Ezra's shorter one otherwise.
 double focusBudgetMs(FocusModel model) => apollosSizedModels.contains(model) ? kApollosBudgetMs : kFocusBudgetMs;
 
-/// After install: with at least three measured searches, fewer candidates when the median is over budget; at 10 and
+/// After install: with at least three measured searches, fewer candidates when the median is over budget; at 60 and
 /// still over twice the budget, Automatic turns Answer focus off (On keeps it). Apollos, Priscilla, and Aquila all
-/// use the longer budget and ladder (see apollosSizedModels) -- Ezra's own are not big enough for their real size.
+/// use the longer budget (see apollosSizedModels); all models share the same candidate ladder.
 FocusChoice adapt(FocusChoice c, List<double> recentMs, FocusMode mode) {
   if (c.variant == FocusVariant.none || recentMs.length < 3) return c;
-  final apollosSized = apollosSizedModels.contains(c.model);
   final budget = focusBudgetMs(c.model);
-  final ks = apollosSized ? _apollosKs : _ks;
+  const ks = focusCandidateCounts;
   final sorted = [...recentMs]..sort();
   final median = sorted[sorted.length ~/ 2];
   if (median <= budget) return c;

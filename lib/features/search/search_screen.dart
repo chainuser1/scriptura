@@ -172,6 +172,7 @@ class _SearchScreenState extends State<SearchScreen> {
   ) async {
     final choice = app.focusChoice;
     if (!_service.hasFocus ||
+        app.focusMode == FocusMode.off ||
         choice == null ||
         choice.k == 0 ||
         passages.length < 2) {
@@ -262,6 +263,11 @@ class _SearchScreenState extends State<SearchScreen> {
     if (!wide) app.nav.openSearchSelection(group);
   }
 
+  // Retrieve the full scoring pool before ranking and chapter grouping.
+  int get _meaningTopK => app.focusMode != FocusMode.off && _service.hasFocus
+      ? (app.focusChoice?.k ?? 0).clamp(20, focusCandidateCounts.first)
+      : 20;
+
   void _submit([String? _]) {
     final q = _text.text.trim();
     if (q.isEmpty) return;
@@ -280,6 +286,7 @@ class _SearchScreenState extends State<SearchScreen> {
           language: app.language,
           filter: _filter,
           profile: app.searchProfile,
+          topK: _meaningTopK,
         ),
         title: 'Passages for “$q”',
         remember: q,
@@ -301,6 +308,7 @@ class _SearchScreenState extends State<SearchScreen> {
         filter: _filter,
         person: entityId,
         profile: app.searchProfile,
+        topK: _meaningTopK,
       ),
       title: 'Passages for “$_lastQuery”',
       focus: _lastQuery,

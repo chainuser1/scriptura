@@ -168,7 +168,7 @@ void main() {
       _markInstalled(root, PackKind.apollosFp16);
       app.user.setPref('answer_focus_choice', const FocusChoice(FocusModel.apollos, FocusVariant.fp16, 10, 800).toJson());
       await app.measureDevice();
-      expect(app.focusChoice, const FocusChoice(FocusModel.apollos, FocusVariant.fp16, 10, 800));
+      expect(app.focusChoice, const FocusChoice(FocusModel.apollos, FocusVariant.fp16, 60, 4800));
     });
   });
 
