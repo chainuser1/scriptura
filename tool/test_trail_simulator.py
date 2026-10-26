@@ -1,4 +1,6 @@
 """Tests for tool/trail_simulator.py. No pytest in this repo's tool/ -- plain assert-based test_* functions, run directly.
+Needs a real retrieval/ pack: set SCRIPTURA_RETRIEVAL, or this falls back to the (likely absent in a fresh
+checkout) generated-artifacts/engine-pack/retrieval -- see trail_simulator.py's own RET.
 
   .venv\\Scripts\\python.exe -I tool/test_trail_simulator.py
 """
@@ -10,9 +12,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / 'tool'))
 from trails import Trails  # noqa: E402
 from trail_simulator import (AlwaysLikeReader, exploration_cost, flow_coherence,  # noqa: E402
-                              mood_pull, novelty_spacing, play_trail, taste_convergence)
-
-RET = Path(r'C:\Users\jayky\AppData\Roaming\Scriptures\Scriptures\scriptura\engine-pack\retrieval')
+                              mood_pull, novelty_spacing, play_trail, taste_convergence, RET)
 
 
 def test_always_like_reader_is_deterministic():
@@ -38,10 +38,15 @@ def test_invalid_action_from_a_reader_raises_loudly():
         pass
 
 
-def test_exploration_cost_matches_known_explore_flags():
+def test_exploration_cost_counts_only_the_shown_pick_per_step_not_every_candidate():
+    # hits[0] is the only verse play_trail() actually shows the reader (the rest of each step's k-sized response
+    # is that step's own unshown candidate list) -- exploration_cost must reflect what the reader sees, matching
+    # no_repeats()'s own hits[0]-only convention, not count every returned candidate's explore flag.
     run = [{'hits': [{'parts': {'explore': True}}, {'parts': {'explore': False}}]},
+           {'hits': [{'parts': {'explore': False}}]},
+           {'hits': [{'parts': {'explore': True}}]},
            {'hits': [{'parts': {'explore': False}}]}]
-    assert exploration_cost(run) == 1 / 3
+    assert exploration_cost(run) == 0.5  # 2 of the 4 SHOWN (hits[0]) picks were explore picks
 
 
 def test_taste_convergence_reports_none_when_threshold_never_crossed():

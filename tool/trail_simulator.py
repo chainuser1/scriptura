@@ -9,11 +9,15 @@ own ledger for the investigation. Adding that requires a new engine op, out of t
   .venv\\Scripts\\python.exe -I tool/trail_simulator.py
 """
 import json
+import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / 'local-benchmarks'
-RET = Path(r'C:\Users\jayky\AppData\Roaming\Scriptures\Scriptures\scriptura\engine-pack\retrieval')
+# No generated-artifacts/engine-pack exists in a fresh checkout (this repo's own build staging is not committed) --
+# set SCRIPTURA_RETRIEVAL to a real retrieval/ directory (e.g. an installed app's own downloaded pack) to run this
+# against real data without one. See this plan's own ledger for why.
+RET = Path(os.environ.get('SCRIPTURA_RETRIEVAL', ROOT / 'generated-artifacts' / 'engine-pack' / 'retrieval'))
 
 VALID_ACTIONS = {'like', 'skip', 'dislike'}
 
@@ -42,8 +46,10 @@ class MixedPatternReader:
 
 
 def exploration_cost(run):
-    """Fraction of all picks across [run] (a play_trail() result) whose parts.explore flag was true."""
-    flags = [h['parts']['explore'] for step in run for h in step['hits']]
+    """Fraction of the verses a reader actually SEES across [run] (hits[0] of each step -- the only one
+    play_trail() shows; the rest of each step's k-sized response is that step's own unshown candidate list)
+    whose parts.explore flag was true."""
+    flags = [step['hits'][0]['parts']['explore'] for step in run if step['hits']]
     return sum(flags) / len(flags) if flags else 0.0
 
 
@@ -99,12 +105,15 @@ def mood_pull(trails, run, mood_vector):
     return sum(sims) / len(sims)
 
 
-def play_trail(trails, seed, reader, moods, *, k, focus, mood_strength, steps):
+def play_trail(trails, seed, reader, moods, *, k, focus, mood_strength, steps, _events_out=None):
     """Plays [steps] cards of a trail against the real Trails.trail_next(), feeding [reader]'s chosen action back
     into the event log each time. Returns the full list of per-step trail_next() responses (not just verse ids),
     so later callers can read hits[].parts for their own metrics. Each hit also gets a 'dominant_family' key
     (trails.dominant[row], not part of the real engine response) so taste_convergence() can read it without
-    needing a Trails object of its own."""
+    needing a Trails object of its own. [_events_out], if given a list, is extended in place with the full
+    shown/like/skip/dislike event log this call produced -- an optional out-parameter for callers (like the
+    tuning sweep's own dislike-exclusion check) that need to know which verses were disliked, without changing
+    this function's own return shape for every existing caller."""
     events, history, run = [], [], []
     for step in range(steps):
         r = trails.trail_next({'k': k, 'step': step, 'seed': seed, 'events': events, 'recent': history[-5:],
@@ -122,6 +131,8 @@ def play_trail(trails, seed, reader, moods, *, k, focus, mood_strength, steps):
         if action not in VALID_ACTIONS:
             raise ValueError(f'unrecognized action {action!r} from reader; must be one of {sorted(VALID_ACTIONS)}')
         events.append({'verse_id': v, 'action': action})
+    if _events_out is not None:
+        _events_out.extend(events)
     return run
 
 
@@ -154,6 +165,10 @@ if __name__ == '__main__':
     sys.path.insert(0, str(ROOT / 'tool'))
     from trails import Trails  # noqa: E402
 
+    if not RET.exists():
+        sys.exit(f'retrieval pack not found at {RET}\n'
+                  f'Set SCRIPTURA_RETRIEVAL to a real retrieval/ directory (e.g. an installed app\'s own '
+                  f'downloaded engine-pack) -- see tool/trail_simulator.py\'s own module docstring.')
     trails = Trails(str(RET))
     moods_data = json.loads((ROOT / 'assets' / 'trail_moods.json').read_text('utf-8'))['moods']
     scenarios = _run_battery(trails, moods_data)
